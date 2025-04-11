@@ -1,0 +1,97 @@
+{% load static %}
+{% load custom_tags %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Inventory Management{% endblock title %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+</head>
+<body>
+
+{% if request.user.is_authenticated %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{% url 'inventory' %}">Inventory</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto align-items-center">
+
+                <!-- User Info -->
+                <li class="nav-item">
+                    <a class="nav-link fw-bold text-light" href="{% url 'update_user' request.user.id %}">
+                        {% if request.user|is_owner %}
+                        Hi, {{ request.user.username }} ✨
+                        {% else %}
+                        {% if request.user|is_admin %}
+                        {{ request.user.username }}👔 <small>Admin</small>
+                        {% else %}
+                        {{ request.user.username }}👔 <small>Employee</small>
+                        {% endif %}
+                        {% endif %}
+                    </a>
+                </li>
+
+                <!-- Company Info -->
+                {% if  request.user.company  %}
+                {% if request.user|is_owner %}
+                <li class="nav-item">
+                    <a class="nav-link fw-bold text-light" href="{% url 'update_company' request.user.company.id %}">
+                        {{ request.user.company.company_name }}
+                    </a>
+                </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link fw-bold text-light" href="{% url 'update_company' request.user.company.id %}">
+                         {{ request.user.company.company_name }} 
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% endif %}
+                <li class="nav-item">
+                    <a class="nav-link fw-bold text-light" href="{% url 'create_job'  %}">
+                        Add job
+                    </a>
+                </li>
+                <!-- Admin Panel -->
+                {% if request.user|is_admin %}
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'admin_panel' %}">Admin Panel</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'register' %}">Add User</a>
+                </li>
+                {% endif %}
+
+                <!-- Logout -->
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+{% endif %}
+
+<div class="container content">
+    {% block body %}{% endblock body %}
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+
+{% block body %}
+{% for message in messages  %}
+<div class="alert alert-{{ message.tags }}">
+    {{ message }}
+</div>
+{% endfor %}
+<H3>Update user</H3>
+<!-- Modern Form Section -->
+<section class="form-section">
+    <form action="" method="POST" enctype="multipart/form-data" class="form-container">
+        {% csrf_token %}
+        <div class="form-group">
+            {{ itemform }} 
+        </div>
+        <div class="form-group">
+            {{ form.as_p }}
+        </div>
+        
+        
+        <div class="form-group">
+            
+            <button type="submit" class="btn-submit">Update</button>
+        </div>
+    </form>
+</section>
+
+
+<!-- Job Summary Section -->
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+{% endblock %}

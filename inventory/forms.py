@@ -1,0 +1,161 @@
+from django import forms
+from .models import CustomUser, Item, Company,Job
+from django.contrib.auth.models import Group
+from django.forms import HiddenInput
+
+
+
+class loginForm(forms.Form):
+    email = forms.EmailField()
+    password = forms.CharField(widget=forms.PasswordInput)
+    remember_me = forms.BooleanField(required=False)
+
+    fields=['email','password','remember_me']
+
+
+class companyregisterForm(forms.ModelForm):
+    
+    class Meta:
+        model = Company
+        fields = ['company_name','company_email','address','phone',]
+        widgets = {
+            'company_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Company Name'}),
+            'address': forms.Textarea(attrs={'rows': 2, 'class': 'form-control', 'placeholder': 'Company Address'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+1234567890'}),
+            'company_email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Company Email'}),
+        }
+    def __init__(self, *args, user=None, **kwargs):
+            super().__init__(*args, **kwargs)
+            if user is not None :
+                if   not user.company_owner==user or user.company==None:
+                    for field in self.fields.values():
+                        
+                        field.widget.attrs['class'] = 'faded-input'
+                        field.widget.attrs['disabled'] = 'disabled'
+
+class registerForm(forms.ModelForm):
+    password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Password'}))
+    is_banned=forms.BooleanField( required=False,
+    initial=False,
+    label="Ban this user", 
+    widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+    class Meta:
+        model = CustomUser
+        fields = ['username', 'email', 'password', 'groups', 'company']
+        widgets = {
+            'email': forms.EmailInput(),
+            'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Username'}),
+            'company': forms.HiddenInput(),
+            'groups': forms.MultipleHiddenInput(),
+        }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+    def clean(self):
+
+        return super().clean()
+    
+        # if user is not None:
+        #     admin = user.groups.filter(name="Admin").exists()
+        #     owner = hasattr(user, 'company') and user.company and user.company.owner == user
+        #     employee = user.groups.filter(name="Employee").exists()
+        #     is_self = self.instance == user
+
+        #     group_instance = self.instance.groups.first() 
+
+        #     if owner and is_self:
+        #         pass
+        #     elif owner:
+        #         self.fields['groups'].queryset = Group.objects.all()
+
+        #     elif admin and is_self:
+        #         self.fields.pop('groups', None)
+
+        #     elif admin:
+        #         self.fields['groups'].queryset = Group.objects.filter(name="Employee")
+
+        #     elif employee:
+        #         self.fields.pop('groups', None)
+
+    def save(self, commit=True):
+        """ Hash the password before saving """
+        user = super().save(commit=False)
+        
+        user.set_password(self.cleaned_data["password"])  # Securely hash password
+        # user.company=Company.objects.get(id=user.company.id)
+        if commit:
+            user.save()
+            self.save_m2m()  # Save groups if assigned
+        return user
+    
+class JobForm(forms.ModelForm):
+    class Meta:
+        model = Job
+        fields = '__all__'
+        exclude = ['user', 'company']
+        labels = {
+            'name': 'Part Name',
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-select', 'id': 'status'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+            'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control', 'id': 'arrived_quantity'}),
+            'job_id': forms.TextInput(attrs={  # Override widget for job_id
+                'type': 'text',  # Set input type to text
+                'inputmode': 'numeric',  # Allow numeric input
+                'pattern': '[0-9]*',  # Numeric pattern
+                'placeholder': 'Enter Job ID',
+                'class': 'form-control',
+            }),
+        }
+
+class ItemForm(forms.ModelForm):
+    
+    class Meta:
+        model = Item
+        fields = '__all__' 
+        exclude = ['user','company']
+        labels = {
+            'name': 'Part Name',
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-select','id':'status'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+            'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control','id':'arrived_quantity'}),
+        }
+
+class ItemFormo(forms.Form):#added o to stop using it and creat model form with same name
+
+    STATUS_CHOICES =[
+        ('a','Arrived'),
+        ('c','Ordered'),
+        ('d','Taken'),
+        ('e','Job done'),
+        ('b',''),
+    ]
+    name = forms.CharField(max_length=90)
+    part_number = forms.CharField(max_length=100)
+    description = forms.CharField(max_length=200, required=False)
+    reference=forms.CharField(max_length=30)
+    jobid = forms.CharField(max_length=11)
+    quantity = forms.IntegerField()
+    price = forms.DecimalField(max_digits=10, decimal_places=2)    
+    supplier = forms.CharField(max_length=90)
+    image = forms.ImageField(required=False)
+    status = forms.ChoiceField(choices=STATUS_CHOICES, initial='b',required=True)
+
+
+
+
+class SearchForm(forms.Form):#-
+    search_text = forms.CharField(max_length=100)#-
+    status_filter = forms.ChoiceField(choices=[('', 'All statuses'), ('a', 'Arrived'), ('c', 'Ordered'), ('d', 'Taken'), ('e', 'Job done'), ('b', '')], required=False)     #-
+    supplier_filter = forms.CharField(max_length=90, required=False)#-
+    min_price_filter = forms.DecimalField(max_digits=10, decimal_places=2, required=False)#-
+    max_price_filter = forms.DecimalField(max_digits=10, decimal_places=2, required=False)#-
+    min_quantity_filter = forms.IntegerField(required=False)#-
+    max_quantity_filter = forms.IntegerField(required=False)#-

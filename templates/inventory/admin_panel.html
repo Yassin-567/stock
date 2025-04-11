@@ -1,0 +1,44 @@
+{% extends 'inventory/base.html' %}
+{% load static %}{% load custom_tags %}
+
+
+{% block body %}
+{% for group  in groups  %}
+
+<ul>
+    <li>{{group}}</li>
+  <ul  style="list-style-type:none;">
+        {% for user  in users  %}
+        {% if user|is_in_group:group %}
+        <li>{{user.id}},{{user}}, {{user.email}}<span><a href="{{user.id}}">Edit</a>✏</span></li>
+        {% endif %}
+        {% endfor %}
+</ul>
+</ul>
+
+
+
+{% endfor %}
+<table>
+<tr>
+
+<td> <strong>Id</strong> </td>
+<td> <strong>Username</strong> </td>
+</tr>
+
+
+{% for user  in users  %}<tr>
+<td>
+    <p>Id[{{user.id}}] {{user}}
+
+
+    </p>
+
+</td></tr>
+{% endfor %}
+
+
+</table>
+
+
+{% endblock %}

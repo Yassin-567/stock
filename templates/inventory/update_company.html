@@ -1,0 +1,55 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+{% load custom_tags %}
+
+{% block body %}
+{% for message in messages  %}
+<div class="alert alert-{{ message.tags }}">
+    {{ message }}
+</div>
+{% endfor %}
+
+<!-- Modern Form Section -->
+<section class="form-section">
+    <form action="" method="POST" enctype="multipart/form-data" class="form-container">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            {{ form.as_p }}
+        </div>
+        
+        {% if request.user|is_owner %}
+        <div class="form-group">
+            <button type="submit" class="btn-submit">Save</button>
+        </div>
+        {% endif %}
+    </form>
+</section>
+
+
+{% comment %} <section class="jobs-list">
+    <h3><strong>Item</strong>:{{company.name}}</h3>
+    <ul class="job-items">
+        
+            <li class="job-item">
+                
+                    <div class="job-info">
+                        <h4>{{ job.company }} </h4>
+                        {% if job.image %}
+                            <img class="job-img" src="{{ job.image.url }}" alt="{{ job.name }}">
+                        {% endif %}
+                        <p><strong>Reference:</strong> {{ company.owner_name }}</p>
+                        <p><strong>Description:</strong> {{ company.company_name }}</p>
+                        <p><strong>Description:</strong> {{ company.company_email }}</p>
+                        <p><strong>Description:</strong> {{ company.address }}</p>
+                        <p><strong>Description:</strong> {{ company.phone }}</p>
+
+                    </div>
+            </li>
+    </ul>
+</section> {% endcomment %}
+
+<!-- Job Summary Section -->
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+{% endblock %}
