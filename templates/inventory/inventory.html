@@ -1,71 +1,69 @@
 {% extends 'inventory/base.html' %}
 {% load static %}
-
+{% load custom_tags %}
 {% block body %}
-{% if messages %}
+  {% if messages %}
     {% for message in messages %}
-        <div class="alert alert-warning">
-            {{ message }}
-           
-        </div>
+      <div class="alert alert-warning">{{ message }}</div>
     {% endfor %}
-{% endif %}
+  {% endif %}
 
-<!-- Modern Form Section -->
+  <!-- Modern Form Section -->
 
-{% for job in rjobs %}
-    {% if job.status != "Ready" and job.items_arrived %}
-    <h2>Job ID: <a href="{% url 'update_item' job.job_id %}">{{ job.job_id }}</a>  - Status: {{ job.get_status_display }} <small>"Required parts have arrived but the job isn't marked as Ready"</small></h2>
+  {% for job in rjobs %}
+    {% if job.status != 'Ready' and job.items_arrived %}
+      <h2>Job ID: <a href="{% url 'update_item' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small>"Required parts have arrived but the job isn't marked as Ready"</small></h2>
     {% else %}
-    <h2>Job ID: {{ job.job_id }} - Status: {{ job.get_status_display }}</h2>
-
+      <h2>Job ID: {{ job.job_id }} - Status: {{ job.get_status_display }}</h2>
+      <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>
     {% endif %}
     <p>Address: {{ job.address }}</p>
     <p>Parent Account: {{ job.parent_account }}</p>
     <p>Added Date: {{ job.added_date }}</p>
     <p>Company: {{ job.company }}</p>
 
-    <h3>Items: ({{job.item_count}})</h3>
+    <h3>Items: ({{ job.item_count }})</h3>
     <ul>
-        {% for item in job.items.all %}
-            <li>
-                {{ item.name }} - Part Number: {{ item.part_number }} - Price: ${{ item.price }}
-                {% if item.arrived %} (Arrived) {% else %} (Not Arrived) {% endif %}
-            </li>
-        {% empty %}
-            <li>No items associated with this job.</li>
-        {% endfor %}
+      {% for item in job.items.all %}
+        <li>
+          {{ item.name }} - Part Number: {{ item.part_number }} - Price: ${{ item.price }}
+          {% if item.arrived %}
+            (Arrived)
+          {% else %}
+            (Not Arrived)
+          {% endif %}
+        </li>
+      {% empty %}
+        <li>No items associated with this job.</li>
+      {% endfor %}
     </ul>
-    <hr>
-{% endfor %}
+    <hr />
+  {% endfor %}
 
-<link rel="stylesheet" href="{% static 'css/style.css' %}">
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        let statusField = document.querySelector("#status");  
-        let arrivedQuantityField = document.querySelector("#arrived_quantity");  
+  <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      let statusField = document.querySelector('#status')
+      let arrivedQuantityField = document.querySelector('#arrived_quantity')
     
-        if (!statusField || !arrivedQuantityField) {
-            console.error("Status or Arrived Quantity field not found in the DOM!");
-            return;
+      if (!statusField || !arrivedQuantityField) {
+        console.error('Status or Arrived Quantity field not found in the DOM!')
+        return
+      }
+    
+      function toggleArrivedQuantity() {
+        if (statusField.value === 'a') {
+          arrivedQuantityField.parentElement.style.display = 'block'
+        } else {
+          arrivedQuantityField.parentElement.style.display = 'none'
         }
+      }
     
-        function toggleArrivedQuantity() {
-            if (statusField.value === 'a') {
-                arrivedQuantityField.parentElement.style.display = 'block';
-            } else {
-                arrivedQuantityField.parentElement.style.display = 'none';
-            }
-        }
+      // Run on page load
+      toggleArrivedQuantity()
     
-        // Run on page load
-        toggleArrivedQuantity();
-    
-        // Listen for changes
-        statusField.addEventListener("change", toggleArrivedQuantity);
-    });
-    </script>
-    
-    
-    
+      // Listen for changes
+      statusField.addEventListener('change', toggleArrivedQuantity)
+    })
+  </script>
 {% endblock %}

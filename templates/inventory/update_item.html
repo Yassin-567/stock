@@ -2,60 +2,55 @@
 {% load static %}
 
 {% block body %}
-
-{% if messages %}
+  {% if messages %}
     {% for message in messages %}
-        <div class="alert alert-warning">
-            {{ message }} 
-            
-        </div>
+      <div class="alert alert-warning">{{ message }}</div>
     {% endfor %}
-{% endif %}
+  {% endif %}
 
-<!-- Modern Form Section -->
-<section class="form-section">
+  <!-- Modern Form Section -->
+  <section class="form-section">
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
-        {% csrf_token %}
-        <div class="form-group">
-            {{ form.as_p }}
-        </div>
-        <div class="form-group">
-            <button type="submit" class="btn-submit">Edit</button>
-           
-        </div>
+      {% csrf_token %}
+      <div class="form-group">{{ form.as_p }}</div>
+      <div class="form-group">
+        <button type="submit" class="btn-submit">Edit</button>
+      </div>
     </form>
     <form action="{% url 'update_item' item.id %}" method="POST" class="delete-form">
-        {% csrf_token %}
-      
-        <button name="delete" type="submit" class="btn btn-danger">Delete</button>
+      {% csrf_token %}
+
+      <button name="delete" type="submit" class="btn btn-danger">Delete</button>
     </form>
-</section>
+  </section>
 
+  <!-- Job Summary Section -->
 
-<!-- Job Summary Section -->
- 
-
-<section class="items-list">
-    <h3><strong>Item</strong>:{{item.name}}</h3>
+  <section class="items-list">
+    <h3><strong>Item</strong>:{{ item.name }}</h3>
     <ul class="item-items">
-        
-            <li class="item-item">
-                
-                    <div class="item-info">
-                        <h4>{{ item.name }} - {{ item.get_status_display }}</h4>
-                        {% if item.image %}
-                            <img class="item-img" src="{{ item.image.url }}" alt="{{ item.name }}">
-                        {% endif %}
-                        <p><strong>Reference:</strong> {{ item.reference }}</p>
-                        <p><strong>Description:</strong> {{ item.description }}</p>
-                        <p><strong>Description:</strong> {{ item.description }}</p>
-                        <p><strong>Added by:</strong> {{ item.user.username }}-{{ item.user }} <br><strong>At</strong>t: {{item.added_time}} </p>
-                    </div>
-            </li>
+      <li class="item-item">
+        <div class="item-info">
+          <h4>{{ item.name }} - {{ item.get_status_display }}</h4>
+          {% if item.image %}
+            <img class="item-img" src="{{ item.image.url }}" alt="{{ item.name }}" />
+          {% endif %}
+          <p>
+            <strong>Reference:</strong> {{ item.reference }}
+          </p>
+          <p>
+            <strong>Description:</strong> {{ item.description }}
+          </p>
+          <p>
+            <strong>Description:</strong> {{ item.description }}
+          </p>
+          <p>
+            <strong>Added by:</strong> {{ item.added_by.username }} <br /><strong>At</strong>: {{ item.added_date }}
+          </p>
+        </div>
+      </li>
     </ul>
-</section>
+  </section>
 
-
-
-<link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}" />
 {% endblock %}

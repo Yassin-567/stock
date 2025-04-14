@@ -17,3 +17,12 @@ def is_owner(user):
         return True
     return False
    
+# filepath: c:\Users\3Y\Desktop\venv1\stock\inventory\templatetags\custom_tags.py
+from django import template
+
+
+@register.filter
+def add_suffix(value, suffix):
+    if value:
+        return f"{value}{suffix}"
+    return ""

@@ -103,15 +103,16 @@ class Job(models.Model):
         super().save(*args, **kwargs)
 
 class Item(models.Model):
-    job = models.ForeignKey(Job,on_delete=models.DO_NOTHING , related_name="items")
+    job = models.ForeignKey(Job,on_delete=models.DO_NOTHING ,null=True,blank=True, related_name="items")
     name=models.CharField(max_length=70)
-    part_number=models.TextField(max_length=30)
+    part_number=models.IntegerField(max_length=30)
     price=models.DecimalField(max_digits=10, decimal_places=2)
     supplier=models.CharField(max_length=70)
     arrived=models.BooleanField(default=False)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company")
-
-    def save(self, *args, **kwargs):
+    added_date=models.DateTimeField(auto_now_add=True)
+    added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user")
+    def save(self, *args, **kwargs,):
         # Check if any item in the job has not arrived
         self.job.save(*args, **kwargs)
         if self.job.status not in ["completed", "cancelled"]:   

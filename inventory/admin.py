@@ -1,12 +1,12 @@
 from django.contrib import admin
 from .models import CustomUser , Company , Job,Item
 # Register your model here.
-# class ItemAdmin(admin.ModelAdmin):
-#     list_display = ('id', 'name', 'quantity', 'reference','status','added_time', 'updated_time')
-#     list_display_links = ('name', 'reference')
-#     list_editable=[ 'status']
-#     list_filter = ('status',)
-#     search_fields = ('name', 'reference')
+class ItemAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'quantity', 'reference','status','added_date', 'updated_time')
+    list_display_links = ('name', 'reference')
+    list_editable=[ 'status']
+    list_filter = ('status',)
+    search_fields = ('name', 'reference')
     #fields=[('name', )] #in case you need to show specific fields
 # class CustomUserAdmin(admin.ModelAdmin):
 #     list_display = ('username', 'email','is_staff' )

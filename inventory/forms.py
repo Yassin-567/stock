@@ -116,7 +116,7 @@ class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
         fields = '__all__' 
-        exclude = ['user','company']
+        exclude = ['added_by','company']
         labels = {
             'name': 'Part Name',
         }
@@ -126,10 +126,18 @@ class ItemForm(forms.ModelForm):
             'price': forms.NumberInput(attrs={'class': 'form-control'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control','id':'arrived_quantity'}),
+            'part_number':forms.TextInput(attrs={  # Override widget for job_id
+                'type': 'text',  # Set input type to text
+                'inputmode': 'numeric',  # Allow numeric input
+                'pattern': '[0-9]*',  # Numeric pattern
+                'placeholder': 'Enter Job ID',
+                'class': 'form-control', }),
+            
         }
+    def __init__(self, *args, user=None, **kwargs):
+            super().__init__(*args, **kwargs)
 
 class ItemFormo(forms.Form):#added o to stop using it and creat model form with same name
-
     STATUS_CHOICES =[
         ('a','Arrived'),
         ('c','Ordered'),

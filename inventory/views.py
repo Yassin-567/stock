@@ -9,10 +9,11 @@ from django.contrib.auth.models import Group
 from .decorators import admins_only,no_ban,owner_only
 from django.db.models import F
 from django.db.models import Count, Q
-from django.forms import HiddenInput
+from django.forms import HiddenInput,MultipleHiddenInput
 from django.forms import Select
 from django import forms
 from .myfunc import FormHandler
+from django.http import HttpResponseForbidden
 #import requests
 
 
@@ -77,6 +78,8 @@ def inventory(request):
     
     rjobs = Job.objects.annotate(item_count=Count('items')).filter(items_arrived=True).prefetch_related('items')
     items=Item.objects.filter(company=request.user.company)
+    
+    rjobs=Job.objects.all
     context={'rjobs':rjobs,
             'items':items
             }
@@ -96,12 +99,35 @@ def job_create(request):
         form = JobForm()
     return render(request, 'inventory/job_create.html', {'form': form})
 
-def item_create(request):
-    pass
+def item_add(request,pk):
+    
+    form=ItemForm()
+    form.fields['job'].widget = MultipleHiddenInput()
+    if request.method=='POST':
+        form=ItemForm(request.POST)
+        
+        if form.is_valid():
+            item=form.save(commit=False)
+            item.company=request.user.company
+            item.user=request.user
+            form.fields['job'].widget = MultipleHiddenInput()
+            item.job=Job.objects.get(job_id=pk)
+            item.added_by=request.user
+            item.save()
+            messages.success(request, 'Item added successfully')
+            return redirect('inventory')
+    return render(request, 'inventory/add_item.html', {'form': form})
 def update_item(request, pk):
     
-    item = Job.objects.get(id=pk)
+    item = Item.objects.get(id=pk)
+
     form = ItemForm(instance=item)
+    pn=item.part_number
+    form.fields['part_number'].widget = forms.TextInput(attrs={
+        'readonly': True,
+        'disabled': True,
+    })
+
     if request.method == 'POST':
         if "delete" in request.POST:
             messages.warning(request, "Are you sure you want to delete this item?")
@@ -113,6 +139,7 @@ def update_item(request, pk):
         form = ItemForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
             
+            form.part_number = pn
             form.save()
             context = {'form': form,'item': item}
             return render(request, 'inventory/update_item.html', context)
