@@ -121,12 +121,12 @@ def update_item(request, pk):
     
     item = Item.objects.get(id=pk)
 
-    form = ItemForm(instance=item)
-    pn=item.part_number
-    form.fields['part_number'].widget = forms.TextInput(attrs={
-        'readonly': True,
-        'disabled': True,
-    })
+    form = ItemForm(instance=item,updating=True)
+    # pn=item.part_number
+    # form.fields['part_number'].widget = forms.TextInput(attrs={
+    #     'readonly': True,
+    #     'disabled': True,
+    # })
 
     if request.method == 'POST':
         if "delete" in request.POST:
@@ -136,10 +136,8 @@ def update_item(request, pk):
             messages.success(request, f"Item {itemname} deleted successfully.")
             return redirect('inventory')
             
-        form = ItemForm(request.POST, request.FILES, instance=item)
+        form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
         if form.is_valid():
-            
-            form.part_number = pn
             form.save()
             context = {'form': form,'item': item}
             return render(request, 'inventory/update_item.html', context)

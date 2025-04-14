@@ -134,9 +134,12 @@ class ItemForm(forms.ModelForm):
                 'class': 'form-control', }),
             
         }
-    def __init__(self, *args, user=None, **kwargs):
-            super().__init__(*args, **kwargs)
-
+    def __init__(self, *args, updating=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if updating:
+            # Disable fields if updating
+            self.fields['part_number'].widget.attrs['readonly'] = 'readonly'
+            self.fields['part_number'].widget.attrs['style'] = 'opacity: 0.5;'  # Optional: Make it visually faded
 class ItemFormo(forms.Form):#added o to stop using it and creat model form with same name
     STATUS_CHOICES =[
         ('a','Arrived'),

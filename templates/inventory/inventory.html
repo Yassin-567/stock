@@ -26,7 +26,7 @@
     <ul>
       {% for item in job.items.all %}
         <li>
-          {{ item.name }} - Part Number: {{ item.part_number }} - Price: ${{ item.price }}
+          <a href="{% url 'update_item' item.id %}">{{ item.name }}</a> - Part Number: {{ item.part_number }} - Price: ${{ item.price }}
           {% if item.arrived %}
             (Arrived)
           {% else %}
