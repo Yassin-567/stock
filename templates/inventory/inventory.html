@@ -12,7 +12,7 @@
 
   {% for job in rjobs %}
     {% if job.status != 'Ready' and job.items_arrived %}
-      <h2>Job ID: <a href="{% url 'update_item' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small>"Required parts have arrived but the job isn't marked as Ready"</small></h2>
+      <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small>"Required parts have arrived but the job isn't marked as Ready"</small></h2>
     {% else %}
       <h2>Job ID: {{ job.job_id }} - Status: {{ job.get_status_display }}</h2>
       <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>

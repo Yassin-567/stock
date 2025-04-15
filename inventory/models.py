@@ -94,8 +94,7 @@ class Job(models.Model):
         if self.items.count() > 0:
             self.items_arrived =  not self.items.filter(arrived=False).exists() 
         
-        if self.items_arrived and not self.status=="Ready":
-            print("arrived but not ready")
+        
             
         
             

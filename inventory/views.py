@@ -98,7 +98,16 @@ def job_create(request):
     else:
         form = JobForm()
     return render(request, 'inventory/job_create.html', {'form': form})
-
+def update_job(request, pk):
+    job=Job.objects.get(job_id=pk)
+    form = JobForm(instance=job)
+    if request.method == 'POST':
+        form = JobForm(request.POST, instance=job)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Job updated successfully')
+            return redirect('inventory')
+    return render(request, 'inventory/job_update.html', {'form': form,'job':job})       
 def item_add(request,pk):
     
     form=ItemForm()
@@ -122,12 +131,7 @@ def update_item(request, pk):
     item = Item.objects.get(id=pk)
 
     form = ItemForm(instance=item,updating=True)
-    # pn=item.part_number
-    # form.fields['part_number'].widget = forms.TextInput(attrs={
-    #     'readonly': True,
-    #     'disabled': True,
-    # })
-
+  
     if request.method == 'POST':
         if "delete" in request.POST:
             messages.warning(request, "Are you sure you want to delete this item?")
