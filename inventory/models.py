@@ -92,7 +92,7 @@ class Job(models.Model):
     # Check if any item in the job has not arrived
         items_arrived=False
         if self.items.count() > 0:
-            self.items_arrived =  not self.items.filter(arrived=False).exists() 
+            self.items_arrived =  not self.items.exclude(status="arrived").exists() 
         
         
             
@@ -102,15 +102,26 @@ class Job(models.Model):
         super().save(*args, **kwargs)
 
 class Item(models.Model):
+    CHOICES=[
+        ('ordered', 'Ordered'),
+        ('arrived', 'Arrived'),
+        ('quoted', 'Quoted'),
+        ('empty',''),
+    ]
+
     job = models.ForeignKey(Job,on_delete=models.DO_NOTHING ,null=True,blank=True, related_name="items")
     name=models.CharField(max_length=70)
-    part_number=models.IntegerField(max_length=30)
+    part_number=models.TextField(max_length=30)
     price=models.DecimalField(max_digits=10, decimal_places=2)
     supplier=models.CharField(max_length=70)
-    arrived=models.BooleanField(default=False)
+    # arrived=models.BooleanField(default=False)
+    # ordered=models.BooleanField(default=False)
+    # quoted=models.BooleanField(default=False)
+    status=models.CharField(max_length=20,choices=CHOICES,default="empty")
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company")
     added_date=models.DateTimeField(auto_now_add=True)
     added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user")
+    
     def save(self, *args, **kwargs,):
         # Check if any item in the job has not arrived
         self.job.save(*args, **kwargs)

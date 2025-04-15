@@ -27,11 +27,7 @@
       {% for item in job.items.all %}
         <li>
           <a href="{% url 'update_item' item.id %}">{{ item.name }}</a> - Part Number: {{ item.part_number }} - Price: ${{ item.price }}
-          {% if item.arrived %}
-            (Arrived)
-          {% else %}
-            (Not Arrived)
-          {% endif %}
+          ({{ item.get_status_display }})
         </li>
       {% empty %}
         <li>No items associated with this job.</li>

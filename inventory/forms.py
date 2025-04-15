@@ -110,9 +110,13 @@ class JobForm(forms.ModelForm):
                 'class': 'form-control',
             }),
         }
+    def __init__(self, *args, updating=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if updating:
+            # Disable fields if updating
+            self.fields['job_id'].widget=forms.HiddenInput()
 
 class ItemForm(forms.ModelForm):
-    
     class Meta:
         model = Item
         fields = '__all__' 
@@ -131,7 +135,7 @@ class ItemForm(forms.ModelForm):
                 'inputmode': 'numeric',  # Allow numeric input
                 'pattern': '[0-9]*',  # Numeric pattern
                 'placeholder': 'Enter Job ID',
-                'class': 'form-control', }),
+                'class': 'form-control',}),
             
         }
     

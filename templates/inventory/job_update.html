@@ -2,6 +2,21 @@
 {% load static %}
 
 {% block body %}
+  <h2 style="margin-bottom: 20px; font-size: 1.5rem; font-weight: bold;">
+    Job ID:
+    <span style="
+    display: inline-block;
+    padding: 5px 10px;
+    margin-left: 10px;
+    font-size: 1.2rem;
+    font-weight: normal;
+    color: #333;
+    background-color:rgba(182, 182, 182, 0.79);
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  ">{{ job.job_id }}</span>
+  </h2>
   <section class="form-section">
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}

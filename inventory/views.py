@@ -100,38 +100,47 @@ def job_create(request):
     return render(request, 'inventory/job_create.html', {'form': form})
 def update_job(request, pk):
     job=Job.objects.get(job_id=pk)
-    form = JobForm(instance=job)
+    form = JobForm(instance=job,updating=True)
     if request.method == 'POST':
-        form = JobForm(request.POST, instance=job)
+        form = JobForm(request.POST, instance=job,updating=True)
         if form.is_valid():
             form.save()
             messages.success(request, 'Job updated successfully')
             return redirect('inventory')
     return render(request, 'inventory/job_update.html', {'form': form,'job':job})       
-def item_add(request,pk):
-    
+def item_add(request,pk=None):
+    try:
+        job=Job.objects.get(job_id=pk)
+    except Job.DoesNotExist:
+        job=None
     form=ItemForm()
     form.fields['job'].widget = MultipleHiddenInput()
     if request.method=='POST':
         form=ItemForm(request.POST)
         
         if form.is_valid():
+            form.fields['job'].widget = MultipleHiddenInput()
             item=form.save(commit=False)
+            
             item.company=request.user.company
             item.user=request.user
-            form.fields['job'].widget = MultipleHiddenInput()
-            item.job=Job.objects.get(job_id=pk)
             item.added_by=request.user
+            if pk is not None:
+                try:
+                    item.job = job
+                except Job.DoesNotExist:
+                    messages.error(request, f'{pk}Specified job does not exist.')
+                    return render(request, 'inventory/add_item.html', {'form': form})
             item.save()
             messages.success(request, 'Item added successfully')
             return redirect('inventory')
-    return render(request, 'inventory/add_item.html', {'form': form})
+    return render(request, 'inventory/add_item.html', {'form': form,'job':job})
+
 def update_item(request, pk):
     
     item = Item.objects.get(id=pk)
-
     form = ItemForm(instance=item,updating=True)
-  
+    
     if request.method == 'POST':
         if "delete" in request.POST:
             messages.warning(request, "Are you sure you want to delete this item?")
@@ -142,6 +151,7 @@ def update_item(request, pk):
             
         form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
         if form.is_valid():
+            print(form.cleaned_data['status'])
             form.save()
             context = {'form': form,'item': item}
             return render(request, 'inventory/update_item.html', context)
