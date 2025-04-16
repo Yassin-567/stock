@@ -1,5 +1,5 @@
 from django import forms
-from .models import CustomUser, Item, Company,Job
+from .models import CustomUser, Item, Company,Job,comment
 from django.contrib.auth.models import Group
 from django.forms import HiddenInput
 
@@ -102,6 +102,7 @@ class JobForm(forms.ModelForm):
             'price': forms.NumberInput(attrs={'class': 'form-control'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control', 'id': 'arrived_quantity'}),
+            'quoted':forms.HiddenInput(),
             'job_id': forms.TextInput(attrs={  # Override widget for job_id
                 'type': 'text',  # Set input type to text
                 'inputmode': 'numeric',  # Allow numeric input
@@ -115,7 +116,14 @@ class JobForm(forms.ModelForm):
         if updating:
             # Disable fields if updating
             self.fields['job_id'].widget=forms.HiddenInput()
-
+class CommentForm(forms.ModelForm):
+    class Meta:
+        model = comment
+        fields = ['comment',]
+        widgets = {
+            'comment': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            
+        }
 class ItemForm(forms.ModelForm):
     class Meta:
         model = Item

@@ -8,7 +8,9 @@ body {
 }
 
 /* Typography */
-h2, h3, h4 {
+h2,
+h3,
+h4 {
     font-weight: 600;
     margin-bottom: 10px;
 }
@@ -43,7 +45,8 @@ h2, h3, h4 {
 }
 
 /* Job & Item List Styles */
-.job-items, .items-container {
+.job-items,
+.items-container {
     list-style: none;
     padding: 0;
     display: flex;
@@ -52,7 +55,8 @@ h2, h3, h4 {
     justify-content: center;
 }
 
-.job-item, .item {
+.job-item,
+.item {
     background: #fff;
     padding: 15px;
     border-radius: 8px;
@@ -77,8 +81,31 @@ h2, h3, h4 {
         padding: 15px;
     }
 
-    .job-items, .items-container {
+    .job-items,
+    .items-container {
         flex-direction: column;
     }
 }
+
 /* Y */
+.comments-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    /* Space between cards */
+    margin-top: 20px;
+}
+
+.comment-card {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px 15px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    font-size: 1rem;
+    color: #333;
+}
+
+.comment-card p {
+    margin: 0;
+}

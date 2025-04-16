@@ -2,21 +2,43 @@
 {% load static %}
 
 {% block body %}
-  <h2 style="margin-bottom: 20px; font-size: 1.5rem; font-weight: bold;">
-    Job ID:
-    <span style="
-    display: inline-block;
-    padding: 5px 10px;
-    margin-left: 10px;
-    font-size: 1.2rem;
-    font-weight: normal;
-    color: #333;
-    background-color:rgba(182, 182, 182, 0.79);
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  ">{{ job.job_id }}</span>
+  <h2 style="margin-bottom: 20px; font-size: 1.5rem; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+    <span>
+      Job ID:
+      <span style="
+        display: inline-block;
+        padding: 5px 10px;
+        margin-left: 10px;
+        font-size: 1.2rem;
+        font-weight: normal;
+        color: #333;
+        background-color: rgba(182, 182, 182, 0.79);
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      ">{{ job.job_id }}</span>
+    </span>
+
+    {% if job.quoted %}
+      <span style="
+        display: inline-block;
+        padding: 5px 10px;
+        font-size: 1.2rem;
+        font-weight: normal;
+        color: #333;
+        background-color: rgba(39, 240, 106, 0.79);
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      ">Quoted</span>
+    {% endif %}
   </h2>
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-warning">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
   <section class="form-section">
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
@@ -24,8 +46,25 @@
       <div class="form-group">{{ form.as_p }}</div>
 
       <div class="form-group">
-        <button type="submit" class="btn-submit">Add part</button>
+        <button type="submit" class="btn-submit">Save</button>
       </div>
+
+      <section class="form-section">
+        <div class="form-group">{{ comments_form.as_p }}</div>
+      </section>
     </form>
+  </section>
+
+  <section>
+    <h3>Comments</h3>
+    <div class="comments-container">
+      {% for comment in comments %}
+        <div class="comment-card">
+          <p>{{ comment }}</p>
+        </div>
+      {% empty %}
+        <p>No comments available.</p>
+      {% endfor %}
+    </div>
   </section>
 {% endblock %}

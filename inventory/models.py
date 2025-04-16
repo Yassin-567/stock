@@ -79,6 +79,7 @@ class Job(models.Model):
         ('paused', 'Paused'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
+        ('quoted', 'Quoted and waiting')
     ]
     address = models.CharField(max_length=70)
     job_id=models.IntegerField(primary_key=True)
@@ -88,25 +89,34 @@ class Job(models.Model):
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="job_company")
     items_arrived=models.BooleanField(default=False, )
     post_code=models.CharField(max_length=10, null=True, blank=True)
+    quoted=models.BooleanField(default=False)
+    
     def save(self, *args, **kwargs):
-    # Check if any item in the job has not arrived
-        items_arrived=False
+    
+        items_arrived=False #soublw check here
         if self.items.count() > 0:
             self.items_arrived =  not self.items.exclude(status="arrived").exists() 
-        
-        
-            
-        
-            
-    # Call original save method
+        if self.status=="quoted":
+            self.quoted=True
         super().save(*args, **kwargs)
 
+class comment(models.Model):
+    job=models.ForeignKey(Job,on_delete=models.DO_NOTHING,related_name="job_comments")
+    comment=models.TextField(null=True, blank=True)
+    added_date=models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering = ['-added_date']
+    def __str__(self):
+        return self.comment[:20] + "..." if len(self.comment) > 20 else self.comment
+    def save(self,*args, **kwargs):
+        if not self.comment.strip():
+            return
+        super().save(*args, **kwargs) 
 class Item(models.Model):
     CHOICES=[
         ('ordered', 'Ordered'),
         ('arrived', 'Arrived'),
-        ('quoted', 'Quoted'),
-        ('empty',''),
+        ('not_ordered','Not ordered'),
     ]
 
     job = models.ForeignKey(Job,on_delete=models.DO_NOTHING ,null=True,blank=True, related_name="items")
@@ -117,7 +127,7 @@ class Item(models.Model):
     # arrived=models.BooleanField(default=False)
     # ordered=models.BooleanField(default=False)
     # quoted=models.BooleanField(default=False)
-    status=models.CharField(max_length=20,choices=CHOICES,default="empty")
+    status=models.CharField(max_length=20,choices=CHOICES,default="not_ordered")
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company")
     added_date=models.DateTimeField(auto_now_add=True)
     added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user")

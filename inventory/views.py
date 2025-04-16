@@ -1,6 +1,6 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
 from .models import CustomUser,Company,Job,Item
-from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm
+from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -98,16 +98,29 @@ def job_create(request):
     else:
         form = JobForm()
     return render(request, 'inventory/job_create.html', {'form': form})
+
 def update_job(request, pk):
     job=Job.objects.get(job_id=pk)
     form = JobForm(instance=job,updating=True)
+    comments_form=CommentForm(initial={'job':job})
+    comments=job.job_comments.all()
+    
     if request.method == 'POST':
+        print(request.POST)
+        comments_form=CommentForm(request.POST,)
         form = JobForm(request.POST, instance=job,updating=True)
-        if form.is_valid():
+        
+        if form.is_valid() and comments_form.is_valid():
             form.save()
+            
+            comment = comments_form.save(commit=False)
+            comment.job = job  # Associate the comment with the job
+            comment.save()
+            comments=job.job_comments.all()
             messages.success(request, 'Job updated successfully')
             return redirect('inventory')
-    return render(request, 'inventory/job_update.html', {'form': form,'job':job})       
+    return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments})       
+
 def item_add(request,pk=None):
     try:
         job=Job.objects.get(job_id=pk)
