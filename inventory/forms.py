@@ -119,10 +119,11 @@ class JobForm(forms.ModelForm):
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
-        fields = ['comment',]
+        fields = ['comment', 'content_type', 'object_id']
         widgets = {
             'comment': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-            
+            'content_type': forms.HiddenInput(),
+            'object_id': forms.HiddenInput(),
         }
 class ItemForm(forms.ModelForm):
     class Meta:
