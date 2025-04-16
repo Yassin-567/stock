@@ -60,7 +60,9 @@
     <div class="comments-container">
       {% for comment in comments %}
         <div class="comment-card">
+          <span>Added by {{ comment.added_by.username }}</span>
           <p>{{ comment }}</p>
+          <span>{{ comment.added_date }}</span>
         </div>
       {% empty %}
         <p>No comments available.</p>

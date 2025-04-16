@@ -114,7 +114,8 @@ def update_job(request, pk):
             form.save()
             
             comment = comments_form.save(commit=False)
-            comment.job = job  # Associate the comment with the job
+            comment.added_by = request.user 
+            comment.job = job  
             comment.save()
             comments=job.job_comments.all()
             messages.success(request, 'Job updated successfully')

@@ -104,6 +104,7 @@ class comment(models.Model):
     job=models.ForeignKey(Job,on_delete=models.DO_NOTHING,related_name="job_comments")
     comment=models.TextField(null=True, blank=True)
     added_date=models.DateTimeField(auto_now_add=True)
+    added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=False, blank=False, related_name="added_by")
     class Meta:
         ordering = ['-added_date']
     def __str__(self):
