@@ -83,7 +83,7 @@ class Job(models.Model):
         ('quoted', 'Quoted and waiting')
     ]
     address = models.CharField(max_length=70)
-    job_id=models.IntegerField(primary_key=True)
+    job_id=models.IntegerField()
     status=models.CharField(choices=status_chouces, max_length=20)
     parent_account=models.CharField(max_length=70)
     added_date=models.DateField(auto_now_add=True)
@@ -91,9 +91,11 @@ class Job(models.Model):
     items_arrived=models.BooleanField(default=False, )
     post_code=models.CharField(max_length=10, null=True, blank=True)
     quoted=models.BooleanField(default=False)
-    
+    class Meta:
+        unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
+
     def save(self, *args, **kwargs):
-    
+        super().save(*args, **kwargs)
         items_arrived=False #soublw check here
         if self.items.count() > 0:
             self.items_arrived =  not self.items.exclude(status="arrived").exists() 
@@ -106,7 +108,8 @@ class Job(models.Model):
 class Comment(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)  # Reference to the model (Job or Item)
     object_id = models.PositiveIntegerField()  # ID of the related object
-    content_object = GenericForeignKey('content_type', 'object_id')  # Generic relationship
+    company=models.ForeignKey(Company, on_delete=models.CASCADE,related_name="comment_company")
+    content_object = GenericForeignKey('content_type', 'object_id','company')  # Generic relationship
 
     comment = models.TextField(null=True, blank=True)
     added_date = models.DateTimeField(auto_now_add=True)
@@ -120,6 +123,12 @@ class Comment(models.Model):
         if not self.comment.strip():
             return
         super().save(*args, **kwargs) 
+        
+    def get_company(self):
+        # Check if the content_object has a company attribute
+        if hasattr(self.content_object, 'company'):
+            return self.content_object.company
+        return None
 class Item(models.Model):
     CHOICES=[
         ('ordered', 'Ordered'),
@@ -127,14 +136,17 @@ class Item(models.Model):
         ('not_ordered','Not ordered'),
     ]
 
-    job = models.ForeignKey(Job,on_delete=models.DO_NOTHING ,null=True,blank=True, related_name="items")
+    job = models.ForeignKey(
+        Job,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="items"
+    )    
     name=models.CharField(max_length=70)
     part_number=models.TextField(max_length=30)
     price=models.DecimalField(max_digits=10, decimal_places=2)
     supplier=models.CharField(max_length=70)
-    # arrived=models.BooleanField(default=False)
-    # ordered=models.BooleanField(default=False)
-    # quoted=models.BooleanField(default=False)
     status=models.CharField(max_length=20,choices=CHOICES,default="not_ordered")
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company")
     added_date=models.DateTimeField(auto_now_add=True)

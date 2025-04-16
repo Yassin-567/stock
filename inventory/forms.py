@@ -24,9 +24,9 @@ class companyregisterForm(forms.ModelForm):
             'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+1234567890'}),
             'company_email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Company Email'}),
         }
-    def __init__(self, *args, user=None, **kwargs):
+    def __init__(self, *args, user=None, updating=False,**kwargs):
             super().__init__(*args, **kwargs)
-            if user is not None :
+            if user is not None and updating: 
                 if   not user.company_owner==user or user.company==None:
                     for field in self.fields.values():
                         
@@ -46,39 +46,18 @@ class registerForm(forms.ModelForm):
             'email': forms.EmailInput(),
             'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Username'}),
             'company': forms.HiddenInput(),
-            'groups': forms.MultipleHiddenInput(),
+            'groups': forms.MultipleHiddenInput(),  
         }
 
-    def __init__(self, *args, user=None, **kwargs):
+    def __init__(self, *args, user=None,registering=False, **kwargs):
         super().__init__(*args, **kwargs)
-    def clean(self):
-
-        return super().clean()
-    
-        # if user is not None:
-        #     admin = user.groups.filter(name="Admin").exists()
-        #     owner = hasattr(user, 'company') and user.company and user.company.owner == user
-        #     employee = user.groups.filter(name="Employee").exists()
-        #     is_self = self.instance == user
-
-        #     group_instance = self.instance.groups.first() 
-
-        #     if owner and is_self:
-        #         pass
-        #     elif owner:
-        #         self.fields['groups'].queryset = Group.objects.all()
-
-        #     elif admin and is_self:
-        #         self.fields.pop('groups', None)
-
-        #     elif admin:
-        #         self.fields['groups'].queryset = Group.objects.filter(name="Employee")
-
-        #     elif employee:
-        #         self.fields.pop('groups', None)
-
+        if registering:
+            
+            self.fields['is_banned'].widget = forms.HiddenInput()
+            
     def save(self, commit=True):
         """ Hash the password before saving """
+        
         user = super().save(commit=False)
         
         user.set_password(self.cleaned_data["password"])  # Securely hash password
@@ -124,6 +103,7 @@ class CommentForm(forms.ModelForm):
             'comment': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'content_type': forms.HiddenInput(),
             'object_id': forms.HiddenInput(),
+            'company': forms.HiddenInput(),
         }
 class ItemForm(forms.ModelForm):
     class Meta:

@@ -77,11 +77,11 @@ def register_user(request):
 @login_required(login_url='login', redirect_field_name='inventory')
 @no_ban
 def inventory(request):
-    
     rjobs = Job.objects.annotate(item_count=Count('items')).filter(items_arrived=True).prefetch_related('items')
     items=Item.objects.filter(company=request.user.company)
     
-    rjobs=Job.objects.all
+    rjobs=Job.objects.filter(company=request.user.company)
+    
     context={'rjobs':rjobs,
             'items':items
             }
@@ -102,16 +102,17 @@ def job_create(request):
     return render(request, 'inventory/job_create.html', {'form': form})
 
 def update_job(request, pk):
-    job=Job.objects.get(job_id=pk)
+    job=Job.objects.filter(company=request.user.company).get(job_id=pk)
     form = JobForm(instance=job,updating=True)
     comments_form=CommentForm(initial={
         'content_type': ContentType.objects.get_for_model(Job),
-        'object_id': job.job_id})
-    comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id)
+        'object_id': job.job_id,
+        'company': request.user.company,
+        })
+    comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
     
     if request.method == 'POST':
-        print(request.POST)
-        comments_form=CommentForm(request.POST,instance=job)
+        comments_form=CommentForm(request.POST)
         form = JobForm(request.POST, instance=job,updating=True)
         
         if form.is_valid() and comments_form.is_valid():
@@ -119,9 +120,9 @@ def update_job(request, pk):
             
             comment = comments_form.save(commit=False)
             comment.added_by = request.user 
-            
+            comment.company = request.user.company
             comment.save()
-            comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id)
+            comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
             messages.success(request, 'Job updated successfully')
             return redirect('inventory')
     return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments})       
@@ -185,7 +186,7 @@ def update_company(request, pk):
     company = Company.objects.get(id=pk)
 
 
-    form = companyregisterForm(instance=company,user=request.user)
+    form = companyregisterForm(instance=company,user=request.user,updating=True)
     if request.method == 'POST':
         form = companyregisterForm(request.POST, request.FILES, instance=company,user=request.user)
         if form.is_valid():
@@ -258,14 +259,19 @@ def update_user(request, pk):
 
 def register_company(request):
     """ Register a new company and its admin user """
-    if request.method == 'POST':
-        company_form = companyregisterForm(request.POST,user=request.user)
-        user_form = registerForm(request.POST)
+    company_form = companyregisterForm(request.POST,user=request.user,)
+    user_form = registerForm(request.POST,initial={'groups':'Owner'},registering=True)
 
+    if request.method == 'POST':
+        
+        print(request.user)
+        company_form = companyregisterForm(request.POST,)
+        user_form = registerForm(request.POST,registering=True)
         if company_form.is_valid() and user_form.is_valid():
-           
+            
             user = user_form.save(commit=False)
             user.set_password(user_form.cleaned_data['password'])
+            
             user.is_staff = True
             user.save()
 
@@ -289,7 +295,7 @@ def register_company(request):
             print ("not valid form")
             messages.error(request, f"Registration failed. Company Form Errors: {company_form.errors} User Form Errors: {user_form.errors}")
     else:
-        company_form = companyregisterForm(user=request.user )
+        company_form = companyregisterForm(user=request.user,initial={'group': "owner"})
         user_form = registerForm()
 
     return render(request, 'auths/register_company.html', {'company_form': company_form, 'user_form': user_form})

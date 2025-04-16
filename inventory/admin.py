@@ -23,7 +23,7 @@ admin.site.register(Job,  )
 
 # @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
-    list_display = ('content_object', 'comment', 'added_date', 'added_by')
+    list_display = ('content_object', 'comment', 'added_date', 'added_by',"content_type","id")
 admin.site.register(Comment, CommentAdmin )
 class CustomUserAdmin(admin.ModelAdmin):
     list_display = ('username', 'email','is_staff','company','company__owner')   
