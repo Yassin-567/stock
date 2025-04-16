@@ -1,5 +1,5 @@
 from django import forms
-from .models import CustomUser, Item, Company,Job,comment
+from .models import CustomUser, Item, Company,Job,Comment
 from django.contrib.auth.models import Group
 from django.forms import HiddenInput
 
@@ -118,7 +118,7 @@ class JobForm(forms.ModelForm):
             self.fields['job_id'].widget=forms.HiddenInput()
 class CommentForm(forms.ModelForm):
     class Meta:
-        model = comment
+        model = Comment
         fields = ['comment',]
         widgets = {
             'comment': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),

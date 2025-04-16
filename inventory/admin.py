@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser , Company , Job,Item,comment
+from .models import CustomUser , Company , Job,Item,Comment
 # Register your model here.
 class ItemAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'quantity', 'reference','status','added_date', 'updated_time')
@@ -20,7 +20,11 @@ admin.site.register(Item, )
 
 
 admin.site.register(Job,  )
-admin.site.register(comment,  )
+
+# @admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ('content_object', 'comment', 'added_date', 'added_by')
+admin.site.register(Comment, CommentAdmin )
 class CustomUserAdmin(admin.ModelAdmin):
     list_display = ('username', 'email','is_staff','company','company__owner')   
     

@@ -4,7 +4,8 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 from django.contrib.auth.models import BaseUserManager, Group
-
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 class CustomUserManager(BaseUserManager):
     use_in_migrations = True
 
@@ -100,11 +101,17 @@ class Job(models.Model):
             self.quoted=True
         super().save(*args, **kwargs)
 
-class comment(models.Model):
-    job=models.ForeignKey(Job,on_delete=models.DO_NOTHING,related_name="job_comments")
-    comment=models.TextField(null=True, blank=True)
-    added_date=models.DateTimeField(auto_now_add=True)
-    added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=False, blank=False, related_name="added_by")
+
+
+class Comment(models.Model):
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)  # Reference to the model (Job or Item)
+    object_id = models.PositiveIntegerField()  # ID of the related object
+    content_object = GenericForeignKey('content_type', 'object_id')  # Generic relationship
+
+    comment = models.TextField(null=True, blank=True)
+    added_date = models.DateTimeField(auto_now_add=True)
+    added_by = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=False, blank=False, related_name="added_by")
+
     class Meta:
         ordering = ['-added_date']
     def __str__(self):
