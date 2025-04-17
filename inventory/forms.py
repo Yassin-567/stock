@@ -46,15 +46,19 @@ class registerForm(forms.ModelForm):
             'email': forms.EmailInput(),
             'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Username'}),
             'company': forms.HiddenInput(),
-            'groups': forms.MultipleHiddenInput(),  
+            
+            #'groups': forms.MultipleHiddenInput(),  
         }
 
-    def __init__(self, *args, user=None,registering=False, **kwargs):
+    def __init__(self, *args, user=None,registering=False,adding_worker=False, **kwargs):
         super().__init__(*args, **kwargs)
+
         if registering:
-            
             self.fields['is_banned'].widget = forms.HiddenInput()
-            
+            self.fields['groups'].widget = forms.HiddenInput()
+        if adding_worker:
+            self.fields['is_banned'].widget = forms.HiddenInput()
+        
     def save(self, commit=True):
         """ Hash the password before saving """
         
@@ -114,7 +118,8 @@ class ItemForm(forms.ModelForm):
             'name': 'Part Name',
         }
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+
+            #'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'status': forms.Select(attrs={'class': 'form-select','id':'status'}),
             'price': forms.NumberInput(attrs={'class': 'form-control'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
@@ -122,8 +127,8 @@ class ItemForm(forms.ModelForm):
             'part_number':forms.TextInput(attrs={  # Override widget for job_id
                 'type': 'text',  # Set input type to text
                 'inputmode': 'numeric',  # Allow numeric input
-                'pattern': '[0-9]*',  # Numeric pattern
-                'placeholder': 'Enter Job ID',
+                #'pattern': '[0-9]*',  # Numeric pattern
+                'placeholder': 'Enter part number',
                 'class': 'form-control',}),
             
         }
@@ -133,6 +138,7 @@ class ItemForm(forms.ModelForm):
         if updating:
             # Disable fields if updating
             self.fields['part_number'].widget=forms.HiddenInput()
+            
     
 class ItemFormo(forms.Form):#added o to stop using it and creat model form with same name
     STATUS_CHOICES =[

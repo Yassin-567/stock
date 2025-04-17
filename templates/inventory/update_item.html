@@ -24,6 +24,7 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   ">{{ item.part_number }}</span>
   </h2>
+
   <section class="form-section">
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
@@ -31,10 +32,13 @@
       <div class="form-group">
         <button type="submit" class="btn-submit">Edit</button>
       </div>
+      <section class="form-section">
+        <div class="form-group">{{ comments_form.as_p }}</div>
+      </section>
     </form>
+
     <form action="{% url 'update_item' item.id %}" method="POST" class="delete-form">
       {% csrf_token %}
-
       <button name="delete" type="submit" class="btn btn-danger">Delete</button>
     </form>
   </section>
@@ -67,5 +71,19 @@
     </ul>
   </section>
 
+  <section>
+    <h3>Comments</h3>
+    <div class="comments-container">
+      {% for comment in comments %}
+        <div class="comment-card">
+          <span>Added by {{ comment.added_by.username }}</span>
+          <p>{{ comment }}</p>
+          <span>{{ comment.added_date }}</span>
+        </div>
+      {% empty %}
+        <p>No comments available.</p>
+      {% endfor %}
+    </div>
+  </section>
   <link rel="stylesheet" href="{% static 'css/style.css' %}" />
 {% endblock %}

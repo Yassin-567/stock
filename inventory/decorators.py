@@ -8,7 +8,7 @@ def admins_only(view_func):
     @wraps(view_func)
     def wrapper_func(request, *args, **kwargs):
         if request.user.groups.filter(name="Admin").exists() or request.user.company.owner==request.user:
-            print("User is an Admin")
+            
             return view_func(request, *args, **kwargs)
         else:
             return HttpResponse("You are not authorized to view this page")

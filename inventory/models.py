@@ -102,7 +102,8 @@ class Job(models.Model):
         if self.status=="quoted":
             self.quoted=True
         super().save(*args, **kwargs)
-
+    def __str__(self):
+        return self.address +" ("+ str(self.parent_account)+") "
 
 
 class Comment(models.Model):
