@@ -50,7 +50,7 @@ class registerForm(forms.ModelForm):
             #'groups': forms.MultipleHiddenInput(),  
         }
 
-    def __init__(self, *args, user=None,registering=False,adding_worker=False, **kwargs):
+    def __init__(self, *args,registering=False,adding_worker=False, **kwargs):
         super().__init__(*args, **kwargs)
 
         if registering:

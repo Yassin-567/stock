@@ -232,48 +232,54 @@ def admin_panel(request):
             return HttpResponse("You are not authorized to view this page")
 @no_ban
 def update_user(request, pk):
-    if request.user.groups.filter(name="Admin").exists():
+    if request.user.company.owner==request.user or (request.user.groups.filter(name="Admin").exists() and CustomUser.objects.get(id=pk).groups.filter(name="Employee").exists()): 
         user = get_object_or_404(CustomUser, pk=pk)
+        show_choices=True
     else:
         user = request.user
-    form= registerForm(instance=user,initial={'groups': list(user.groups.values_list('id', flat=True))} ,user=request.user)
-    handler = FormHandler(form, request.user, user)
+
+    form= registerForm(instance=user )
+    handler = FormHandler(form,user=request.user,target_user=user,show_choices=show_choices)
     handler.set_form_fields()  
    
     context={
                 "form":form,
+                "user":user,
             }
-    initial= {'groups': user.groups.first() if user.groups.exists() else None}
     if request.method=="POST":
-        form = registerForm(request.POST,instance=user,initial=initial  ,user=request.user) 
+        form = registerForm(request.POST,instance=user) 
+        handler = FormHandler(form,user=request.user,target_user=user,show_choices=show_choices)
+        
         if form.is_valid():
-            handler = FormHandler(form, request.user, user)
+            
 
             user = form.save(commit=False) 
             group = handler.get_user_group()
+            
             if 'password' in form.cleaned_data and form.cleaned_data['password']:
-                user.set_password(form.cleaned_data['password'])  # Set password securely
-                
-                user.save()  # Save user after updating
-                print(group)
+                user.set_password(form.cleaned_data['password'])  
+                user.save()
                 user.groups.clear()
                 if form.cleaned_data["is_banned"]:
                     group=Group.objects.get(name='Ban')
-                    group=[group]
-                    
-                group=[group]
-                user.groups.add(*group)
+                
+                
+                user.groups.add(group)
                 update_session_auth_hash(request, user)
                 messages.success(request, "User updated successfully")
                 user = get_object_or_404(CustomUser, pk=pk)
+                
+                handler.set_form_fields()              
                 context={
                 "form":form,
             }
             return render(request, 'inventory/update_user.html',context)  # Replace with actual view name
         else:
             messages.error(request,"Error")
+            
             context={
             "form":form,
+            "user":user,
             }
             return render(request, 'inventory/update_user.html',context)
     return render(request, 'inventory/update_user.html',context)
