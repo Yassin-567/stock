@@ -96,7 +96,7 @@ class Job(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        items_arrived=False #soublw check here
+        self.items_arrived=False #soublw check here
         if self.items.count() > 0:
             self.items_arrived =  not self.items.exclude(status="arrived").exists() 
         if self.status=="quoted":
@@ -153,25 +153,32 @@ class Item(models.Model):
     added_date=models.DateTimeField(auto_now_add=True)
     added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user")
     
-    def save(self, *args, **kwargs,):
-        # Check if any item in the job has not arrived
-        self.job.save(*args, **kwargs)
-        if self.job.status not in ["completed", "cancelled"]:   
-            if not self.job.items_arrived:
-                self.job.status = "paused"
-                self.job.save()
-            else:
-                self.job.status = "Ready"
-                self.job.save()
+    
+    def save(self, *args, no_job=False, **kwargs):
         
-        # Call original save method
-        super().save(*args, **kwargs)
-        self.job.save(*args, **kwargs)
-        if not self.job.status=="completed" and not self.job.status=="cancelled":   
-            if not self.job.items_arrived:
-                self.job.status = "paused"
-                self.job.save()
-            else:
-                self.job.status = "Ready"
-                self.job.save()
-        
+        if not no_job:
+            print("there is job")
+            super().save(*args, **kwargs)
+            
+            self.job.save(*args, **kwargs)
+            if self.job.status not in ["completed", "cancelled"]:   
+                if not self.job.items_arrived:
+                    self.job.status = "paused"
+                    self.job.save()
+                else:
+                    self.job.status = "ready"
+                    self.job.save()
+            # super().save(*args, **kwargs)
+            # self.job.save(*args, **kwargs)
+            # if not self.job.status=="completed" and not self.job.status=="cancelled":   
+            #     if not self.job.items_arrived:
+            #         self.job.status = "paused"
+            #         self.job.save()
+            #     else:
+            #         self.job.status = "ready"
+            #         self.job.save()
+        elif no_job:
+            print("there is no job")
+            super().save(*args, **kwargs)
+            
+               

@@ -75,7 +75,7 @@ class JobForm(forms.ModelForm):
     class Meta:
         model = Job
         fields = '__all__'
-        exclude = ['user', 'company']
+        exclude = ['user', 'company','items_arrived']
         labels = {
             'name': 'Part Name',
         }

@@ -11,8 +11,10 @@
   <!-- Modern Form Section -->
   {% if rjobs %}
     {% for job in rjobs %}
-      {% if job.status != 'Ready' and job.items_arrived %}
+      {% if job.status != 'ready' and job.items_arrived %}
         <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small>"Required parts have arrived but the job isn't marked as Ready"</small></h2>
+      {% elif job.status == 'ready' and not job.items_arrived %}
+        <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small>"Required parts have not arrived but the job is marked as Ready"</small></h2>
       {% else %}
         <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }}</h2>
         <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>
@@ -37,7 +39,7 @@
     {% endfor %}
   {% endif %}
   <link rel="stylesheet" href="{% static 'css/style.css' %}" />
-  <script>
+  {% comment %} <script>
     document.addEventListener('DOMContentLoaded', function () {
       let statusField = document.querySelector('#status')
       let arrivedQuantityField = document.querySelector('#arrived_quantity')
@@ -61,5 +63,5 @@
       // Listen for changes
       statusField.addEventListener('change', toggleArrivedQuantity)
     })
-  </script>
+  </script> {% endcomment %}
 {% endblock %}

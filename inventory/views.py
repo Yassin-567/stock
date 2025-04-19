@@ -130,7 +130,15 @@ def update_job(request, pk):
 
     return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments})       
 @login_required
-def item_add(request,pk=None):
+def item_add(request,pk=None,no_job=False):
+    # if not no_job and pk is not None:
+        
+    #     pass
+
+
+
+
+
     try:
         job=Job.objects.filter(company=request.user.company).get(job_id=pk)
     except Job.DoesNotExist:
@@ -147,19 +155,21 @@ def item_add(request,pk=None):
             item.company=request.user.company
             item.user=request.user
             item.added_by=request.user
+
             if pk is not None:
                 try:
                     item.job = job
                 except Job.DoesNotExist:
                     messages.error(request, f'{pk}Specified job does not exist.')
                     return render(request, 'inventory/add_item.html', {'form': form})
-            item.save()
+            elif pk is None and no_job:
+                item.job=None
+            item.save(no_job=True)
             messages.success(request, 'Item added successfully')
             return redirect('inventory')
     return render(request, 'inventory/add_item.html', {'form': form,'job':job})
 @login_required
 def update_item(request, pk):
-    
     item = Item.objects.get(id=pk)
     form = ItemForm(instance=item,updating=True)
     comments_form=CommentForm(initial={
@@ -170,31 +180,22 @@ def update_item(request, pk):
     comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(Item), object_id=item.id,company=request.user.company)
     if request.method == 'POST':
         if "delete" in request.POST:
-            #need to ask user for confirmation
             itemname=item.name
             item.delete()
             messages.success(request, f"Item {itemname} deleted successfully.")
             return redirect('inventory')
-            
         form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
         comments_form=CommentForm(request.POST)
-            
         if form.is_valid() and comments_form.is_valid(): 
-
-            
             form.save()
-            
             comment = comments_form.save(commit=False)
             comment.added_by = request.user 
             comment.company = request.user.company
             comment.save()
             comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(Item), object_id=item.id,company=request.user.company)
-
             comments_form=CommentForm()
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
             return render(request, 'inventory/update_item.html', context)
-
-        
     context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
     return render(request, 'inventory/update_item.html', context)
 @owner_only
