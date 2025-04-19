@@ -328,7 +328,11 @@ def register_company(request):
         user_form = registerForm()
 
     return render(request, 'auths/register_company.html', {'company_form': company_form, 'user_form': user_form})
-
+#############
+def warehouse(request):
+    warehouse_items=Item.objects.filter(is_warehouse_item=True)
+    print(warehouse_items)
+    return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items})
 ##########
 import requests
 from django.shortcuts import render

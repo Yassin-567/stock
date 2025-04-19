@@ -1,0 +1,20 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+{% load custom_tags %}
+
+{% block body %}
+  {% if warehouse_items %}
+    {% for item in warehouse_items %}
+      <ul>
+        <p>Name: {{ item.name }}</p>
+        <p>Part number: {{ item.part_number }}</p>
+        <p>Price: {{ item.price }}</p>
+        <p>Supplier: {{ item.supplier }}</p>
+        <p>Available quantity: {{ item.quantity }}</p>
+      </ul>
+      <hr />
+    {% endfor %}
+  {% else %}
+    <h4>Warehouse is empty ☹</h4>
+  {% endif %}
+{% endblock %}

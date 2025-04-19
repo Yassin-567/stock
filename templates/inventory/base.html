@@ -20,7 +20,7 @@
     {% if request.user.is_authenticated %}
       <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-          <a class="navbar-brand" href="{% url 'inventory' %}">Inventory</a>
+          <a class="navbar-brand" href="{% url 'inventory' %}">{{ request.user.company.company_name }}</a>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
 
           <div class="collapse navbar-collapse" id="navbarNav">
@@ -55,6 +55,12 @@
               <li class="nav-item">
                 <a class="nav-link fw-bold text-light" href="{% url 'create_job' %}">Add job</a>
               </li>
+              <li class="nav-item">
+                <a class="nav-link fw-bold text-light" href="{% url 'warehouse' %}">Warehouse</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link fw-bold text-light" href="{% url 'item_add' True %}">Add item to the warehouse</a>
+              </li>
               <!-- Admin Panel -->
               {% if request.user|is_admin %}
                 <li class="nav-item">
@@ -77,6 +83,7 @@
 
     <div class="container content">
       {% block body %}
+
       {% endblock %}
     </div>
 

@@ -91,6 +91,7 @@ class Job(models.Model):
     items_arrived=models.BooleanField(default=False, )
     post_code=models.CharField(max_length=10, null=True, blank=True)
     quoted=models.BooleanField(default=False)
+    #items=models
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
 
@@ -152,8 +153,8 @@ class Item(models.Model):
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company")
     added_date=models.DateTimeField(auto_now_add=True)
     added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user")
-    
-    
+    is_warehouse_item=models.BooleanField(default=False)
+    quantity=models.PositiveSmallIntegerField(default=1)
     def save(self, *args, no_job=False, **kwargs):
         
         if not no_job:
@@ -178,7 +179,7 @@ class Item(models.Model):
             #         self.job.status = "ready"
             #         self.job.save()
         elif no_job:
-            print("there is no job")
+            self.is_warehouse_item=True
             super().save(*args, **kwargs)
             
                

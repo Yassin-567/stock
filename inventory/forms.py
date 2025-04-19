@@ -113,7 +113,7 @@ class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
         fields = '__all__' 
-        exclude = ['added_by','company']
+        exclude = ['added_by','company','is_warehouse_item']
         labels = {
             'name': 'Part Name',
         }

@@ -26,6 +26,7 @@ urlpatterns=[
     path('logout/',views.logout_user,name='logout'),
     path('registerc/',views.register_company,name='register_company'),
     path('createjob/',views.job_create,name='create_job'),
+    path('warehouse/',views.warehouse,name='warehouse'),
     path('additem/<str:no_job>', views.item_add, name='item_add'),
     path('additem/<int:pk>/', views.item_add, name='item_add'),
     path('register/',views.register_user,name='register'),
