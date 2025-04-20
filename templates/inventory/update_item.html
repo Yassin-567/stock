@@ -28,19 +28,30 @@
   <section class="form-section">
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
-      <div class="form-group">{{ form.as_p }}</div>
       <div class="form-group">
-        <button type="submit" class="btn-submit">Edit</button>
+        {{ form.as_p }}
+        {% if not completed %}
+          <div class="form-group">
+            <button name="edit" type="submit" class="btn-submit">Edit</button>
+          </div>
+        {% endif %}
       </div>
-      <section class="form-section">
-        <div class="form-group">{{ comments_form.as_p }}</div>
-      </section>
-    </form>
 
-    <form action="{% url 'update_item' item.id %}" method="POST" class="delete-form">
-      {% csrf_token %}
-      <button name="delete" type="submit" class="btn btn-danger">Delete</button>
+      <form action="POST">
+        <section class="form-section">
+          <div class="form-group">{{ comments_form.as_p }}</div>
+          <div>
+            <button name="just_add_comment" type="submit" class="btn-submit">Add comment</button>
+          </div>
+        </section>
+      </form>
     </form>
+    {% if not completed %}
+      <form action="{% url 'update_item' item.id %}" method="POST" class="delete-form">
+        {% csrf_token %}
+        <button name="delete" type="submit" class="btn btn-danger">Delete</button>
+      </form>
+    {% endif %}
   </section>
 
   <!-- Job Summary Section -->

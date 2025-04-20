@@ -109,16 +109,16 @@ class CommentForm(forms.ModelForm):
             'object_id': forms.HiddenInput(),
             'company': forms.HiddenInput(),
         }
+    
 class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
         fields = '__all__' 
-        exclude = ['added_by','company','is_warehouse_item']
+        exclude = ['added_by','company','is_used']#'is_warehouse_item'
         labels = {
             'name': 'Part Name',
         }
         widgets = {
-
             #'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'status': forms.Select(attrs={'class': 'form-select','id':'status'}),
             'price': forms.NumberInput(attrs={'class': 'form-control'}),
@@ -133,12 +133,17 @@ class ItemForm(forms.ModelForm):
             
         }
     
-    def __init__(self, *args, updating=False, **kwargs):
+    def __init__(self, *args, updating=False,completed=False, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['job'].empty_label = None
         if updating:
-            # Disable fields if updating
-            self.fields['part_number'].widget=forms.HiddenInput()
             
+            self.fields['part_number'].widget=forms.HiddenInput()
+            if completed:
+                for field in self.fields.values():
+                    
+                    field.widget.attrs['class'] = 'faded-input'
+                    field.widget.attrs['disabled'] = 'disabled'
     
 class ItemFormo(forms.Form):#added o to stop using it and creat model form with same name
     STATUS_CHOICES =[
@@ -159,7 +164,7 @@ class ItemFormo(forms.Form):#added o to stop using it and creat model form with 
     image = forms.ImageField(required=False)
     status = forms.ChoiceField(choices=STATUS_CHOICES, initial='b',required=True)
 
-
+    
 
 
 class SearchForm(forms.Form):#-

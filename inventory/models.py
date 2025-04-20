@@ -91,7 +91,6 @@ class Job(models.Model):
     items_arrived=models.BooleanField(default=False, )
     post_code=models.CharField(max_length=10, null=True, blank=True)
     quoted=models.BooleanField(default=False)
-    #items=models
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
 
@@ -102,6 +101,16 @@ class Job(models.Model):
             self.items_arrived =  not self.items.exclude(status="arrived").exists() 
         if self.status=="quoted":
             self.quoted=True
+        if self.status == "completed":
+            
+            for item in self.items.all():
+                
+                if item.warehouse_quantity != 0:
+                    item.warehouse_quantity = 0
+                    item.is_used=True
+                    item.status="arrived"
+                    item.save()
+
         super().save(*args, **kwargs)
     def __str__(self):
         return self.address +" ("+ str(self.parent_account)+") "
@@ -120,24 +129,20 @@ class Comment(models.Model):
     class Meta:
         ordering = ['-added_date']
     def __str__(self):
-        return self.comment[:20] + "..." if len(self.comment) > 20 else self.comment
+        return self.comment#[:20] + "..." if len(self.comment) > 20 else self.comment
     def save(self,*args, **kwargs):
         if not self.comment.strip():
             return
         super().save(*args, **kwargs) 
         
-    def get_company(self):
-        # Check if the content_object has a company attribute
-        if hasattr(self.content_object, 'company'):
-            return self.content_object.company
-        return None
+    
+
 class Item(models.Model):
     CHOICES=[
         ('ordered', 'Ordered'),
         ('arrived', 'Arrived'),
         ('not_ordered','Not ordered'),
     ]
-
     job = models.ForeignKey(
         Job,
         on_delete=models.CASCADE,
@@ -154,13 +159,42 @@ class Item(models.Model):
     added_date=models.DateTimeField(auto_now_add=True)
     added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user")
     is_warehouse_item=models.BooleanField(default=False)
-    quantity=models.PositiveSmallIntegerField(default=1)
-    def save(self, *args, no_job=False, **kwargs):
-        
-        if not no_job:
-            print("there is job")
-            super().save(*args, **kwargs)
+    warehouse_quantity=models.PositiveSmallIntegerField(default=0)
+    job_quantity=models.PositiveSmallIntegerField(default=0)
+    arrived_quantity=models.PositiveSmallIntegerField(default=0)
+    is_used=models.BooleanField(default=False)
+    def clean(self):
+        if self.arrived_quantity > self.job_quantity:
+            raise ValidationError("Arrived quantity cannot be greater than job quantity.")
+        if self.warehouse_quantity > 0 and self.is_used:
+            raise ValidationError("This item is used, you cannot change the warehouse quantity.")
+    def save(self, *args, no_job=False,updating=True, **kwargs):
+        if self.arrived_quantity > self.job_quantity:
+            raise ValidationError("Arrived quantity cannot be greater than warehouse quantity.")
+        if self.arrived_quantity==self.job_quantity:
+            self.status = "arrived"
+        else:
+            self.status = "ordered"
+        if not updating:
+            if not no_job:
+                print("HH")
+                
+                super().save(*args, **kwargs)
+                self.job.save(*args, **kwargs)
+                if self.job.status not in ["completed", "cancelled"]:   
+                    if not self.job.items_arrived:
+                        self.job.status = "paused"
+                        self.job.save()
+                    else:
+                        self.job.status = "ready"
+                        self.job.save()
+            elif no_job:
+                print("Hpp")
+                self.is_warehouse_item=True
+                super().save(*args, **kwargs)
+        else:
             
+            super().save(*args, **kwargs)
             self.job.save(*args, **kwargs)
             if self.job.status not in ["completed", "cancelled"]:   
                 if not self.job.items_arrived:
@@ -169,17 +203,3 @@ class Item(models.Model):
                 else:
                     self.job.status = "ready"
                     self.job.save()
-            # super().save(*args, **kwargs)
-            # self.job.save(*args, **kwargs)
-            # if not self.job.status=="completed" and not self.job.status=="cancelled":   
-            #     if not self.job.items_arrived:
-            #         self.job.status = "paused"
-            #         self.job.save()
-            #     else:
-            #         self.job.status = "ready"
-            #         self.job.save()
-        elif no_job:
-            self.is_warehouse_item=True
-            super().save(*args, **kwargs)
-            
-               

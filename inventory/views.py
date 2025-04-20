@@ -104,7 +104,12 @@ def job_create(request):
 @login_required
 def update_job(request, pk):
     job=Job.objects.filter(company=request.user.company).get(job_id=pk)
-    form = JobForm(instance=job,updating=True)
+    items=Item.objects.filter(company=request.user.company,job=job)
+    items_count=0
+    for item in items:
+        items_count+=item.job_quantity
+    
+    form = JobForm(instance=job,updating=True,)
     comments_form=CommentForm(initial={
         'content_type': ContentType.objects.get_for_model(Job),
         'object_id': job.job_id,
@@ -127,18 +132,11 @@ def update_job(request, pk):
             messages.success(request, 'Job updated successfully')
             comments_form = CommentForm()
             return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments})       
-
-    return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments})       
+    context={'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count}
+    return render(request, 'inventory/job_update.html', context)       
+###########################ITEM######################
 @login_required
 def item_add(request,pk=None,no_job=False):
-    # if not no_job and pk is not None:
-        
-    #     pass
-
-
-
-
-
     try:
         job=Job.objects.filter(company=request.user.company).get(job_id=pk)
     except Job.DoesNotExist:
@@ -147,31 +145,31 @@ def item_add(request,pk=None,no_job=False):
     form.fields['job'].widget = MultipleHiddenInput()
     if request.method=='POST':
         form=ItemForm(request.POST)
-        
         if form.is_valid():
             form.fields['job'].widget = MultipleHiddenInput()
             item=form.save(commit=False)
-            
             item.company=request.user.company
             item.user=request.user
             item.added_by=request.user
-
             if pk is not None:
                 try:
                     item.job = job
+                    item.save()
                 except Job.DoesNotExist:
                     messages.error(request, f'{pk}Specified job does not exist.')
                     return render(request, 'inventory/add_item.html', {'form': form})
             elif pk is None and no_job:
                 item.job=None
-            item.save(no_job=True)
+                item.save(no_job=True)
             messages.success(request, 'Item added successfully')
             return redirect('inventory')
     return render(request, 'inventory/add_item.html', {'form': form,'job':job})
 @login_required
 def update_item(request, pk):
     item = Item.objects.get(id=pk)
-    form = ItemForm(instance=item,updating=True)
+    job=Job.objects.filter(company=request.user.company).get(job_id=item.job.job_id) if item.job else None
+    completed=job.status=='completed'
+    form = ItemForm(instance=item,updating=True,completed=completed)
     comments_form=CommentForm(initial={
         'content_type': ContentType.objects.get_for_model(Item),
         'object_id': item.id,
@@ -179,6 +177,21 @@ def update_item(request, pk):
         })
     comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(Item), object_id=item.id,company=request.user.company)
     if request.method == 'POST':
+        comments_form=CommentForm(request.POST)
+        if comments_form.is_valid() and "just_add_comment" in request.POST :
+            
+            comment = comments_form.save(commit=False)
+            comment.added_by = request.user 
+            comment.company = request.user.company
+            comment.save()
+            comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(Item), object_id=item.id,company=request.user.company)
+            comments_form=CommentForm(initial={
+        'content_type': ContentType.objects.get_for_model(Item),
+        'object_id': item.id,
+        'company': request.user.company,
+        })
+            context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,'completed':completed}
+            return render(request, 'inventory/update_item.html', context)
         if "delete" in request.POST:
             itemname=item.name
             item.delete()
@@ -186,26 +199,18 @@ def update_item(request, pk):
             return redirect('inventory')
         form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
         comments_form=CommentForm(request.POST)
-        if form.is_valid() and comments_form.is_valid(): 
-            form.save()
-            comment = comments_form.save(commit=False)
-            comment.added_by = request.user 
-            comment.company = request.user.company
-            comment.save()
-            comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(Item), object_id=item.id,company=request.user.company)
-            comments_form=CommentForm()
+        if form.is_valid() and 'edit' in request.POST: 
+            item=form.save(commit=False)
+            item.save(updating=True)
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
             return render(request, 'inventory/update_item.html', context)
-    context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
+    context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,"completed":completed}
     return render(request, 'inventory/update_item.html', context)
+########################
 @owner_only
 @login_required
 def update_company(request, pk):
-
-   
     company = Company.objects.get(id=pk)
-
-
     form = companyregisterForm(instance=company,user=request.user,updating=True)
     if request.method == 'POST':
         form = companyregisterForm(request.POST, request.FILES, instance=company,user=request.user)
@@ -214,7 +219,6 @@ def update_company(request, pk):
             context = {'form': form,'company': company}
             messages.success(request,"Company updated successfuly")
             return render(request, 'inventory/update_company.html', context)
-
     context = {'form': form,'company': company}
     return render(request, 'inventory/update_company.html', context)
 
@@ -223,7 +227,6 @@ def update_company(request, pk):
 def admin_panel(request): 
         if request.user.groups.filter(name="Admin").exists() or request.user.company.owner==request.user:
             groups = Group.objects.all().order_by("name")
-            
             context = {
                 'groups': groups,
                 'users': CustomUser.objects.filter(company=request.user.company),
@@ -238,11 +241,9 @@ def update_user(request, pk):
         show_choices=True
     else:
         user = request.user
-
     form= registerForm(instance=user )
     handler = FormHandler(form,user=request.user,target_user=user,show_choices=show_choices)
     handler.set_form_fields()  
-   
     context={
                 "form":form,
                 "user":user,
@@ -250,21 +251,15 @@ def update_user(request, pk):
     if request.method=="POST":
         form = registerForm(request.POST,instance=user) 
         handler = FormHandler(form,user=request.user,target_user=user,show_choices=show_choices)
-        
         if form.is_valid():
-            
-
             user = form.save(commit=False) 
             group = handler.get_user_group()
-            
             if 'password' in form.cleaned_data and form.cleaned_data['password']:
                 user.set_password(form.cleaned_data['password'])  
                 user.save()
                 user.groups.clear()
                 if form.cleaned_data["is_banned"]:
                     group=Group.objects.get(name='Ban')
-                
-                
                 user.groups.add(group)
                 update_session_auth_hash(request, user)
                 messages.success(request, "User updated successfully")
@@ -277,7 +272,6 @@ def update_user(request, pk):
             return render(request, 'inventory/update_user.html',context)  # Replace with actual view name
         else:
             messages.error(request,"Error")
-            
             context={
             "form":form,
             "user":user,
@@ -343,3 +337,4 @@ def fetch_api_data(request):
     data = response.json()  # Convert to dict
 
     return render(request, 'inventory/api_data.html', {'data': data})
+#youssif_USF_SPY

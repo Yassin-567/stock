@@ -18,7 +18,17 @@
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       ">{{ job.job_id }}</span>
     </span>
-
+    <span style="
+        display: inline-block;
+        padding: 5px 10px;
+        font-size: 1.2rem;
+        font-weight: normal;
+        color: #333;
+        background-color: rgb(182, 182, 182);
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      ">Parts count: {{ items_count }}</span>
     {% if job.quoted %}
       <span style="
         display: inline-block;
@@ -55,6 +65,9 @@
     </form>
   </section>
 
+  {% for item in items %}
+    {{ item }}
+  {% endfor %}
   <section>
     <h3>Comments</h3>
     <div class="comments-container">
