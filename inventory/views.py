@@ -160,7 +160,8 @@ def item_add(request,pk=None,no_job=False):
                     return render(request, 'inventory/add_item.html', {'form': form})
             elif pk is None and no_job:
                 item.job=None
-                item.save(no_job=True)
+                item.is_warehouse_item=True
+                item.save()
             messages.success(request, 'Item added successfully')
             return redirect('inventory')
     return render(request, 'inventory/add_item.html', {'form': form,'job':job})
@@ -201,7 +202,7 @@ def update_item(request, pk):
         comments_form=CommentForm(request.POST)
         if form.is_valid() and 'edit' in request.POST: 
             item=form.save(commit=False)
-            item.save(updating=True)
+            item.save()
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
             return render(request, 'inventory/update_item.html', context)
     context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,"completed":completed}
