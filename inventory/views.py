@@ -202,7 +202,7 @@ def update_item(request, pk):
         comments_form=CommentForm(request.POST)
         if form.is_valid() and 'edit' in request.POST: 
             item=form.save(commit=False)
-            item.save()
+            item.save(updating=True)
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
             return render(request, 'inventory/update_item.html', context)
     context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,"completed":completed}

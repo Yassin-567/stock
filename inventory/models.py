@@ -7,6 +7,7 @@ from django.contrib.auth.models import BaseUserManager, Group
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
+from django.db.models import F
 class CustomUserManager(BaseUserManager):
     use_in_migrations = True
 
@@ -96,8 +97,21 @@ class Job(models.Model):
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
 
     def save(self, *args, **kwargs):
-        for item in self.items.all():
-            item.save()
+        super().save(*args, **kwargs)
+        self.items_arrived=False #soublw check here
+        if self.items.count() > 0:
+            self.items_arrived =  not self.items.exclude(status="arrived").exists() 
+        if self.status=="quoted":
+            self.quoted=True
+        if self.status == "completed":
+            
+            for item in self.items.all():
+                if item.arrived_quantity != 0:
+                    if item.job_quantity == item.arrived_quantity:
+                        item.warehouse_quantity = 0
+                        item.is_used=True
+                    item.status="arrived"
+                    item.save(no_recursion=True)
         super().save(*args, **kwargs)
     
     def __str__(self):
@@ -158,18 +172,46 @@ class Item(models.Model):
             raise ValidationError("This item is used, you cannot change the warehouse quantity.")
         if self.job_quantity==0:
             raise ValidationError("Job quantity can't be Zero")
-    def save(self, *args, **kwargs):
-        self.full_clean()  
-        if self.job is not None:
-            if self.arrived_quantity==self.job_quantity and self.job_quantity !=0:
-                self.status="arrived"
-            elif self.arrived_quantity<self.job_quantity:
-                self.status="ordered"
-            if self.status=='arrived':
-                self.is_used=self.job.status=="completed"
-        
-            
-        super().save(*args, **kwargs)
+    def save(self, *args, no_job=False,updating=True,no_recursion=False ,**kwargs):
+            if self.arrived_quantity > self.job_quantity:
+                raise ValidationError("Arrived quantity cannot be greater than warehouse quantity.")
+            if self.arrived_quantity==self.job_quantity:
+                self.status = "arrived"
+            else:
+                self.status = "ordered"
+            updating=self.job.pk is not None
+            no_job = self.job is None
+            print("updating", updating)
+            print("no_job", no_job)
+            if  updating:
+                if not no_job:
+                    print("HH")
+                    
+                    super().save(*args, **kwargs)
+                    self.job.save(*args, **kwargs) if not no_recursion else None
+                    if self.job.status not in ["completed", "cancelled"]:   
+                        if not self.job.items_arrived:
+                            self.job.status = "paused"
+                            self.job.save(*args, **kwargs) if not no_recursion else None
+                        else:
+                            self.job.status = "ready"
+                            self.job.save(*args, **kwargs) if not no_recursion else None
+                elif no_job:
+                    print("Hpp")
+                    self.is_warehouse_item=True
+                    super().save(*args, **kwargs)
+            else:
+                
+                super().save(*args, **kwargs)
+                self.job.save(*args, **kwargs)
+                if self.job.status not in ["completed", "cancelled"]:   
+                    if not self.job.items_arrived:
+                        self.job.status = "paused"
+                        self.job.save()
+                    else:
+                        self.job.status = "ready"
+                        self.job.save()
+    
 #need to fix:
 #1)adding items for no jobs
 #2)relation between updating jobs and items
