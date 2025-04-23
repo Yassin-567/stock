@@ -8,6 +8,8 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import F
+#from datetime import datetime
+#from time import strftime
 class CustomUserManager(BaseUserManager):
     use_in_migrations = True
 
@@ -97,6 +99,11 @@ class Job(models.Model):
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
 
     def save(self, *args, **kwargs):
+        old_status = None
+        if self.pk:
+            old_instance = type(self).objects.get(pk=self.pk)
+            old_status = old_instance.status
+        print("old status", old_status)
         super().save(*args, **kwargs)
         self.items_arrived=False #soublw check here
         if self.items.count() > 0:
@@ -104,7 +111,6 @@ class Job(models.Model):
         if self.status=="quoted":
             self.quoted=True
         if self.status == "completed":
-            
             for item in self.items.all():
                 if item.arrived_quantity != 0:
                     if item.job_quantity == item.arrived_quantity:
@@ -112,6 +118,13 @@ class Job(models.Model):
                         item.is_used=True
                     item.status="arrived"
                     item.save(no_recursion=True)
+            
+        elif self.status != "completed" and old_status == "completed" and self.status != "cancelled":
+            for item in self.items.all():
+                if item.is_used:
+                    print("item is used")
+                    item.notes='Job was completed then reopened, double check if the item was used.'
+                    item.save(no_recursion=True) 
         super().save(*args, **kwargs)
     
     def __str__(self):
@@ -165,6 +178,7 @@ class Item(models.Model):
     job_quantity=models.PositiveSmallIntegerField(default=0)
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     is_used=models.BooleanField(default=False)
+    notes=models.TextField(null=True, blank=True)
     def clean(self):
         if self.arrived_quantity > self.job_quantity:
             raise ValidationError("Arrived quantity cannot be greater than job quantity.")
@@ -172,20 +186,16 @@ class Item(models.Model):
             raise ValidationError("This item is used, you cannot change the warehouse quantity.")
         if self.job_quantity==0:
             raise ValidationError("Job quantity can't be Zero")
-    def save(self, *args, no_job=False,updating=True,no_recursion=False ,**kwargs):
-            if self.arrived_quantity > self.job_quantity:
-                raise ValidationError("Arrived quantity cannot be greater than warehouse quantity.")
+    def save(self, *args, no_job=False,updating=False,no_recursion=False ,**kwargs):
             if self.arrived_quantity==self.job_quantity:
                 self.status = "arrived"
             else:
                 self.status = "ordered"
-            updating=self.job.pk is not None
+            updating= True if self.pk else False
             no_job = self.job is None
-            print("updating", updating)
-            print("no_job", no_job)
+            
             if  updating:
                 if not no_job:
-                    print("HH")
                     
                     super().save(*args, **kwargs)
                     self.job.save(*args, **kwargs) if not no_recursion else None
@@ -195,23 +205,26 @@ class Item(models.Model):
                             self.job.save(*args, **kwargs) if not no_recursion else None
                         else:
                             self.job.status = "ready"
-                            self.job.save(*args, **kwargs) if not no_recursion else None
+                            self.job.save(*args, **kwargs) if not no_recursion  else None
                 elif no_job:
-                    print("Hpp")
+                    
                     self.is_warehouse_item=True
                     super().save(*args, **kwargs)
             else:
-                
-                super().save(*args, **kwargs)
-                self.job.save(*args, **kwargs)
-                if self.job.status not in ["completed", "cancelled"]:   
-                    if not self.job.items_arrived:
-                        self.job.status = "paused"
-                        self.job.save()
-                    else:
-                        self.job.status = "ready"
-                        self.job.save()
-    
+                if no_job:
+                    self.is_warehouse_item=True
+                    super().save(*args, **kwargs)
+                else:
+                    super().save(*args, **kwargs)
+                    self.job.save(*args, **kwargs)
+                    if self.job.status not in ["completed", "cancelled"]:   
+                        if not self.job.items_arrived:
+                            self.job.status = "paused"
+                            self.job.save()
+                        else:
+                            self.job.status = "ready"
+                            self.job.save()
+        
 #need to fix:
 #1)adding items for no jobs
 #2)relation between updating jobs and items

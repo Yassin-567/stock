@@ -5,14 +5,11 @@
 {% block body %}
   {% if warehouse_items %}
     {% for item in warehouse_items %}
-      <ul>
-        <p>Name: {{ item.name }}</p>
-        <p>Part number: {{ item.part_number }}</p>
-        <p>Price: {{ item.price }}</p>
-        <p>Supplier: {{ item.supplier }}</p>
-        <p>Available quantity: {{ item.quantity }}</p>
-      </ul>
-      <hr />
+      <li>
+        <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a> - Part Number: {{ item.part_number }} - Price: ${{ item.price }}
+        ({{ item.get_status_display }})
+        {{ item.Warehouse_quantity }}
+      </li>
     {% endfor %}
   {% else %}
     <h4>Warehouse is empty ☹</h4>

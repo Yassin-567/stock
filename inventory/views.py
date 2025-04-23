@@ -130,7 +130,12 @@ def update_job(request, pk):
             comment.save()
             comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
             messages.success(request, 'Job updated successfully')
-            comments_form = CommentForm()
+            comments_form = CommentForm(initial={
+        'content_type': ContentType.objects.get_for_model(Job),
+        'object_id': job.job_id,
+        'company': request.user.company,
+        })
+            form = JobForm(instance=job,)
             return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments})       
     context={'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count}
     return render(request, 'inventory/job_update.html', context)       
@@ -161,7 +166,7 @@ def item_add(request,pk=None,no_job=False):
             elif pk is None and no_job:
                 item.job=None
                 item.is_warehouse_item=True
-                item.save()
+                item.save(no_job=True)
             messages.success(request, 'Item added successfully')
             return redirect('inventory')
     return render(request, 'inventory/add_item.html', {'form': form,'job':job})
@@ -203,11 +208,58 @@ def update_item(request, pk):
         if form.is_valid() and 'edit' in request.POST: 
             item=form.save(commit=False)
             item.save(updating=True)
+            form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
+
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
             return render(request, 'inventory/update_item.html', context)
     context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,"completed":completed}
     return render(request, 'inventory/update_item.html', context)
 ########################
+@login_required
+def update_warehouse_item(request, pk):
+    item = Item.objects.get(id=pk)
+    #job=Job.objects.filter(company=request.user.company).get(job_id=item.job.job_id) if item.job else None
+    #completed=job.status=='completed'
+    form = ItemForm(instance=item,updating=True)
+    comments_form=CommentForm(initial={
+        'content_type': ContentType.objects.get_for_model(Item),
+        'object_id': item.id,
+        'company': request.user.company,
+        })
+    comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(Item), object_id=item.id,company=request.user.company)
+    if request.method == 'POST':
+        comments_form=CommentForm(request.POST)
+        if comments_form.is_valid() and "just_add_comment" in request.POST :
+            
+            comment = comments_form.save(commit=False)
+            comment.added_by = request.user 
+            comment.company = request.user.company
+            comment.save()
+            comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(Item), object_id=item.id,company=request.user.company)
+            comments_form=CommentForm(initial={
+        'content_type': ContentType.objects.get_for_model(Item),
+        'object_id': item.id,
+        'company': request.user.company,
+        })
+            context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
+            return render(request, 'inventory/update_item.html', context)
+        if "delete" in request.POST:
+            itemname=item.name
+            item.delete()
+            messages.success(request, f"Item {itemname} deleted successfully.")
+            return redirect('inventory')
+        form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
+        comments_form=CommentForm(request.POST)
+        if form.is_valid() and 'edit' in request.POST: 
+            item=form.save(commit=False)
+            item.save(updating=True)
+            form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
+
+            context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
+            return render(request, 'inventory/update_item.html', context)
+    context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
+    return render(request, 'inventory/update_item.html', context)
+    
 @owner_only
 @login_required
 def update_company(request, pk):
