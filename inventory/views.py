@@ -12,7 +12,7 @@ from django.db.models import Count, Q
 from django.forms import HiddenInput,MultipleHiddenInput
 from django.forms import Select
 from django import forms
-from .myfunc import FormHandler
+from .myfunc import FormHandler, WareohuseFormHandler
 from django.http import HttpResponseForbidden
 from django.contrib.contenttypes.models import ContentType
 
@@ -204,6 +204,12 @@ def update_item(request, pk):
             messages.success(request, f"Item {itemname} deleted successfully.")
             return redirect('inventory')
         form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
+        if 'move_item' in request.POST :
+            item.job=None
+            item.is_moved_to_warehouse=True
+            item.save(updating=True)
+            return redirect('inventory')        
+        form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
         comments_form=CommentForm(request.POST)
         if form.is_valid() and 'edit' in request.POST: 
             item=form.save(commit=False)
@@ -217,10 +223,12 @@ def update_item(request, pk):
 ########################
 @login_required
 def update_warehouse_item(request, pk):
-    item = Item.objects.get(id=pk)
+    item = Item.objects.filter(company=request.user.company,id=pk)[0]
     #job=Job.objects.filter(company=request.user.company).get(job_id=item.job.job_id) if item.job else None
     #completed=job.status=='completed'
     form = ItemForm(instance=item,updating=True)
+    handler=WareohuseFormHandler(form,)
+    handler.set_form_fields()
     comments_form=CommentForm(initial={
         'content_type': ContentType.objects.get_for_model(Item),
         'object_id': item.id,
@@ -237,10 +245,10 @@ def update_warehouse_item(request, pk):
             comment.save()
             comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(Item), object_id=item.id,company=request.user.company)
             comments_form=CommentForm(initial={
-        'content_type': ContentType.objects.get_for_model(Item),
-        'object_id': item.id,
-        'company': request.user.company,
-        })
+            'content_type': ContentType.objects.get_for_model(Item),
+            'object_id': item.id,
+            'company': request.user.company,
+            })
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
             return render(request, 'inventory/update_item.html', context)
         if "delete" in request.POST:
@@ -248,13 +256,17 @@ def update_warehouse_item(request, pk):
             item.delete()
             messages.success(request, f"Item {itemname} deleted successfully.")
             return redirect('inventory')
+        
         form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
+        handler=WareohuseFormHandler(form,)
+        handler.set_form_fields()
         comments_form=CommentForm(request.POST)
         if form.is_valid() and 'edit' in request.POST: 
             item=form.save(commit=False)
             item.save(updating=True)
-            form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
-
+            form = ItemForm( instance=item,updating=True)
+            handler=WareohuseFormHandler(form,)
+            handler.set_form_fields()
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
             return render(request, 'inventory/update_item.html', context)
     context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
@@ -266,7 +278,7 @@ def update_company(request, pk):
     company = Company.objects.get(id=pk)
     form = companyregisterForm(instance=company,user=request.user,updating=True)
     if request.method == 'POST':
-        form = companyregisterForm(request.POST, request.FILES, instance=company,user=request.user)
+        form = companyregisterForm(request.POST ,request.FILES, instance=company,user=request.user)
         if form.is_valid():
             form.save()
             context = {'form': form,'company': company}
@@ -377,10 +389,18 @@ def register_company(request):
     return render(request, 'auths/register_company.html', {'company_form': company_form, 'user_form': user_form})
 #############
 def warehouse(request):
-    warehouse_items=Item.objects.filter(is_warehouse_item=True)
-    print(warehouse_items)
-    return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items})
-##########
+    warehouse_items=Item.objects.filter(is_warehouse_item=True ,company=request.user.company,)
+    moved_items=Item.objects.filter(is_moved_to_warehouse=True ,company=request.user.company,)
+    return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items,'moved_items':moved_items})
+
+def move_item(request,pk):
+    item=Item.objects.filter(company=request.user.company,id=pk)[0]
+    form = ItemForm(request.POST,instance=item,updating=True)
+    print(1)
+    if request.method=='POST':
+        if "move_item" in request.POST:
+            print(3)
+    return HttpResponse("D")
 import requests
 from django.shortcuts import render
 

@@ -114,7 +114,7 @@ class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
         fields = '__all__' 
-        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','status','notes']
+        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','status','notes','is_move_to_warehouse']
         labels = {
             'name': 'Part Name',
         }
@@ -136,6 +136,10 @@ class ItemForm(forms.ModelForm):
     def __init__(self, *args, updating=False,completed=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['job'].empty_label = None
+        if updating:
+            instance = kwargs.get('instance')
+            company=instance.company
+            self.fields['job'].queryset=Job.objects.filter(company=company)
         if updating:
             
             self.fields['part_number'].widget=forms.HiddenInput()

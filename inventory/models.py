@@ -174,23 +174,30 @@ class Item(models.Model):
     added_date=models.DateTimeField(auto_now_add=True)
     added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user")
     is_warehouse_item=models.BooleanField(default=False)
+    is_moved_to_warehouse=models.BooleanField(default=False)
     warehouse_quantity=models.PositiveSmallIntegerField(default=0)
     job_quantity=models.PositiveSmallIntegerField(default=0)
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     is_used=models.BooleanField(default=False)
     notes=models.TextField(null=True, blank=True)
+   
     def clean(self):
-        if self.arrived_quantity > self.job_quantity:
+        
+        if self.arrived_quantity > self.job_quantity and not self.is_warehouse_item:
             raise ValidationError("Arrived quantity cannot be greater than job quantity.")
         if self.warehouse_quantity > 0 and self.is_used:
             raise ValidationError("This item is used, you cannot change the warehouse quantity.")
-        if self.job_quantity==0:
+        if self.job_quantity==0 and not self.is_warehouse_item:
             raise ValidationError("Job quantity can't be Zero")
     def save(self, *args, no_job=False,updating=False,no_recursion=False ,**kwargs):
             if self.arrived_quantity==self.job_quantity:
                 self.status = "arrived"
             else:
                 self.status = "ordered"
+            if self.is_warehouse_item:
+                self.job = None
+                self.job_quantity = 0
+            print('self.job', self.job)
             updating= True if self.pk else False
             no_job = self.job is None
             

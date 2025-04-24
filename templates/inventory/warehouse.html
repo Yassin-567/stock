@@ -3,15 +3,31 @@
 {% load custom_tags %}
 
 {% block body %}
+  <h3>Warehouse Items</h3>
   {% if warehouse_items %}
-    {% for item in warehouse_items %}
-      <li>
-        <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a> - Part Number: {{ item.part_number }} - Price: ${{ item.price }}
-        ({{ item.get_status_display }})
-        {{ item.Warehouse_quantity }}
-      </li>
-    {% endfor %}
+    <ul>
+      {% for item in warehouse_items %}
+        <li>
+          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a> - Part Number: {{ item.part_number }} - Price: ${{ item.price }} - Status: {{ item.get_status_display }} - Quantity: {{ item.warehouse_quantity }}
+        </li>
+      {% endfor %}
+    </ul>
   {% else %}
-    <h4>Warehouse is empty ☹</h4>
+    <p>No items in the warehouse.</p>
+  {% endif %}
+
+  <hr />
+
+  <h4>Items That Were Ordered for Jobs</h4>
+  {% if moved_items %}
+    <ul>
+      {% for item in moved_items %}
+        <li>
+          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a> - Part Number: {{ item.part_number }} - Price: ${{ item.price }} - Status: {{ item.get_status_display }} - Quantity Moved: {{ item.quantity_moved }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No items have been moved for jobs.</p>
   {% endif %}
 {% endblock %}

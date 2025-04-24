@@ -30,6 +30,7 @@ urlpatterns=[
     path('warehouse/',views.warehouse,name='warehouse'),
     path('additem/<str:no_job>', views.item_add, name='item_add'),
     path('additem/<int:pk>/', views.item_add, name='item_add'),
+    path('moveitemtowarehouse/<int:pk>/', views.move_item, name='move_item'),
     path('register/',views.register_user,name='register'),
     path('adpanel/',views.admin_panel,name='admin_panel'),
     path('api/',views.fetch_api_data,name='api_data'),

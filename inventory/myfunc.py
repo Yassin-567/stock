@@ -115,3 +115,11 @@ class FormHandler:
             return Group.objects.get(name='Employee')
 
         return []  # fallback
+
+class WareohuseFormHandler:
+    def __init__(self, form,):
+        self.form = form
+    def set_form_fields(self):
+        #self.form.fields['job'].widget=forms.HiddenInput()
+        self.form.fields['job_quantity'].widget=forms.HiddenInput()
+        self.form.fields['arrived_quantity'].label="Stock Quantity"
