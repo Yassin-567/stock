@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import CustomUser , Company , Job,Item,Comment
 # Register your model here.
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'quantity', 'reference','status','added_date', 'updated_time')
+    list_display = ('id', 'name','reference','status','is_warehouse_item','is_moved_to_warehouse' )
     list_display_links = ('name', 'reference')
     list_editable=[ 'status']
     list_filter = ('status',)
@@ -12,7 +12,7 @@ class ItemAdmin(admin.ModelAdmin):
 #     list_display = ('username', 'email','is_staff' )
 
 # admin.site.register(Job, )
-admin.site.register(Item, )
+admin.site.register(Item, ItemAdmin)
 # admin.site.register(JobItem, )
 # admin.site.register(CustomUser,CustomUserAdmin)
 # admin.site.site_header='Stock'

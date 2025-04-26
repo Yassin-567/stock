@@ -167,6 +167,7 @@ class Item(models.Model):
     )    
     name=models.CharField(max_length=70)
     part_number=models.TextField(max_length=30)
+    reference=models.TextField(blank=True,null=True,max_length=40)
     price=models.DecimalField(max_digits=10, decimal_places=2)
     supplier=models.CharField(max_length=70)
     status=models.CharField(max_length=20,choices=CHOICES,default="not_ordered")
@@ -190,14 +191,17 @@ class Item(models.Model):
         if self.job_quantity==0 and not self.is_warehouse_item:
             raise ValidationError("Job quantity can't be Zero")
     def save(self, *args, no_job=False,updating=False,no_recursion=False ,**kwargs):
+            updating=True if self.pk is not None else False
+            
             if self.arrived_quantity==self.job_quantity:
                 self.status = "arrived"
             else:
                 self.status = "ordered"
-            if self.is_warehouse_item:
+            if self.is_warehouse_item and not updating:
+
                 self.job = None
                 self.job_quantity = 0
-            print('self.job', self.job)
+            
             updating= True if self.pk else False
             no_job = self.job is None
             

@@ -15,10 +15,20 @@
   {% else %}
     <p>No items in the warehouse.</p>
   {% endif %}
-
+  <h3>Taken warehouse items</h3>
+  {% if used_warehouse_items %}
+    <ul>
+      {% for item in used_warehouse_items %}
+        <li>
+          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a> - Part Number: {{ item.part_number }} - Price: ${{ item.price }} - Status: {{ item.get_status_display }} - Quantity:{{ item.warehouse_quantity }} Moved: {{ item.quantity_moved }}
+          <span style="color: ;">Taken for job <a href="{% url 'update_job' item.job.id %}">{{ item.job }}</a></span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
   <hr />
 
-  <h4>Items That Were Ordered for Jobs</h4>
+  <h4>Items That Were Ordered for job and then moved to warehouse</h4>
   {% if moved_items %}
     <ul>
       {% for item in moved_items %}
@@ -30,4 +40,16 @@
   {% else %}
     <p>No items have been moved for jobs.</p>
   {% endif %}
+  <h3>Taken moved items</h3>
+  {% if used_moved_items %}
+    <ul>
+      {% for item in used_moved_items %}
+        <li>
+          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a> - Part Number: {{ item.part_number }} - Price: ${{ item.price }} - Status: {{ item.get_status_display }} - Quantity: Moved: {{ item.quantity_moved }}
+          <span style="color: ;">Taken for job <a href="{% url 'update_job' item.job.id %}">{{ item.job }}</a></span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  <hr />
 {% endblock %}

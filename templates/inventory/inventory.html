@@ -36,7 +36,8 @@
       <p>Added Date: {{ job.added_date }}</p>
       <p>Company: {{ job.company }}</p>
 
-      <h3>Items: ({{ job.item_count }})</h3>
+      <h3>Unique items= {{ job.items.count }} Total required items={{ job|total_quantity }} Arrived={{ job|total_arrived_quantity }}</h3>
+
       <ul>
         {% for item in job.items.all %}
           <li>

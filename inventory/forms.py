@@ -2,7 +2,7 @@ from django import forms
 from .models import CustomUser, Item, Company,Job,Comment
 from django.contrib.auth.models import Group
 from django.forms import HiddenInput
-
+from django.db.models import Q
 
 
 class loginForm(forms.Form):
@@ -72,6 +72,7 @@ class registerForm(forms.ModelForm):
         return user
     
 class JobForm(forms.ModelForm):
+    
     class Meta:
         model = Job
         fields = '__all__'
@@ -96,6 +97,7 @@ class JobForm(forms.ModelForm):
         }
     def __init__(self, *args, updating=False, **kwargs):
         super().__init__(*args, **kwargs)
+        
         if updating:
             # Disable fields if updating
             self.fields['job_id'].widget=forms.HiddenInput()
@@ -110,11 +112,35 @@ class CommentForm(forms.ModelForm):
             'company': forms.HiddenInput(),
         }
     
+
+class StokcItemsForm(forms.ModelForm):
+    stock_items = forms.ModelMultipleChoiceField(
+        queryset=Item.objects.none(),
+        #widget=forms.CheckboxSelectMultiple(),
+        required=False,
+        label="Stock Items",)
+    def __init__(self, *args, company, **kwargs):
+        super().__init__(*args, **kwargs)
+        # instance = kwargs.get('instance')
+        # print (kwargs)
+        #instance.company if instance else kwargs.get('company', None)
+        if company:
+            self.fields['stock_items'].queryset = Item.objects.filter(
+                Q(is_warehouse_item=True) | Q(is_moved_to_warehouse=True),
+                company=company,
+                job=None
+            )
+
+
+    class Meta:
+        model=Item
+        fields=['job_quantity']
 class ItemForm(forms.ModelForm):
+    
     class Meta:
         model = Item
         fields = '__all__' 
-        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','status','notes','is_move_to_warehouse']
+        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','is_moved_to_warehouse','status','notes','is_move_to_warehouse']
         labels = {
             'name': 'Part Name',
         }
@@ -130,11 +156,12 @@ class ItemForm(forms.ModelForm):
                 #'pattern': '[0-9]*',  # Numeric pattern
                 'placeholder': 'Enter part number',
                 'class': 'form-control',}),
-            
+            'reference':forms.Textarea(attrs={'rows':1})
         }
-    
+
     def __init__(self, *args, updating=False,completed=False, **kwargs):
         super().__init__(*args, **kwargs)
+       
         self.fields['job'].empty_label = None
         if updating:
             instance = kwargs.get('instance')

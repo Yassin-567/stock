@@ -1,6 +1,6 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
 from .models import CustomUser,Company,Job,Item,Comment
-from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm
+from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,StokcItemsForm
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -84,12 +84,14 @@ def inventory(request):
     rjobs=Job.objects.filter(company=request.user.company)
     
     context={'rjobs':rjobs,
-            'items':items
+            'items':items,
+          
             }
     return render(request,'inventory/inventory.html',context)
 
 @login_required
 def job_create(request):
+    
     if request.method == 'POST':
         form = JobForm(request.POST)
         if form.is_valid():
@@ -136,7 +138,9 @@ def update_job(request, pk):
         'company': request.user.company,
         })
             form = JobForm(instance=job,)
-            return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments})       
+            items=Item.objects.filter(company=request.user.company,job=job)
+
+            return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items})       
     context={'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count}
     return render(request, 'inventory/job_update.html', context)       
 ###########################ITEM######################
@@ -147,29 +151,43 @@ def item_add(request,pk=None,no_job=False):
     except Job.DoesNotExist:
         job=None
     form=ItemForm()
+    stock_items_form=StokcItemsForm(company=request.user.company)
     form.fields['job'].widget = MultipleHiddenInput()
     if request.method=='POST':
+        stock_items_form=StokcItemsForm(request.POST,company=request.user.company)
         form=ItemForm(request.POST)
-        if form.is_valid():
-            form.fields['job'].widget = MultipleHiddenInput()
-            item=form.save(commit=False)
-            item.company=request.user.company
-            item.user=request.user
-            item.added_by=request.user
-            if pk is not None:
-                try:
-                    item.job = job
-                    item.save()
-                except Job.DoesNotExist:
-                    messages.error(request, f'{pk}Specified job does not exist.')
-                    return render(request, 'inventory/add_item.html', {'form': form})
-            elif pk is None and no_job:
-                item.job=None
-                item.is_warehouse_item=True
-                item.save(no_job=True)
-            messages.success(request, 'Item added successfully')
-            return redirect('inventory')
-    return render(request, 'inventory/add_item.html', {'form': form,'job':job})
+        if 'adding_from_stock' in request.POST:
+            if stock_items_form.is_valid():
+                stock_items=stock_items_form.cleaned_data['stock_items'] 
+                if len(stock_items)>0:
+                    for item in stock_items:
+                        print(item)
+                        item.job=job
+                        item.is_warehouse_item=True
+                        item.save()
+                    messages.success(request, 'Item added from stock successfully')
+                    return redirect('inventory')
+        elif 'adding_new' in request.POST:
+            if form.is_valid():
+                form.fields['job'].widget = MultipleHiddenInput()
+                item=form.save(commit=False)
+                item.company=request.user.company
+                item.user=request.user
+                item.added_by=request.user
+                if pk is not None:
+                    try:
+                        item.job = job
+                        item.save()
+                    except Job.DoesNotExist:
+                        messages.error(request, f'{pk}Specified job does not exist.')
+                        return render(request, 'inventory/add_item.html', {'form': form,'stock_items_form':stock_items_form})
+                elif pk is None and no_job:
+                    item.job=None
+                    item.is_warehouse_item=True
+                    item.save(no_job=True)
+                messages.success(request, 'New item added successfully')
+                return redirect('inventory')
+    return render(request, 'inventory/add_item.html', {'form': form,'job':job,'stock_items_form':stock_items_form})
 @login_required
 def update_item(request, pk):
     item = Item.objects.get(id=pk)
@@ -208,10 +226,14 @@ def update_item(request, pk):
             item.job=None
             item.is_moved_to_warehouse=True
             item.save(updating=True)
-            return redirect('inventory')        
+            return redirect('inventory') 
+        if 'get_from_stock' in request.POST:
+            
+            return
         form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
         comments_form=CommentForm(request.POST)
         if form.is_valid() and 'edit' in request.POST: 
+           
             item=form.save(commit=False)
             item.save(updating=True)
             form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
@@ -389,18 +411,15 @@ def register_company(request):
     return render(request, 'auths/register_company.html', {'company_form': company_form, 'user_form': user_form})
 #############
 def warehouse(request):
-    warehouse_items=Item.objects.filter(is_warehouse_item=True ,company=request.user.company,)
-    moved_items=Item.objects.filter(is_moved_to_warehouse=True ,company=request.user.company,)
-    return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items,'moved_items':moved_items})
+    warehouse_items=Item.objects.filter(is_warehouse_item=True ,company=request.user.company,job=None)
+    moved_items=Item.objects.filter(is_moved_to_warehouse=True ,company=request.user.company,job=None)
+    used_warehouse_items=Item.objects.filter(is_warehouse_item=True ,company=request.user.company,job= not None)
+    used_moved_items=Item.objects.filter(is_moved_to_warehouse=True ,company=request.user.company,job= not None)
+    
+    return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items,'moved_items':moved_items,'used_warehouse_items':used_warehouse_items,'used_moved_items':used_moved_items})
 
-def move_item(request,pk):
-    item=Item.objects.filter(company=request.user.company,id=pk)[0]
-    form = ItemForm(request.POST,instance=item,updating=True)
-    print(1)
-    if request.method=='POST':
-        if "move_item" in request.POST:
-            print(3)
-    return HttpResponse("D")
+
+
 import requests
 from django.shortcuts import render
 

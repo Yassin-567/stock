@@ -26,3 +26,20 @@ def add_suffix(value, suffix):
     if value:
         return f"{value}{suffix}"
     return ""
+
+@register.filter
+def total_quantity(job):
+
+    total_quantity = 0
+    for item in job.items.all():
+        total_quantity =total_quantity+item.job_quantity
+    return total_quantity
+
+@register.filter
+def total_arrived_quantity(job):
+
+    total_arrived_quantity = 0
+    for item in job.items.all():
+        total_arrived_quantity = total_arrived_quantity+item.arrived_quantity
+    return total_arrived_quantity
+        
