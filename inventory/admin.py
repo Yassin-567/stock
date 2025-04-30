@@ -1,11 +1,9 @@
 from django.contrib import admin
-from .models import CustomUser , Company , Job,Item,Comment
+from .models import CustomUser , Company , Job,Item,Comment,JobItem,WarehouseItem
 # Register your model here.
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name','reference','status','is_warehouse_item','is_moved_to_warehouse' )
+    list_display = ('id', 'name','reference', )
     list_display_links = ('name', 'reference')
-    list_editable=[ 'status']
-    list_filter = ('status',)
     search_fields = ('name', 'reference')
     #fields=[('name', )] #in case you need to show specific fields
 # class CustomUserAdmin(admin.ModelAdmin):
@@ -18,7 +16,8 @@ admin.site.register(Item, ItemAdmin)
 # admin.site.site_header='Stock'
 # admin.site.site_title='Stock'
 
-
+admin.site.register(JobItem)
+admin.site.register(WarehouseItem)
 admin.site.register(Job,  )
 
 # @admin.register(Comment)

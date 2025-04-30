@@ -37,9 +37,9 @@ def total_quantity(job):
 
 @register.filter
 def total_arrived_quantity(job):
-
-    total_arrived_quantity = 0
-    for item in job.items.all():
-        total_arrived_quantity = total_arrived_quantity+item.arrived_quantity
-    return total_arrived_quantity
+    pass
+    # total_arrived_quantity = 0
+    # for item in job.items.all():
+    #     total_arrived_quantity = total_arrived_quantity+item.arrived_quantity
+    # return total_arrived_quantity
         

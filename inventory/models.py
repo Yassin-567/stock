@@ -158,84 +158,52 @@ class Item(models.Model):
         ('arrived', 'Arrived'),
         ('not_ordered','Not ordered'),
     ]
-    job = models.ForeignKey(
-        Job,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="items"
-    )    
+    
     name=models.CharField(max_length=70)
     part_number=models.TextField(max_length=30)
     reference=models.TextField(blank=True,null=True,max_length=40)
     price=models.DecimalField(max_digits=10, decimal_places=2)
     supplier=models.CharField(max_length=70)
-    status=models.CharField(max_length=20,choices=CHOICES,default="not_ordered")
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company")
     added_date=models.DateTimeField(auto_now_add=True)
     added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user")
-    is_warehouse_item=models.BooleanField(default=False)
-    is_moved_to_warehouse=models.BooleanField(default=False)
-    warehouse_quantity=models.PositiveSmallIntegerField(default=0)
-    job_quantity=models.PositiveSmallIntegerField(default=0)
+    #is_warehouse_item=models.BooleanField(default=False)
+    #is_moved_to_warehouse=models.BooleanField(default=False)
+    #warehouse_quantity=models.PositiveSmallIntegerField(default=0)
+    #job_quantity=models.PositiveSmallIntegerField(default=0)
+    #arrived_quantity=models.PositiveSmallIntegerField(default=0)
+    required_quantity=models.PositiveSmallIntegerField(default=0)
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
-    is_used=models.BooleanField(default=False)
+    #status=models.CharField(max_length=20,choices=CHOICES,default="not_ordered")
     notes=models.TextField(null=True, blank=True)
-   
-    def clean(self):
-        
-        if self.arrived_quantity > self.job_quantity and not self.is_warehouse_item:
-            raise ValidationError("Arrived quantity cannot be greater than job quantity.")
-        if self.warehouse_quantity > 0 and self.is_used:
-            raise ValidationError("This item is used, you cannot change the warehouse quantity.")
-        if self.job_quantity==0 and not self.is_warehouse_item:
-            raise ValidationError("Job quantity can't be Zero")
-    def save(self, *args, no_job=False,updating=False,no_recursion=False ,**kwargs):
-            updating=True if self.pk is not None else False
-            
-            if self.arrived_quantity==self.job_quantity:
-                self.status = "arrived"
-            else:
-                self.status = "ordered"
-            if self.is_warehouse_item and not updating:
 
-                self.job = None
-                self.job_quantity = 0
-            
-            updating= True if self.pk else False
-            no_job = self.job is None
-            
-            if  updating:
-                if not no_job:
-                    
-                    super().save(*args, **kwargs)
-                    self.job.save(*args, **kwargs) if not no_recursion else None
-                    if self.job.status not in ["completed", "cancelled"]:   
-                        if not self.job.items_arrived:
-                            self.job.status = "paused"
-                            self.job.save(*args, **kwargs) if not no_recursion else None
-                        else:
-                            self.job.status = "ready"
-                            self.job.save(*args, **kwargs) if not no_recursion  else None
-                elif no_job:
-                    
-                    self.is_warehouse_item=True
-                    super().save(*args, **kwargs)
-            else:
-                if no_job:
-                    self.is_warehouse_item=True
-                    super().save(*args, **kwargs)
-                else:
-                    super().save(*args, **kwargs)
-                    self.job.save(*args, **kwargs)
-                    if self.job.status not in ["completed", "cancelled"]:   
-                        if not self.job.items_arrived:
-                            self.job.status = "paused"
-                            self.job.save()
-                        else:
-                            self.job.status = "ready"
-                            self.job.save()
-        
-#need to fix:
-#1)adding items for no jobs
-#2)relation between updating jobs and items
+
+class JobItem(models.Model):
+    CHOICES=[
+        ('ordered', 'Ordered'),
+        ('arrived', 'Arrived'),
+        ('not_ordered','Not ordered'),
+    ]
+    job = models.ForeignKey(Job, on_delete=models.DO_NOTHING, related_name="items")
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="job_items")
+    job_quantity = models.PositiveSmallIntegerField(default=0)  # How many needed for this job
+    arrived_quantity=models.PositiveSmallIntegerField(default=0)
+    status=models.CharField(max_length=20,choices=CHOICES,default="not_ordered")
+    is_used=models.BooleanField(default=False)
+    def __str__(self):
+        return str(self.item.name)
+class WarehouseItem(models.Model):
+    CHOICES=[
+        ('ordered', 'Ordered'),
+        ('arrived', 'Arrived'),
+        ('not_ordered','Not ordered'),
+    ]
+    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="warehouse_company_items")
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="warehouse_items")
+    warehouse_quantity = models.PositiveSmallIntegerField(default=0)  
+    status=models.CharField(max_length=20,choices=CHOICES,default="not_ordered")
+    is_used=models.BooleanField(default=False)
+    is_moved_from_job=models.BooleanField(default=False)
+
+    def __str__(self):
+        return str(self.item.name)

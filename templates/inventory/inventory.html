@@ -39,10 +39,10 @@
       <h3>Unique items= {{ job.items.count }} Total required items={{ job|total_quantity }} Arrived={{ job|total_arrived_quantity }}</h3>
 
       <ul>
-        {% for item in job.items.all %}
+        {% for jobitem in job.items.all %}
           <li>
-            <a href="{% url 'update_item' item.id %}">{{ item.name }}</a> - Part Number: {{ item.part_number }} - Price: ${{ item.price }}
-            ({{ item.get_status_display }}){% if item.is_used %}
+            <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.item.name }}</a> - Part Number: {{ jobitem.item.part_number }} - Price: ${{ jobitem.item.price }}
+            ({{ jobitem.get_status_display }}){% if jobitem.item.is_used %}
               <span style="
             display: inline-block;
     padding: 1px 10px;
@@ -55,7 +55,7 @@
     border-radius: 10px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       ">Used</span>
-              {{ item.notes }}
+              {{ item.item.notes }}
             {% endif %}
           </li>
         {% empty %}

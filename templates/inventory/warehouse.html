@@ -8,7 +8,7 @@
     <ul>
       {% for item in warehouse_items %}
         <li>
-          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a> - Part Number: {{ item.part_number }} - Price: ${{ item.price }} - Status: {{ item.get_status_display }} - Quantity: {{ item.warehouse_quantity }}
+          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.item.name }}</a> - Part Number: {{ item.item.part_number }} - Price: ${{ item.item.price }} - Status: {{ item.get_status_display }} - Quantity: {{ item.warehouse_quantity }}
         </li>
       {% endfor %}
     </ul>
@@ -20,7 +20,7 @@
     <ul>
       {% for item in used_warehouse_items %}
         <li>
-          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a> - Part Number: {{ item.part_number }} - Price: ${{ item.price }} - Status: {{ item.get_status_display }} - Quantity:{{ item.warehouse_quantity }} Moved: {{ item.quantity_moved }}
+          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.item.name }}</a> - Part Number: {{ item.item.part_number }} - Price: ${{ item.item.price }} - Status: {{ item.get_status_display }} - Quantity:{{ item.item.arrived_quantity }} Moved: {{ item.warehouse_quantity }}
           <span style="color: ;">Taken for job <a href="{% url 'update_job' item.job.id %}">{{ item.job }}</a></span>
         </li>
       {% endfor %}
@@ -33,7 +33,7 @@
     <ul>
       {% for item in moved_items %}
         <li>
-          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a> - Part Number: {{ item.part_number }} - Price: ${{ item.price }} - Status: {{ item.get_status_display }} - Quantity Moved: {{ item.quantity_moved }}
+          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.item.name }}</a> - Part Number: {{ item.item.part_number }} - Price: ${{ item.item.price }} - Status: {{ item.get_status_display }} - Quantity Moved: {{ item.quantity_moved }}
         </li>
       {% endfor %}
     </ul>
@@ -45,7 +45,7 @@
     <ul>
       {% for item in used_moved_items %}
         <li>
-          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a> - Part Number: {{ item.part_number }} - Price: ${{ item.price }} - Status: {{ item.get_status_display }} - Quantity: Moved: {{ item.quantity_moved }}
+          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.item.name }}</a> - Part Number: {{ item.item.part_number }} - Price: ${{ item.item.price }} - Status: {{ item.get_status_display }} - Quantity: Moved: {{ item.quantity_moved }}
           <span style="color: ;">Taken for job <a href="{% url 'update_job' item.job.id %}">{{ item.job }}</a></span>
         </li>
       {% endfor %}

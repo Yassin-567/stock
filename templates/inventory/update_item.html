@@ -65,6 +65,7 @@
       </div>
 
       <form action="POST">
+        {% csrf_token %}
         <section class="form-section">
           <div class="form-group">{{ comments_form.as_p }}</div>
           <div>
@@ -96,21 +97,15 @@
     <ul class="item-items">
       <li class="item-item">
         <div class="item-info">
-          <h4>{{ item.name }} - {{ item.get_status_display }}</h4>
-          {% if item.image %}
-            <img class="item-img" src="{{ item.image.url }}" alt="{{ item.name }}" />
+          <h4>{{ item.item.name }} - {{ item.get_status_display }}</h4>
+          {% if item.item.image %}
+            <img class="item-img" src="{{ item.image.url }}" alt="{{ item.item.name }}" />
           {% endif %}
           <p>
-            <strong>Reference:</strong> {{ item.reference }}
+            <strong>Reference:</strong> {{ item.item.reference }}
           </p>
           <p>
-            <strong>Description:</strong> {{ item.description }}
-          </p>
-          <p>
-            <strong>Description:</strong> {{ item.description }}
-          </p>
-          <p>
-            <strong>Added by:</strong> {{ item.added_by.username }} <br /><strong>At</strong>: {{ item.added_date }}
+            <strong>Added by:</strong> {{ item.item.added_by.username }} <br /><strong>At</strong>: {{ item.item.added_date }}
           </p>
         </div>
       </li>

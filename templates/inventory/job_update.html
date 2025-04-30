@@ -2,6 +2,12 @@
 {% load static %}
 
 {% block body %}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-warning">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
   <h2 style="margin-bottom: 20px; font-size: 1.5rem; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
     <span>
       Job ID:

@@ -1,5 +1,5 @@
 from django import forms
-from .models import CustomUser, Item, Company,Job,Comment
+from .models import CustomUser, Item, Company,Job,Comment,WarehouseItem
 from django.contrib.auth.models import Group
 from django.forms import HiddenInput
 from django.db.models import Q
@@ -85,7 +85,7 @@ class JobForm(forms.ModelForm):
             'status': forms.Select(attrs={'class': 'form-select', 'id': 'status'}),
             'price': forms.NumberInput(attrs={'class': 'form-control'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
-            'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control', 'id': 'arrived_quantity'}),
+            #'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control', 'id': 'arrived_quantity'}),
             'quoted':forms.HiddenInput(),
             'job_id': forms.TextInput(attrs={  # Override widget for job_id
                 'type': 'text',  # Set input type to text
@@ -112,35 +112,50 @@ class CommentForm(forms.ModelForm):
             'company': forms.HiddenInput(),
         }
     
-
+''
 class StokcItemsForm(forms.ModelForm):
     stock_items = forms.ModelMultipleChoiceField(
         queryset=Item.objects.none(),
         #widget=forms.CheckboxSelectMultiple(),
         required=False,
         label="Stock Items",)
-    def __init__(self, *args, company, **kwargs):
+    def __init__(self, *args, company=None, **kwargs):
         super().__init__(*args, **kwargs)
         # instance = kwargs.get('instance')
         # print (kwargs)
         #instance.company if instance else kwargs.get('company', None)
         if company:
-            self.fields['stock_items'].queryset = Item.objects.filter(
-                Q(is_warehouse_item=True) | Q(is_moved_to_warehouse=True),
-                company=company,
-                job=None
+            self.fields['stock_items'].queryset = WarehouseItem.objects.filter(
+                
+                item__company=company,
+                
+                warehouse_quantity__gt= 0,
             )
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        #job_quantity = cleaned_data.get('job_quantity')
+        stock_items = cleaned_data.get('stock_items')[0]
+        print(stock_items)
+        
+        
+            
+        # if job_quantity > stock_items.arrived_quantity:
+        #     raise forms.ValidationError(
+        #         f"Only {stock_items.arrived_quantity} parts are available in stock."
+        #     )
+
+        return cleaned_data
 
 
     class Meta:
         model=Item
-        fields=['job_quantity']
+        fields=['required_quantity']
 class ItemForm(forms.ModelForm):
-    
     class Meta:
         model = Item
         fields = '__all__' 
-        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','is_moved_to_warehouse','status','notes','is_move_to_warehouse']
+        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','is_moved_to_warehouse','notes','is_move_to_warehouse']
         labels = {
             'name': 'Part Name',
         }
@@ -149,7 +164,7 @@ class ItemForm(forms.ModelForm):
             'status': forms.Select(attrs={'class': 'form-select','id':'status'}),
             'price': forms.NumberInput(attrs={'class': 'form-control'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
-            'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control','id':'arrived_quantity'}),
+            #'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control','id':'arrived_quantity'}),
             'part_number':forms.TextInput(attrs={  # Override widget for job_id
                 'type': 'text',  # Set input type to text
                 'inputmode': 'numeric',  # Allow numeric input
@@ -159,46 +174,25 @@ class ItemForm(forms.ModelForm):
             'reference':forms.Textarea(attrs={'rows':1})
         }
 
-    def __init__(self, *args, updating=False,completed=False, **kwargs):
+    def __init__(self, *args, updating=False,completed=False,job=False, **kwargs):
         super().__init__(*args, **kwargs)
-       
-        self.fields['job'].empty_label = None
+        #self.fields['job'].empty_label = None
         if updating:
             instance = kwargs.get('instance')
-            company=instance.company
-            self.fields['job'].queryset=Job.objects.filter(company=company)
-        if updating:
-            
+            #company=instance.company
+            #self.fields['job'].queryset=Job.objects.filter(company=company)
             self.fields['part_number'].widget=forms.HiddenInput()
             if completed:
                 for field in self.fields.values():
-                    
                     field.widget.attrs['class'] = 'faded-input'
                     field.widget.attrs['disabled'] = 'disabled'
-    
-class ItemFormo(forms.Form):#added o to stop using it and creat model form with same name
-    STATUS_CHOICES =[
-        ('a','Arrived'),
-        ('c','Ordered'),
-        ('d','Taken'),
-        ('e','Job done'),
-        ('b',''),
-    ]
-    name = forms.CharField(max_length=90)
-    part_number = forms.CharField(max_length=100)
-    description = forms.CharField(max_length=200, required=False)
-    reference=forms.CharField(max_length=30)
-    jobid = forms.CharField(max_length=11)
-    quantity = forms.IntegerField()
-    price = forms.DecimalField(max_digits=10, decimal_places=2)    
-    supplier = forms.CharField(max_length=90)
-    image = forms.ImageField(required=False)
-    status = forms.ChoiceField(choices=STATUS_CHOICES, initial='b',required=True)
-
-    
+        elif job==None:
+            self.fields['required_quantity'].widget=forms.HiddenInput()
 
 
-class SearchForm(forms.Form):#-
+
+
+class SearchForm(forms.Form):
     search_text = forms.CharField(max_length=100)#-
     status_filter = forms.ChoiceField(choices=[('', 'All statuses'), ('a', 'Arrived'), ('c', 'Ordered'), ('d', 'Taken'), ('e', 'Job done'), ('b', '')], required=False)     #-
     supplier_filter = forms.CharField(max_length=90, required=False)#-
