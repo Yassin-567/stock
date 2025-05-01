@@ -82,7 +82,9 @@ def inventory(request):
     items=Item.objects.filter(company=request.user.company)
     
     rjobs=Job.objects.filter(company=request.user.company)
-    
+    from django.db import connection
+    print(connection.vendor)
+
     context={'rjobs':rjobs,
             'items':items,
           
