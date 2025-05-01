@@ -190,6 +190,7 @@ class JobItem(models.Model):
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     status=models.CharField(max_length=20,choices=CHOICES,default="not_ordered")
     is_used=models.BooleanField(default=False)
+    from_warehouse=models.BooleanField(default=False)
     def __str__(self):
         return str(self.item.name)
 class WarehouseItem(models.Model):

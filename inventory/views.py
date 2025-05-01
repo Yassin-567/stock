@@ -164,16 +164,37 @@ def item_add(request,pk=None,no_job=False):
         if 'adding_from_stock' in request.POST:
             if stock_items_form.is_valid():
                 stock_items=stock_items_form.cleaned_data['stock_items'] 
-                job_quantity=stock_items_form.cleaned_data['job_quantity'] 
+                required_quantity=stock_items_form.cleaned_data['required_quantity'] 
                 if len(stock_items)>0:
                     for item in stock_items:
-                        item.job=job
-                        item.is_warehouse_item=True
-                        item.save()
-                        calculate_item(item=item,job_qunatity=job_quantity)
+                        try:
+                            with transaction.atomic():
+                                if item.warehouse_quantity>0 and item.warehouse_quantity>= required_quantity:
+                                    JobItem.objects.create(
+                                    job=job,
+                                    from_warehouse=True,
+                                    item=item.item,
+                                    status='arrived',
+
+
+                                    )
+                                    item.warehouse_quantity=item.warehouse_quantity-required_quantity
+                                    item.save(update_fields=['warehouse_quantity'])
+                                    print(item.warehouse_quantity)
+                                else:
+                                    messages.error(request,"Not enough stock")
+                                    return redirect('inventory')
+                        except IntegrityError:
+                            messages.error(request,"Failed")
+                        # item.job=job
+                        # item.is_warehouse_item=True
+                        # item.save()
+                        # calculate_item(item=item,job_qunatity=job_quantity)
                         
                     messages.success(request, 'Item added from stock successfully')
-                    return redirect('inventory')
+                    form=ItemForm(job=job)
+                    stock_items_form=StokcItemsForm(company=request.user.company)
+                    return render(request, 'inventory/add_item.html', {'form': form,'job':job,'stock_items_form':stock_items_form})
         elif 'adding_new' in request.POST:
             if form.is_valid():
                 
