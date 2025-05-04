@@ -1,5 +1,5 @@
 from django import forms
-from .models import CustomUser, Item, Company,Job,Comment,WarehouseItem
+from .models import CustomUser, Item, Company,Job,Comment,WarehouseItem,JobItem
 from django.contrib.auth.models import Group
 from django.forms import HiddenInput
 from django.db.models import Q
@@ -188,10 +188,14 @@ class ItemForm(forms.ModelForm):
                     field.widget.attrs['disabled'] = 'disabled'
         elif job==None:
             self.fields['required_quantity'].widget=forms.HiddenInput()
-
-
-
-
+class JobItemForm(forms.ModelForm):
+    class Meta:
+        model=JobItem
+        fields='__all__'
+        exclude=['job','from_warehouse']
+    # def __init__(self, *args,**kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     self.fields['job'].widget=forms.HiddenInput()
 class SearchForm(forms.Form):
     search_text = forms.CharField(max_length=100)#-
     status_filter = forms.ChoiceField(choices=[('', 'All statuses'), ('a', 'Arrived'), ('c', 'Ordered'), ('d', 'Taken'), ('e', 'Job done'), ('b', '')], required=False)     #-

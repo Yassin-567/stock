@@ -121,7 +121,7 @@ class WareohuseFormHandler:
         self.form = form
     def set_form_fields(self):
         #self.form.fields['job'].widget=forms.HiddenInput()
-        self.form.fields['job_quantity'].widget=forms.HiddenInput()
+        #self.form.fields['job_quantity'].widget=forms.HiddenInput()
         self.form.fields['arrived_quantity'].label="Stock Quantity"
 
 def calculate_item(item,job_qunatity):

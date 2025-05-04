@@ -1,6 +1,6 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
 from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem
-from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,StokcItemsForm
+from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,StokcItemsForm,JobItemForm
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -167,20 +167,29 @@ def item_add(request,pk=None,no_job=False):
                 required_quantity=stock_items_form.cleaned_data['required_quantity'] 
                 if len(stock_items)>0:
                     for item in stock_items:
+                        
                         try:
                             with transaction.atomic():
+                                
                                 if item.warehouse_quantity>0 and item.warehouse_quantity>= required_quantity:
-                                    JobItem.objects.create(
-                                    job=job,
-                                    from_warehouse=True,
-                                    item=item.item,
-                                    status='arrived',
-
-
-                                    )
-                                    item.warehouse_quantity=item.warehouse_quantity-required_quantity
-                                    item.save(update_fields=['warehouse_quantity'])
-                                    print(item.warehouse_quantity)
+                                    if JobItem.objects.filter(job=job,item=item.item,):
+                                        jobitem=JobItem.objects.filter(job=job,item=item.item,).first()
+                                        jobitem.job_quantity=jobitem.job_quantity+required_quantity
+                                        jobitem.save(update_fields=['job_quantity'])
+                                        item.warehouse_quantity=item.warehouse_quantity-required_quantity
+                                        item.save(update_fields=['warehouse_quantity'])
+                                    else:
+                                        JobItem.objects.create(
+                                        job=job,
+                                        from_warehouse=True,
+                                        item=item.item,
+                                        status='arrived',
+                                        job_quantity=+required_quantity,
+                                        
+                                        )
+                                        item.warehouse_quantity=item.warehouse_quantity-required_quantity
+                                        item.save(update_fields=['warehouse_quantity'])
+                                        print(item.warehouse_quantity)
                                 else:
                                     messages.error(request,"Not enough stock")
                                     return redirect('inventory')
@@ -210,33 +219,31 @@ def item_add(request,pk=None,no_job=False):
                         
                         job_quantity=form.cleaned_data['required_quantity']
                         arrived_quantity=form.cleaned_data['arrived_quantity']
-                        
                         if pk is not None:
                             
-                            try:
-                                job=Job.objects.filter(company=request.user.company).get(job_id=pk)
-                                JobItem.objects.create(item=item,
-                                                    job=job,
-                                                    job_quantity=job_quantity,
-                                                    arrived_quantity=arrived_quantity,
-                                                    )
-                                #item.job = job
-                                #item.save()
-                            except Job.DoesNotExist:
-                                transaction.set_rollback(True)
-                                messages.error(request, f'{pk}Specified job does not exist.')
-                                return render(request, 'inventory/add_item.html', {'form': form,'stock_items_form':stock_items_form})
+                            job=Job.objects.filter(company=request.user.company).get(job_id=pk)
+                            print("D")
+                            JobItem.objects.create(item=item,
+                                                job=job,
+                                                job_quantity=job_quantity,
+                                                arrived_quantity=arrived_quantity,
+                                                
+                                                )
+                            #item.job = job
+                            #item.save()
+                            form=ItemForm(job=job)
+                            stock_items_form=StokcItemsForm(company=request.user.company)
+                            messages.success(request, f'{item}-is added to job {job}')
+                            return render(request, 'inventory/add_item.html', {'form': form,'stock_items_form':stock_items_form})
                         elif pk is None and no_job: 
                             
                             WarehouseItem.objects.create(item=item,
                                                     warehouse_quantity=arrived_quantity,
-                                                    
-
-                                                    )
-                        messages.success(request, 'New item added successfully')
-                        return redirect('inventory')
+                                                    company=request.user.company,)
+                            messages.success(request, f'{item}-is added to warehouse')
+                            return redirect('inventory')
                 except IntegrityError:
-                    messages.error(request, f'{pk} — Specified job does not exist.')
+                    messages.error(request, f'{item} — failed')
                 # Raise an IntegrityError manually to roll back the transaction
                     #raise IntegrityError("Job does not exist, rolling back item save.")
                     return render(request, 'inventory/add_item.html', {'form': form,'job':job,'stock_items_form':stock_items_form})
@@ -246,7 +253,7 @@ def update_item(request, pk):
     item = JobItem.objects.get(id=pk)
     job=Job.objects.filter(company=request.user.company).get(job_id=item.job.job_id) if item.job else None
     completed=job.status=='completed'
-    form = ItemForm(instance=item.item,updating=True,completed=completed)
+    form = JobItemForm(instance=item)#,updating=True,completed=completed
     comments_form=CommentForm(initial={
         'content_type': ContentType.objects.get_for_model(JobItem),
         'object_id': item.id,
@@ -291,25 +298,44 @@ def update_item(request, pk):
                     #is_used=job_item.is_used,
                     is_moved_from_job=True
                 )
-
                 # Delete JobItem after successful move
                 job_item.delete()
-
                 messages.success(request,"Item moved to warehouse")
-
             except JobItem.DoesNotExist:
                 messages.error(request,"Moving failed")
             return redirect('inventory') 
         if 'get_from_stock' in request.POST:
             
             return
-        form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
+        form = JobItemForm(request.POST, request.FILES, instance=item,)
         comments_form=CommentForm(request.POST)
+        prevq=item.job_quantity
         if form.is_valid() and 'edit' in request.POST: 
-           
-            item=form.save(commit=False)
-            item.save(updating=True)
-            form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
+            job_quantiy=form.cleaned_data['job_quantity']
+            if item.from_warehouse:
+                if WarehouseItem.objects.get(item=item.item).warehouse_quantity>=job_quantiy-prevq:
+                    
+                    # if job_quantiy>prevq:
+                    witem=WarehouseItem.objects.get(item=item.item)
+                    witem.warehouse_quantity+=prevq-job_quantiy
+                    witem.save(update_fields=['warehouse_quantity'])
+
+                    # else:
+                    #     print(job_quantiy,prevq,"less")
+                    item=form.save(commit=False)
+                    item.save()
+                    
+                else:
+                    witem=WarehouseItem.objects.get(item=item.item)
+                    form = JobItemForm( instance=item)
+                    messages.error(request,f"Not enough stock, only {witem.warehouse_quantity} available")
+                    context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
+                    return render(request, 'inventory/update_item.html', context)
+            else:
+                item=form.save(commit=False)
+                item.save()
+            
+            form = JobItemForm( instance=item)#request.POST, request.FILES,updating=True
 
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
             return render(request, 'inventory/update_item.html', context)
@@ -318,18 +344,20 @@ def update_item(request, pk):
 ########################
 @login_required
 def update_warehouse_item(request, pk):
-    item = Item.objects.filter(company=request.user.company,id=pk)[0]
+    item = WarehouseItem.objects.filter(company=request.user.company,id=pk)[0].item
+    warehouse_item = WarehouseItem.objects.filter(company=request.user.company,id=pk)[0]
+    
     #job=Job.objects.filter(company=request.user.company).get(job_id=item.job.job_id) if item.job else None
     #completed=job.status=='completed'
     form = ItemForm(instance=item,updating=True)
     handler=WareohuseFormHandler(form,)
     handler.set_form_fields()
     comments_form=CommentForm(initial={
-        'content_type': ContentType.objects.get_for_model(Item),
-        'object_id': item.id,
+        'content_type': ContentType.objects.get_for_model(WarehouseItem),
+        'object_id': warehouse_item.id,
         'company': request.user.company,
         })
-    comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(Item), object_id=item.id,company=request.user.company)
+    comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(WarehouseItem), object_id=warehouse_item.id,company=request.user.company)
     if request.method == 'POST':
         comments_form=CommentForm(request.POST)
         if comments_form.is_valid() and "just_add_comment" in request.POST :
@@ -338,10 +366,10 @@ def update_warehouse_item(request, pk):
             comment.added_by = request.user 
             comment.company = request.user.company
             comment.save()
-            comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(Item), object_id=item.id,company=request.user.company)
+            comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(WarehouseItem), object_id=warehouse_item.id,company=request.user.company)
             comments_form=CommentForm(initial={
             'content_type': ContentType.objects.get_for_model(Item),
-            'object_id': item.id,
+            'object_id': warehouse_item.id,
             'company': request.user.company,
             })
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
@@ -358,10 +386,15 @@ def update_warehouse_item(request, pk):
         comments_form=CommentForm(request.POST)
         if form.is_valid() and 'edit' in request.POST: 
             item=form.save(commit=False)
-            item.save(updating=True)
+            item.company=request.user.company
+            item.save(update_fields=['arrived_quantity'],)#updating=True
+            arrived_quantity=form.cleaned_data['arrived_quantity']
+            warehouse_item.warehouse_quantity=arrived_quantity
+            warehouse_item.save(update_fields=['warehouse_quantity'])
             form = ItemForm( instance=item,updating=True)
             handler=WareohuseFormHandler(form,)
             handler.set_form_fields()
+            messages.success(request,f'Item {warehouse_item} updated successfully')
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
             return render(request, 'inventory/update_item.html', context)
     context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}

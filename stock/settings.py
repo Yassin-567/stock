@@ -23,12 +23,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-^1!b7rh22^^$_@f7dkxx1g29wo-=caz_r=kycv+=_3_n1jxbt#'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
-CSRF_TRUSTED_ORIGINS = [
-    "https://stock-production-e9d0.up.railway.app"
-]
+# CSRF_TRUSTED_ORIGINS = [
+#     "https://stock-production-e9d0.up.railway.app"
+# ]
 
 
 # Application definition
@@ -51,7 +51,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    #'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -78,8 +78,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'stock.wsgi.application'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+#WSGI_APPLICATION = 'stock.wsgi.application'
+#STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 # Database
@@ -138,6 +138,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 STATIC_ROOT=os.path.join(BASE_DIR, 'static')
 STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
+
 STATICFILES_DIRS =[ os.path.join(BASE_DIR, 'stock/static')]
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

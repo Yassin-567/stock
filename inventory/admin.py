@@ -15,8 +15,9 @@ admin.site.register(Item, ItemAdmin)
 # admin.site.register(CustomUser,CustomUserAdmin)
 # admin.site.site_header='Stock'
 # admin.site.site_title='Stock'
-
-admin.site.register(JobItem)
+class JobItemAdmin(admin.ModelAdmin):
+    list_display = ('id',  )
+admin.site.register(JobItem,JobItemAdmin)
 admin.site.register(WarehouseItem)
 admin.site.register(Job,  )
 

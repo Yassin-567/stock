@@ -10,12 +10,13 @@
   {% if job %}
     <h2>Adding item for the job at:{{ job.address }} <br /> <span>Job ID: <a href=" {% url 'update_job' job.job_id %} ">{{ job.job_id }}</a></span></h2>
   {% else %}
-    <h2>Adding item for no job</h2>
+    <h2>Adding item to warehouse</h2>
   {% endif %}
 
   <section class="form-section">
-    <button id="toggle-stock-items" class="btn btn-primary" onclick="toggleStockItems()">Show Stock Items</button>
-
+    {% if job %}
+      <button id="toggle-stock-items" class="btn btn-primary" onclick="toggleStockItems()">Show Stock Items</button>
+    {% endif %}
     <form id="item-form-container" action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
 
@@ -25,15 +26,17 @@
         <button type="submit" name="adding_new" class="btn-submit">Add part</button>
       </div>
     </form>
-    <form id="stock-items-form-container" action="" method="POST" enctype="multipart/form-data" class="form-container">
-      {% csrf_token %}
+    {% if job %}
+      <form id="stock-items-form-container" action="" method="POST" enctype="multipart/form-data" class="form-container">
+        {% csrf_token %}
 
-      <div class="form-group">{{ stock_items_form.as_p }}</div>
+        <div class="form-group">{{ stock_items_form.as_p }}</div>
 
-      <div class="form-group">
-        <button type="submit" name="adding_from_stock" class="btn-submit">Add part</button>
-      </div>
-    </form>
+        <div class="form-group">
+          <button type="submit" name="adding_from_stock" class="btn-submit">Add part</button>
+        </div>
+      </form>
+    {% endif %}
   </section>
   <script>
     function toggleStockItems() {

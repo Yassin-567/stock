@@ -176,7 +176,8 @@ class Item(models.Model):
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     #status=models.CharField(max_length=20,choices=CHOICES,default="not_ordered")
     notes=models.TextField(null=True, blank=True)
-
+    def __str__(self):
+        return self.name
 
 class JobItem(models.Model):
     CHOICES=[
