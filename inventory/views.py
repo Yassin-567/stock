@@ -210,17 +210,17 @@ def item_add(request,pk=None,no_job=False):
                 try:
                     with transaction.atomic():
                         
-                        item=form.save(commit=False)
-                        item.company=request.user.company
-                        
-                        item.added_by=request.user
-                        
-                        item.save()
                         
                         job_quantity=form.cleaned_data['required_quantity']
                         arrived_quantity=form.cleaned_data['arrived_quantity']
                         if pk is not None:
+                            item=form.save(commit=False)
+                            item.company=request.user.company
                             
+                            item.added_by=request.user
+                            
+                            item.save()
+                        
                             job=Job.objects.filter(company=request.user.company).get(job_id=pk)
                             print("D")
                             JobItem.objects.create(item=item,
@@ -236,10 +236,15 @@ def item_add(request,pk=None,no_job=False):
                             messages.success(request, f'{item}-is added to job {job}')
                             return render(request, 'inventory/add_item.html', {'form': form,'stock_items_form':stock_items_form})
                         elif pk is None and no_job: 
-                            
-                            WarehouseItem.objects.create(item=item,
-                                                    warehouse_quantity=arrived_quantity,
-                                                    company=request.user.company,)
+                            pn=form.cleaned_data['part_number']
+                            if WarehouseItem.objects.get(item=Item.objects.get(Q(part_number=pn) & Q(company=request.user.company))):
+                                item=WarehouseItem.objects.get(item=Item.objects.get(Q(part_number=pn) & Q(company=request.user.company)))
+                                item.warehouse_quantity+=arrived_quantity
+                                item.save(update_fields=['warehouse_quantity'])
+                            else:
+                                WarehouseItem.objects.create(item=item,
+                                                        warehouse_quantity=arrived_quantity,
+                                                        company=request.user.company,)
                             messages.success(request, f'{item}-is added to warehouse')
                             return redirect('inventory')
                 except IntegrityError:

@@ -1,5 +1,6 @@
 from django import template
-
+from inventory.models import JobItem
+from django.db.models import Q
 register = template.Library()
 
 @register.filter
@@ -37,7 +38,12 @@ def total_quantity(job):
 
 @register.filter
 def total_arrived_quantity(job):
-    pass
+    total_arrived_quantity=0
+    company=job.company
+    job_items=JobItem.objects.filter(job=job)
+    for jobitem in job_items:
+        total_arrived_quantity+=jobitem.arrived_quantity
+    return total_arrived_quantity
     # total_arrived_quantity = 0
     # for item in job.items.all():
     #     total_arrived_quantity = total_arrived_quantity+item.arrived_quantity
