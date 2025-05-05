@@ -92,13 +92,12 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 #     }
 # }
 
-
-import os
+from decouple import config
 import dj_database_url
 
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL')
+        default=config('DATABASE_URL')
     )
 }
 
