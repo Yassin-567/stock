@@ -70,10 +70,8 @@ def register_user(request):
         else:
             form = registerForm(adding_worker=True)
             messages.error(request, "Registration failed. Please check the form.")
-    
     else:
         form = registerForm(adding_worker=True)
-
     return render(request, 'auths/register.html', {'form': form})
 @login_required(login_url='login', redirect_field_name='inventory')
 @no_ban
@@ -85,7 +83,6 @@ def inventory(request):
     
     context={'rjobs':rjobs,
             'items':items,
-          
             }
     return render(request,'inventory/inventory.html',context)
 
