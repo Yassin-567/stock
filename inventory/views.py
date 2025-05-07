@@ -30,6 +30,7 @@ def logout_user(request):
     logout(request)
     return redirect('login')
 
+
 def login_user(request):
     form=loginForm()
     if request.user.is_authenticated:
@@ -39,6 +40,8 @@ def login_user(request):
         username=request.POST['email']
         password=request.POST['password']
         user = authenticate(username=username, password=password)
+        print(user)
+        print(user.company)
         if user is not None and user.company is not None :
             login(request, user)
             return redirect('inventory')
@@ -54,6 +57,7 @@ def register_user(request):
     
     if request.method == "POST":
         form = registerForm(request.POST,adding_worker=True)
+        
         if form.is_valid():
             user = form.save(commit=False)  # Save user instance but don't commit yet
             user.set_password(form.cleaned_data['password'])  # Hash the password
@@ -514,7 +518,7 @@ def register_company(request):
             messages.error(request, f"Registration failed. Company Form Errors: {company_form.errors} User Form Errors: {user_form.errors}")
     else:
         company_form = companyregisterForm(user=request.user,initial={'group': "owner"})
-        user_form = registerForm()
+        user_form = registerForm(request.POST,registering=True)
 
     return render(request, 'auths/register_company.html', {'company_form': company_form, 'user_form': user_form})
 #############

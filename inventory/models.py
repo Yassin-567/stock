@@ -56,7 +56,7 @@ class CustomUser(AbstractUser):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name="employeees")
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=90, unique=False)
-    groups = models.ManyToManyField('auth.Group', related_name='users')
+    groups = models.ManyToManyField('auth.Group', related_name='users',)
     REQUIRED_FIELDS = ['username',]
     USERNAME_FIELD = 'email'
 

@@ -10,7 +10,7 @@ class loginForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput)
     remember_me = forms.BooleanField(required=False)
 
-    fields=['email','password','remember_me']
+    fields=['email','password']
 
 
 class companyregisterForm(forms.ModelForm):
@@ -55,7 +55,7 @@ class registerForm(forms.ModelForm):
 
         if registering:
             self.fields['is_banned'].widget = forms.HiddenInput()
-            self.fields['groups'].widget = forms.HiddenInput()
+            #self.fields['groups'].widget = forms.MultipleHiddenInput()
         if adding_worker:
             self.fields['is_banned'].widget = forms.HiddenInput()
         
