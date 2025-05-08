@@ -55,10 +55,12 @@ class registerForm(forms.ModelForm):
 
         if registering:
             self.fields['is_banned'].widget = forms.HiddenInput()
+            self.fields.pop("groups")
             #self.fields['groups'].widget = forms.MultipleHiddenInput()
         if adding_worker:
             self.fields['is_banned'].widget = forms.HiddenInput()
-        
+            self.fields['groups'].queryset = Group.objects.all().exclude(name='Ban')
+
     def save(self, commit=True):
         """ Hash the password before saving """
         

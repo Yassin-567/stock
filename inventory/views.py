@@ -221,9 +221,9 @@ def item_add(request,pk=None,no_job=False):
                             item.added_by=request.user
                             
                             item.save()
-                        
+                            
                             job=Job.objects.filter(company=request.user.company).get(job_id=pk)
-                            print("D")
+
                             JobItem.objects.create(item=item,
                                                 job=job,
                                                 job_quantity=job_quantity,
@@ -237,8 +237,17 @@ def item_add(request,pk=None,no_job=False):
                             messages.success(request, f'{item}-is added to job {job}')
                             return render(request, 'inventory/add_item.html', {'form': form,'stock_items_form':stock_items_form})
                         elif pk is None and no_job: 
+
+                            item=form.save(commit=False)
                             pn=form.cleaned_data['part_number']
-                            if WarehouseItem.objects.get(item=Item.objects.get(Q(part_number=pn) & Q(company=request.user.company))):
+                            try:
+
+                                item_queryset = WarehouseItem.objects.get(item=Item.objects.get(Q(part_number=pn) & Q(company=request.user.company)))
+                            except :
+                                item_queryset=False
+                            print(item_queryset)
+                            print(item)
+                            if item_queryset :
                                 item=WarehouseItem.objects.get(item=Item.objects.get(Q(part_number=pn) & Q(company=request.user.company)))
                                 item.warehouse_quantity+=arrived_quantity
                                 item.save(update_fields=['warehouse_quantity'])
