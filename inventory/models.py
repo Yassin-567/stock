@@ -10,6 +10,7 @@ from django.db import transaction
 from django.db.models import F
 #from datetime import datetime
 #from time import strftime
+############################---USER and COMPANY---############################
 class CustomUserManager(BaseUserManager):
     use_in_migrations = True
 
@@ -38,6 +39,7 @@ class CustomUserManager(BaseUserManager):
             user.groups.add(admin_group)
         return user
 
+
 class Company(models.Model):
     owner = models.ForeignKey("inventory.CustomUser", on_delete=models.CASCADE, null=True, blank=True,related_name="company_owner")
     employees = models.ManyToManyField('CustomUser', related_name='companies')
@@ -59,23 +61,18 @@ class CustomUser(AbstractUser):
     groups = models.ManyToManyField('auth.Group', related_name='users',)
     REQUIRED_FIELDS = ['username',]
     USERNAME_FIELD = 'email'
-
     def __str__(self):
         return self.username +" ("+ str(self.id)+") "
-
     def save(self, *args, **kwargs):
-
-
         super().save(*args, **kwargs)
         # After saving, enforce that only one group is assigned:
         if self.pk and self.groups.count() > 1:
             first_group = self.groups.first()
             self.groups.set([first_group])
-
     class Meta:
         verbose_name_plural = 'users'
         ordering = ['id']
-from django.db import models
+
 ################################## Items and Jobs ######################################
 
 class Job(models.Model):
