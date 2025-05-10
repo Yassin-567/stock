@@ -295,7 +295,8 @@ def update_item(request, pk):
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,'completed':completed}
             return render(request, 'inventory/update_item.html', context)
         if "delete" in request.POST:
-            itemname=item.name
+            itemname=item.item.name
+            item.item.delete()
             item.delete()
             messages.success(request, f"Item {itemname} deleted successfully.")
             return redirect('inventory')
@@ -427,23 +428,30 @@ def update_warehouse_item(request, pk):
 @login_required
 def update_company(request,):
     company = request.user.company
-    form = companyregisterForm(instance=company,user=request.user,updating=True)
+    form = companyregisterForm(instance=company,user=request.user,updating=True,enable_edit=False)
+
     if request.method=='POST' and 'edit' in request.POST:
-        enable_edit=True
-        form = companyregisterForm(instance=company,user=request.user,updating=True,enable_edit=enable_edit)
-        context = {'form': form,'company': company,'enable_edit':enable_edit}
+        
+        form = companyregisterForm(instance=company,user=request.user,updating=True,enable_edit=True)
+        
+        context = {'form': form,'company': company,'enable_edit':True}
         return render(request, 'inventory/update_company.html', context)
+    
+
+
     if request.method == 'POST' and 'save' in request.POST:
-        form = companyregisterForm(request.POST ,request.FILES, instance=company,user=request.user)
+        
+        form = companyregisterForm(request.POST ,request.FILES, instance=company,user=request.user,enable_edit=False)
         if form.is_valid():
             form.save()
-            context = {'form': form,'company': company}
+            
+            form = companyregisterForm(instance=company,user=request.user,updating=True,enable_edit=False)
+            context = {'form': form,'company': company,'enable_edit':False}
             messages.success(request,"Company updated successfuly")
-            enable_edit=False
-            print("enable_edit",enable_edit)
-            form = companyregisterForm(instance=company,user=request.user,enable_edit=enable_edit)
-            return render(request, 'inventory/update_company.html', context)
-    context = {'form': form,'company': company}
+            return render(request, 'inventory/update_company.html',context)
+    
+    
+    context = {'form': form,'company': company,'enable_edit':False}
     return render(request, 'inventory/update_company.html', context)
 
 
@@ -506,11 +514,10 @@ def update_user(request, pk):
 
 def register_company(request):
     """ Register a new company and its admin user """
-    company_form = companyregisterForm(request.POST,user=request.user,)
-    user_form = registerForm(request.POST,initial={'groups':'Owner'},registering=True)
+    company_form = companyregisterForm(user=request.user,)
+    user_form = registerForm(registering=True)
 
     if request.method == 'POST':
-        
         print(request.user)
         company_form = companyregisterForm(request.POST,)
         user_form = registerForm(request.POST,registering=True)
@@ -541,9 +548,9 @@ def register_company(request):
         else:
             print ("not valid form")
             messages.error(request, f"Registration failed. Company Form Errors: {company_form.errors} User Form Errors: {user_form.errors}")
-    else:
-        company_form = companyregisterForm(user=request.user,initial={'group': "owner"})
-        user_form = registerForm(request.POST,registering=True)
+    # else:
+    #     company_form = companyregisterForm(user=request.user,initial={'group': "owner"})
+    #     user_form = registerForm(request.POST,registering=True)
 
     return render(request, 'auths/register_company.html', {'company_form': company_form, 'user_form': user_form})
 #############

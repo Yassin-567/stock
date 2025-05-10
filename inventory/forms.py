@@ -28,6 +28,7 @@ class companyregisterForm(forms.ModelForm):
             super().__init__(*args, **kwargs)
             if user is not None and updating: 
                 if  not enable_edit:
+                    
                     for field in self.fields.values():
                         
                         field.widget.attrs['class'] = 'faded-input'
@@ -191,10 +192,11 @@ class JobItemForm(forms.ModelForm):
         exclude=['job','from_warehouse','is_used']
     def __init__(self, *args,item,**kwargs):
         super().__init__(*args, **kwargs)
-        
+        self.fields['item'].widget=forms.HiddenInput()
         if item.from_warehouse:
             self.fields['arrived_quantity'].widget=forms.HiddenInput()
-
+        # if item.item.from_warehouse:
+        #     self.fields['job_quantity'].widget=forms.HiddenInput()
   
 class WarehouseitemForm(forms.ModelForm):
     class Meta:

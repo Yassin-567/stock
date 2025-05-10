@@ -67,6 +67,7 @@
   </h2>
 
   <section class="form-section">
+    <h3>{{ item.item.name }}</h3>
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
       <div class="form-group">
@@ -92,7 +93,10 @@
       <span>
         <form action="{% url 'update_item' item.id %}" method="POST" class="delete-form" style="display: inline;">
           {% csrf_token %}
-          <button name="delete" type="submit" class="btn btn-danger">Delete</button>
+          {% if not item.from_warehouse %}
+            <button name="delete" type="submit" class="btn btn-danger">Delete</button>
+          {% endif %}
+
           {% comment %}
         </form>
         <form action="{% url 'update_item' item.id %}" method="POST" class="delete-form" style="display: inline;">
