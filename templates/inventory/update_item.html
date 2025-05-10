@@ -22,7 +22,7 @@
     border: 1px solid #ddd;
     border-radius: 5px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  ">{{ item.part_number }}</span>
+  ">{{ item.item.part_number }}</span>
     {% if item.status == 'arrived' %}
       <span style="
     display: inline-block;
@@ -49,6 +49,20 @@
     border-radius: 5px;
     box-shadow: 0 1px 3px rgba(255, 253, 253, 0.1);
   ">{{ item.status }}</span>
+    {% endif %}
+    {% if item.from_warehouse %}
+      <span style="
+    display: inline-block;
+    padding: 5px 10px;
+    margin-left: 10px;
+    font-size: 1.2rem;
+    font-weight: normal;
+    color: rgb(0, 0, 0);
+    background-color:rgba(157, 119, 192, 0.79);
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(255, 253, 253, 0.1);
+  ">From warehouse</span>
     {% endif %}
   </h2>
 

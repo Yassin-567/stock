@@ -117,13 +117,14 @@ class FormHandler:
     #     return []  # fallback
 
 class WareohuseFormHandler:
+    pass
     def __init__(self, form,):
         self.form = form
-    def set_form_fields(self):
+    def set_form_fields(self,warehouse_item):
         #self.form.fields['job'].widget=forms.HiddenInput()
         #self.form.fields['job_quantity'].widget=forms.HiddenInput()
-        self.form.fields['arrived_quantity'].label="Stock Quantity"
-
+        #self.form.fields['arrived_quantity'].label="Stock Quantity"
+        self.form.fields['arrived_quantity'].initial = warehouse_item.warehouse_quantity
 def calculate_item(item,job_qunatity):
     quantity=item.arrived_quantity
     item.arrived_quantity=quantity-job_qunatity

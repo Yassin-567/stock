@@ -24,10 +24,10 @@ class companyregisterForm(forms.ModelForm):
             'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+1234567890'}),
             'company_email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Company Email'}),
         }
-    def __init__(self, *args, user=None, updating=False,**kwargs):
+    def __init__(self, *args, user=None, updating=False,enable_edit=False,**kwargs):
             super().__init__(*args, **kwargs)
             if user is not None and updating: 
-                if   not user.company_owner==user or user.company==None:
+                if  not enable_edit:
                     for field in self.fields.values():
                         
                         field.widget.attrs['class'] = 'faded-input'
@@ -115,7 +115,7 @@ class CommentForm(forms.ModelForm):
         }
     
 ''
-class StokcItemsForm(forms.ModelForm):
+class StokcItemsForm(forms.ModelForm): #for adding items from warehouse to job only
     stock_items = forms.ModelMultipleChoiceField(
         queryset=Item.objects.none(),
         #widget=forms.CheckboxSelectMultiple(),
@@ -135,24 +135,18 @@ class StokcItemsForm(forms.ModelForm):
             )
     def clean(self):
         cleaned_data = super().clean()
-        
         #job_quantity = cleaned_data.get('job_quantity')
         stock_items = cleaned_data.get('stock_items')[0]
-        print(stock_items)
-        
-        
-            
         # if job_quantity > stock_items.arrived_quantity:
         #     raise forms.ValidationError(
         #         f"Only {stock_items.arrived_quantity} parts are available in stock."
         #     )
-
         return cleaned_data
-
-
     class Meta:
         model=Item
         fields=['required_quantity']
+
+
 class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
@@ -194,10 +188,45 @@ class JobItemForm(forms.ModelForm):
     class Meta:
         model=JobItem
         fields='__all__'
-        exclude=['job','from_warehouse']
-    # def __init__(self, *args,**kwargs):
-    #     super().__init__(*args, **kwargs)
-    #     self.fields['job'].widget=forms.HiddenInput()
+        exclude=['job','from_warehouse','is_used']
+    def __init__(self, *args,item,**kwargs):
+        super().__init__(*args, **kwargs)
+        
+        if item.from_warehouse:
+            self.fields['arrived_quantity'].widget=forms.HiddenInput()
+
+  
+class WarehouseitemForm(forms.ModelForm):
+    class Meta:
+        model = Item
+        fields = '__all__' 
+        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','is_moved_to_warehouse','notes','is_move_to_warehouse','arrived_quantity','required_quantity']
+        labels = {
+            'name': 'Part Name',
+        }
+        widgets = {
+            #'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-select','id':'status'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+            #'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control','id':'arrived_quantity'}),
+            'part_number':forms.TextInput(attrs={  # Override widget for job_id
+                'type': 'text',  # Set input type to text
+                'inputmode': 'numeric',  # Allow numeric input
+                #'pattern': '[0-9]*',  # Numeric pattern
+                'placeholder': 'Enter part number',
+                'class': 'form-control',}),
+            'reference':forms.Textarea(attrs={'rows':1})
+        }
+    def __init__(self, *args,warehouse_item,**kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['arrived_quantity'] = forms.IntegerField(
+                initial=warehouse_item.warehouse_quantity if warehouse_item else None,
+                label="Stock Quantity",
+                widget=forms.NumberInput(attrs={'class': 'form-control'})
+            )
+        
+
 class SearchForm(forms.Form):
     search_text = forms.CharField(max_length=100)#-
     status_filter = forms.ChoiceField(choices=[('', 'All statuses'), ('a', 'Arrived'), ('c', 'Ordered'), ('d', 'Taken'), ('e', 'Job done'), ('b', '')], required=False)     #-

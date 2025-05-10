@@ -46,7 +46,7 @@
               {% if request.user.company %}
                 {% if request.user|is_owner %}
                   <li class="nav-item">
-                    <a class="nav-link fw-bold text-light" href="{% url 'update_company' request.user.company.id %}">{{ request.user.company.company_name }}</a>
+                    <a class="nav-link fw-bold text-light" href="{% url 'update_company' %}">{{ request.user.company.company_name }}</a>
                   </li>
                 {% else %}
                   <li class="nav-item">

@@ -3,53 +3,58 @@
 {% load custom_tags %}
 
 {% block body %}
-{% for message in messages  %}
-<div class="alert alert-{{ message.tags }}">
-    {{ message }}
-</div>
-{% endfor %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+  {% endfor %}
 
-<!-- Modern Form Section -->
-<section class="form-section">
+  <!-- Modern Form Section -->
+  <section class="form-section">
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
-        {% csrf_token %}
-        
+      {% csrf_token %}
+      {% if request.user|is_owner and not enable_edit %}
         <div class="form-group">
-            {{ form.as_p }}
+          <button type="submit" name="edit" class="btn-submit">Edit</button>
         </div>
-        
-        {% if request.user|is_owner %}
+      {% endif %}
+      <div class="form-group">{{ form.as_p }}</div>
+
+      {% if enable_edit %}
         <div class="form-group">
-            <button type="submit" class="btn-submit">Save</button>
+          <button type="submit" name="save" class="btn-submit">Save</button>
         </div>
-        {% endif %}
+      {% endif %}
     </form>
-</section>
+  </section>
 
-
-{% comment %} <section class="jobs-list">
-    <h3><strong>Item</strong>:{{company.name}}</h3>
+  {% comment %} <section class="jobs-list">
+    <h3><strong>Item</strong>:{{ company.name }}</h3>
     <ul class="job-items">
-        
-            <li class="job-item">
-                
-                    <div class="job-info">
-                        <h4>{{ job.company }} </h4>
-                        {% if job.image %}
-                            <img class="job-img" src="{{ job.image.url }}" alt="{{ job.name }}">
-                        {% endif %}
-                        <p><strong>Reference:</strong> {{ company.owner_name }}</p>
-                        <p><strong>Description:</strong> {{ company.company_name }}</p>
-                        <p><strong>Description:</strong> {{ company.company_email }}</p>
-                        <p><strong>Description:</strong> {{ company.address }}</p>
-                        <p><strong>Description:</strong> {{ company.phone }}</p>
-
-                    </div>
-            </li>
+      <li class="job-item">
+        <div class="job-info">
+          <h4>{{ job.company }}</h4>
+          {% if job.image %}
+            <img class="job-img" src="{{ job.image.url }}" alt="{{ job.name }}" />
+          {% endif %}
+          <p>
+            <strong>Reference:</strong> {{ company.owner_name }}
+          </p>
+          <p>
+            <strong>Description:</strong> {{ company.company_name }}
+          </p>
+          <p>
+            <strong>Description:</strong> {{ company.company_email }}
+          </p>
+          <p>
+            <strong>Description:</strong> {{ company.address }}
+          </p>
+          <p>
+            <strong>Description:</strong> {{ company.phone }}
+          </p>
+        </div>
+      </li>
     </ul>
-</section> {% endcomment %}
+  </section> {% endcomment %}
 
-<!-- Job Summary Section -->
-<link rel="stylesheet" href="{% static 'css/style.css' %}">
-
+  <!-- Job Summary Section -->
+  <link rel="stylesheet" href="{% static 'css/style.css' %}" />
 {% endblock %}
