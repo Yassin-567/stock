@@ -439,6 +439,9 @@ def update_company(request,):
             form.save()
             context = {'form': form,'company': company}
             messages.success(request,"Company updated successfuly")
+            enable_edit=False
+            print("enable_edit",enable_edit)
+            form = companyregisterForm(instance=company,user=request.user,enable_edit=enable_edit)
             return render(request, 'inventory/update_company.html', context)
     context = {'form': form,'company': company}
     return render(request, 'inventory/update_company.html', context)
