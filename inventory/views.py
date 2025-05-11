@@ -16,6 +16,8 @@ from .myfunc import FormHandler, WareohuseFormHandler, calculate_item
 from django.http import HttpResponseForbidden
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
+from django.core.mail import send_mail
+
 #import requests
 
 
@@ -119,7 +121,7 @@ def update_job(request, pk):
         })
     comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
     
-    if request.method == 'POST':
+    if request.method == 'POST' and 'save' in request.POST:
         comments_form=CommentForm(request.POST)
         form = JobForm(request.POST, instance=job,updating=True)
         
@@ -138,9 +140,46 @@ def update_job(request, pk):
         'company': request.user.company,
         })
             form = JobForm(instance=job,)
-            items=Item.objects.filter(company=request.user.company,job=job)
-
-            return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items})       
+            items=JobItem.objects.filter(job=job)
+    if request.method == 'POST' and 'send_email' in request.POST :
+            if job.engineer is not None and job.status=="ready":
+                recipient_list=[]
+                recipient_list.append(job.engineer.email)
+                # parts=[]
+                # for part in job.items.all():
+                #     parts.append(part)
+                parts = [str(part) for part in job.items.all()]
+                parts_text = "\n".join(parts)
+                print(parts)
+                print(parts_text)
+                send_mail(
+                    subject=f'Job {job.address}',
+                    message=f'Hi, please take the following parts:\n\n{parts_text}',
+                    from_email='yassinalaa3310@gmail.com',
+                    recipient_list=['yassinalaa3310@gmail.com'],
+                    fail_silently=False,
+                )
+                
+                messages.success(request,f'Email sent to {job.engineer.name}')
+                form = JobForm(instance=job,updating=True,)
+                comments_form=CommentForm(initial={
+                    'content_type': ContentType.objects.get_for_model(Job),
+                    'object_id': job.job_id,
+                    'company': request.user.company,
+                    })
+                comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
+                
+                return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
+            messages.error(request,"ddd")
+            comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
+            comments_form = CommentForm(initial={
+            'content_type': ContentType.objects.get_for_model(Job),
+            'object_id': job.job_id,
+            'company': request.user.company,
+            })
+            form = JobForm(instance=job,)
+            items=JobItem.objects.filter(job=job)
+            return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
     context={'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count}
     return render(request, 'inventory/job_update.html', context)       
 ###########################ITEM######################
@@ -186,7 +225,6 @@ def item_add(request,pk=None,no_job=False):
                                         item=item.item,
                                         status='arrived',
                                         job_quantity=+required_quantity,
-                                        
                                         )
                                         item.warehouse_quantity=item.warehouse_quantity-required_quantity
                                         item.save(update_fields=['warehouse_quantity'])

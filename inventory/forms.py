@@ -193,8 +193,10 @@ class JobItemForm(forms.ModelForm):
     def __init__(self, *args,item,**kwargs):
         super().__init__(*args, **kwargs)
         self.fields['item'].widget=forms.HiddenInput()
+        self.fields['job_quantity'].label='Required quantity'
         if item.from_warehouse:
             self.fields['arrived_quantity'].widget=forms.HiddenInput()
+            self.fields['status'].widget=forms.HiddenInput()
         # if item.item.from_warehouse:
         #     self.fields['job_quantity'].widget=forms.HiddenInput()
   
