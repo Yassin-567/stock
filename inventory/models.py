@@ -89,7 +89,7 @@ class Job(models.Model):
         ('quoted', 'Quoted and waiting')
     ]
     address = models.CharField(max_length=70)
-    job_id=models.IntegerField()
+    job_id=models.BigIntegerField()
     status=models.CharField(choices=status_chouces, max_length=20)
     engineer=models.ForeignKey(Engineer,on_delete=models.DO_NOTHING,null=True,blank=True)
     parent_account=models.CharField(max_length=70)

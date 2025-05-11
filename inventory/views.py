@@ -42,8 +42,7 @@ def login_user(request):
         username=request.POST['email']
         password=request.POST['password']
         user = authenticate(username=username, password=password)
-        print(user)
-        print(user.company)
+        
         if user is not None and user.company is not None :
             login(request, user)
             return redirect('inventory')
