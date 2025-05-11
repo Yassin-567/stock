@@ -96,10 +96,13 @@ def job_create(request):
     if request.method == 'POST':
         form = JobForm(request.POST)
         if form.is_valid():
-            job = form.save(commit=False)
-            job.company = request.user.company
-            job.save()
-            messages.success(request, 'Job created successfully')
+            if Job.objects.get(job_id=form.cleaned_data['job_id']) is None:
+                job = form.save(commit=False)
+                job.company = request.user.company
+                job.save()
+                messages.success(request, 'Job created successfully')
+            else:
+                messages.error(request,"This job already exists")
             return redirect('inventory')
     else:
         form = JobForm()
@@ -214,6 +217,7 @@ def item_add(request,pk=None,no_job=False):
                                     if JobItem.objects.filter(job=job,item=item.item,):
                                         jobitem=JobItem.objects.filter(job=job,item=item.item,).first()
                                         jobitem.job_quantity=jobitem.job_quantity+required_quantity
+                                        jobitem.arrived_quantity=jobitem.job_quantity
                                         jobitem.save(update_fields=['job_quantity'])
                                         item.warehouse_quantity=item.warehouse_quantity-required_quantity
                                         item.save(update_fields=['warehouse_quantity'])
@@ -224,6 +228,7 @@ def item_add(request,pk=None,no_job=False):
                                         item=item.item,
                                         status='arrived',
                                         job_quantity=+required_quantity,
+                                        arrived_quantity=+required_quantity,
                                         )
                                         item.warehouse_quantity=item.warehouse_quantity-required_quantity
                                         item.save(update_fields=['warehouse_quantity'])
@@ -344,8 +349,10 @@ def update_item(request, pk):
 
                 # Optional: Check if already used or empty
                 if job_item.is_used or job_item.arrived_quantity == 0:
+                    print('used?',job_item.is_used)
+                    print('used?',job_item.arrived_quantity)
                     messages.error(request, "Nothing to move or already used.")
-                    form = JobItemForm(instance=item)
+                    form = JobItemForm(instance=item,item=item)
                     comments_form=CommentForm(initial={
         'content_type': ContentType.objects.get_for_model(JobItem),
         'object_id': item.id,
@@ -353,15 +360,20 @@ def update_item(request, pk):
         })
                     context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,'completed':completed}
                     return render(request, 'inventory/update_item.html', context)
-
-                # Create WarehouseItem
-                WarehouseItem.objects.create(
-                    item=job_item.item,
-                    warehouse_quantity=job_item.arrived_quantity,
-                    company=request.user.company,
-                    #is_used=job_item.is_used,
-                    is_moved_from_job=True
-                )
+                if not job_item.from_warehouse :
+                    # Create WarehouseItem
+                    WarehouseItem.objects.create(
+                        item=job_item.item,
+                        warehouse_quantity=job_item.arrived_quantity,
+                        company=request.user.company,
+                        #is_used=job_item.is_used,
+                        is_moved_from_job=True 
+                    )
+                else:
+                    
+                    wi=WarehouseItem.objects.get(item=job_item.item)
+                    wi.warehouse_quantity+=job_item.arrived_quantity
+                    wi.save(update_fields=['warehouse_quantity'])
                 # Delete JobItem after successful move
                 job_item.delete()
                 messages.success(request,"Item moved to warehouse")
@@ -437,9 +449,10 @@ def update_warehouse_item(request, pk):
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
             return render(request, 'inventory/update_item.html', context)
         if "delete" in request.POST:
-            itemname=item.name
-            item.delete()
-            messages.success(request, f"Item {itemname} deleted successfully.")
+            # itemname=item.name
+            # item.delete()
+            # messages.success(request, f"Item {itemname} deleted successfully.")
+            messages.success(request, f"Oops deleting isn't available now")
             return redirect('inventory')
         
         form = WarehouseitemForm(request.POST, request.FILES, instance=item,warehouse_item=warehouse_item)
