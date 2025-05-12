@@ -99,7 +99,7 @@ def job_create(request):
             try:
                 Job.objects.get(job_id=form.cleaned_data['job_id']
                 jobi=True
-            except:
+            except Job.DoesNotExist:
                 jobi=False
             if not jobi:
                 job = form.save(commit=False)
