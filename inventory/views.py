@@ -615,8 +615,8 @@ def warehouse(request):
 def engineer(request):
     form=EngineerForm()
     if request.method=="POST":
-        form=EngineerForm(request)
-        if form.is_valid:
+       # form=EngineerForm(request)
+       # if form.is_valid:
          #   form.save(commit=False)
             #form.company=request.user.company
             #form.save
