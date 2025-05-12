@@ -378,7 +378,7 @@ def update_item(request, pk):
                 else:
                     
                     wi=WarehouseItem.objects.get(item=job_item.item)
-                    wi.warehouse_quantity+=job_item.required_quantity
+                    wi.warehouse_quantity+=job_item.job_quantity
                     wi.save(update_fields=['warehouse_quantity'])
                 # Delete JobItem after successful move
                 job_item.delete()
