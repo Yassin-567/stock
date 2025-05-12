@@ -78,7 +78,7 @@ class Engineer(models.Model):
     name=models.CharField(max_length=40,)
     email=models.EmailField()
     phone=models.CharField(max_length=15)
-    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="engineers_company",blank=True,null=True)
+    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="engineers_company",blank=False,null=False)
     def __str__(self):
         return str( self.name)
 class Job(models.Model):
@@ -92,7 +92,7 @@ class Job(models.Model):
     address = models.CharField(max_length=70)
     job_id=models.BigIntegerField()
     status=models.CharField(choices=status_chouces, max_length=20)
-    engineer=models.ForeignKey(Engineer,on_delete=models.DO_NOTHING,null=True,blank=True)
+    engineer=models.ForeignKey(Engineer,on_delete=models.SET_NULL,null=True,blank=True)
     parent_account=models.CharField(max_length=70)
     added_date=models.DateField(auto_now_add=True)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="job_company")

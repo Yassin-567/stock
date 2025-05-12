@@ -53,7 +53,8 @@ def login_user(request):
             messages.error(request, 'Invalid login credentials')
             return render(request, 'auths/login.html', {'form': form})
     return render(request, 'auths/login.html', {'form': form})
-#@admins_only
+
+@admins_only
 def register_user(request):
     
     if request.method == "POST":
@@ -518,6 +519,7 @@ def admin_panel(request):
             context = {
                 'groups': groups,
                 'users': CustomUser.objects.filter(company=request.user.company),
+                'engineers':Engineer.objects.filter(company=request.user.company)
             }
             return render(request, 'inventory/admin_panel.html',context )
         else:
@@ -621,12 +623,20 @@ def warehouse(request):
 def engineer(request):
     form=EngineerForm()
     if request.method=="POST":
-       # form=EngineerForm(request)
-       # if form.is_valid:
-         #   form.save(commit=False)
-            #form.company=request.user.company
-            #form.save
-            messages.error(request,"Adding engineers isn't currently available")
+       form=EngineerForm(request.POST)
+       if form.is_valid:
+            eng=form.save(commit=False)
+            try:
+                Engineer.objects.get(Q(name=eng.name) & Q(company=request.user.company))
+                ex=True
+            except Engineer.DoesNotExist:
+                ex=False
+            if not ex:
+                eng.company=request.user.company
+                eng.save()
+                messages.success(request,f"Engineer {eng.name} is added")
+            else:
+                messages.error(request,"Engineer with the same name exists")
             return render(request,'inventory/eng.html',{'form':form})
     return render(request,'inventory/eng.html',{'form':form})
 import requests

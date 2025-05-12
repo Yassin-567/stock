@@ -37,4 +37,22 @@
       </tr>
     {% endfor %}
   </table>
+
+  <table>
+    <tr>
+      <td>
+        <strong>Engineers</strong>
+      </td>
+    </tr>
+
+    {% for eng in engineers %}
+      <tr>
+        <td>
+          <p>
+            <a href="#">{{ eng.name }}</a>
+          </p>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
 {% endblock %}
