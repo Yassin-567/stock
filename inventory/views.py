@@ -618,8 +618,9 @@ def engineer(request):
         form=EngineerForm(request)
         if form.is_valid:
          #   form.save(commit=False)
-            form.company=request.user.company
-            form.save
+            #form.company=request.user.company
+            #form.save
+            messages.error(request,"Adding engineers isn't currently available")
             return render(request,'inventory/eng.html',{'form':form})
     return render(request,'inventory/eng.html',{'form':form})
 import requests
