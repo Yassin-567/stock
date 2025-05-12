@@ -96,7 +96,12 @@ def job_create(request):
     if request.method == 'POST':
         form = JobForm(request.POST)
         if form.is_valid():
-            if Job.objects.get(job_id=form.cleaned_data['job_id']) is None:
+            try:
+                Job.objects.get(job_id=form.cleaned_data['job_id']
+                jobi=True
+            except:
+                jobi=False
+            if not jobi:
                 job = form.save(commit=False)
                 job.company = request.user.company
                 job.save()
