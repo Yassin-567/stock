@@ -1,6 +1,6 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
-from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem
-from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,StokcItemsForm,JobItemForm,WarehouseitemForm
+from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem,Engineer
+from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,StokcItemsForm,JobItemForm,WarehouseitemForm,EngineerForm
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -612,8 +612,16 @@ def warehouse(request):
     
     return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items,'moved_items':moved_items,'used_warehouse_items':used_warehouse_items,'used_moved_items':used_moved_items})
 
-
-
+def engineer(request):
+    form=EngineerForm()
+    if request.method=="POST":
+        form=EngineerForm(request)
+        if form.is_valid:
+            form.save(commit=False)
+            form.company=request.user.company
+            form.save
+            return render(request,'inventory/eng.html',{'form':form})
+    return render(request,'inventory/eng.html',{'form':form})
 import requests
 from django.shortcuts import render
 

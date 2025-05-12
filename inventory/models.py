@@ -79,7 +79,8 @@ class Engineer(models.Model):
     email=models.EmailField()
     phone=models.CharField(max_length=15)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="engineers_company",blank=True,null=True)
-
+    def __str__(self):
+        return str( self.name)
 class Job(models.Model):
     status_chouces=[
         ('ready', 'Ready'),

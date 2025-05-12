@@ -1,5 +1,5 @@
 from django import forms
-from .models import CustomUser, Item, Company,Job,Comment,WarehouseItem,JobItem
+from .models import CustomUser, Item, Company,Job,Comment,WarehouseItem,JobItem,Engineer
 from django.contrib.auth.models import Group
 from django.forms import HiddenInput
 from django.db.models import Q
@@ -230,7 +230,11 @@ class WarehouseitemForm(forms.ModelForm):
                 widget=forms.NumberInput(attrs={'class': 'form-control'})
             )
         
-
+class EngineerForm(forms.ModelForm):
+    class Meta:
+        model = Engineer
+        fields = '__all__'
+        exclude=['company']
 class SearchForm(forms.Form):
     search_text = forms.CharField(max_length=100)#-
     status_filter = forms.ChoiceField(choices=[('', 'All statuses'), ('a', 'Arrived'), ('c', 'Ordered'), ('d', 'Taken'), ('e', 'Job done'), ('b', '')], required=False)     #-
