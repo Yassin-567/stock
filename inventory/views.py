@@ -617,7 +617,7 @@ def engineer(request):
     if request.method=="POST":
         form=EngineerForm(request)
         if form.is_valid:
-            form.save(commit=False)
+         #   form.save(commit=False)
             form.company=request.user.company
             form.save
             return render(request,'inventory/eng.html',{'form':form})
