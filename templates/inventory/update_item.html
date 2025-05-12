@@ -22,7 +22,7 @@
     border: 1px solid #ddd;
     border-radius: 5px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  ">{{ item.part_number }}</span>
+  ">{{ item.item.part_number }}</span>
     {% if item.status == 'arrived' %}
       <span style="
     display: inline-block;
@@ -50,9 +50,24 @@
     box-shadow: 0 1px 3px rgba(255, 253, 253, 0.1);
   ">{{ item.status }}</span>
     {% endif %}
+    {% if item.from_warehouse %}
+      <span style="
+    display: inline-block;
+    padding: 5px 10px;
+    margin-left: 10px;
+    font-size: 1.2rem;
+    font-weight: normal;
+    color: rgb(0, 0, 0);
+    background-color:rgba(157, 119, 192, 0.79);
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(255, 253, 253, 0.1);
+  ">From warehouse</span>
+    {% endif %}
   </h2>
 
   <section class="form-section">
+    <h3>{{ item.item.name }}</h3>
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
       <div class="form-group">
@@ -78,7 +93,10 @@
       <span>
         <form action="{% url 'update_item' item.id %}" method="POST" class="delete-form" style="display: inline;">
           {% csrf_token %}
-          <button name="delete" type="submit" class="btn btn-danger">Delete</button>
+          {% if not item.from_warehouse %}
+            <button name="delete" type="submit" class="btn btn-danger">Delete</button>
+          {% endif %}
+
           {% comment %}
         </form>
         <form action="{% url 'update_item' item.id %}" method="POST" class="delete-form" style="display: inline;">

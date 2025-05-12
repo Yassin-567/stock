@@ -49,11 +49,6 @@
       ">Quoted</span>
     {% endif %}
   </h2>
-  {% if messages %}
-    {% for message in messages %}
-      <div class="alert alert-warning">{{ message }}</div>
-    {% endfor %}
-  {% endif %}
 
   <section class="form-section">
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
@@ -62,7 +57,8 @@
       <div class="form-group">{{ form.as_p }}</div>
 
       <div class="form-group">
-        <button type="submit" class="btn-submit">Save</button>
+        <button type="submit" name="save" class="btn-submit">Save</button>
+        <button type="submit" name="send_email" class="btn-submit">Send email</button><span><h6>Send a list with the required parts for the engineer</h6></span>
       </div>
 
       <section class="form-section">

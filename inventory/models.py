@@ -73,8 +73,14 @@ class CustomUser(AbstractUser):
         verbose_name_plural = 'users'
         ordering = ['id']
 
-################################## Items and Jobs ######################################
-
+################################## Items, engineers and Jobs ######################################
+class Engineer(models.Model):
+    name=models.CharField(max_length=40,)
+    email=models.EmailField()
+    phone=models.CharField(max_length=15)
+    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="engineers_company",blank=True,null=True)
+    def __str__(self):
+        return str( self.name)
 class Job(models.Model):
     status_chouces=[
         ('ready', 'Ready'),
@@ -84,14 +90,16 @@ class Job(models.Model):
         ('quoted', 'Quoted and waiting')
     ]
     address = models.CharField(max_length=70)
-    job_id=models.IntegerField()
+    job_id=models.BigIntegerField()
     status=models.CharField(choices=status_chouces, max_length=20)
+    engineer=models.ForeignKey(Engineer,on_delete=models.DO_NOTHING,null=True,blank=True)
     parent_account=models.CharField(max_length=70)
     added_date=models.DateField(auto_now_add=True)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="job_company")
     items_arrived=models.BooleanField(default=False, )
     post_code=models.CharField(max_length=10, null=True, blank=True)
     quoted=models.BooleanField(default=False)
+    
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
 

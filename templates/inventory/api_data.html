@@ -1,108 +1,102 @@
-
-
 {% extends 'inventory/base.html' %}
 {% load static %}
 {% block body %}
-{% load custom_tags %}
+  {% load custom_tags %}
 
-{% for data in data  %}
-<h1>{{ data.title }}</h1>
+  {% for data in data %}
+    <h1>{{ data.title }}</h1>
     <p>{{ data.body }}</p>
-{% endfor %}
+  {% endfor %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Optimized Route Without API Key</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.3/dist/leaflet-routing-machine.css" />
-  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-routing-machine@3.2.3/dist/leaflet-routing-machine.js"></script>
-</head>
-<body>
-  <div id="map" style="height: 600px;"></div>
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Optimized Route Without API Key</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+      <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.3/dist/leaflet-routing-machine.css" />
+      <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+      <script src="https://unpkg.com/leaflet-routing-machine@3.2.3/dist/leaflet-routing-machine.js"></script>
+    </head>
+    <body>
+      <div id="map" style="height: 600px;"></div>
 
-  <script>
-    const postcodes = ["N15 6AB", "NW5 3UP", "SE1 7PB", "E8 4AA", "E1 6QL", "SW1A 2AA", "W1A 1AA", "EC1A 1BB"];
-    const map = L.map('map').setView([51.505, -0.09], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
-
-    function geocodePostcode(postcode) {
-      const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(postcode);
-      return fetch(url)
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.length > 0) {
-            const lat = parseFloat(data[0].lat);
-            const lon = parseFloat(data[0].lon);
-            return { postcode, latlng: L.latLng(lat, lon) };
-          } else {
-            throw new Error("Postcode not found: " + postcode);
-          }
-        });
-    }
-
-    function haversine(latlng1, latlng2) {
-      const R = 6371; // km
-      const dLat = (latlng2.lat - latlng1.lat) * Math.PI / 180;
-      const dLon = (latlng2.lng - latlng1.lng) * Math.PI / 180;
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(latlng1.lat * Math.PI / 180) *
-          Math.cos(latlng2.lat * Math.PI / 180) *
-          Math.sin(dLon / 2) * Math.sin(dLon / 2);
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
-
-    function sortLocationsGreedy(locations) {
-      const sorted = [locations[0]];
-      const remaining = locations.slice(1);
-
-      while (remaining.length > 0) {
-        const last = sorted[sorted.length - 1];
-        let closestIndex = 0;
-        let minDistance = haversine(last.latlng, remaining[0].latlng);
-
-        for (let i = 1; i < remaining.length; i++) {
-          const dist = haversine(last.latlng, remaining[i].latlng);
-          if (dist < minDistance) {
-            minDistance = dist;
-            closestIndex = i;
-          }
+      <script>
+        const postcodes = ['N15 6AB', 'NW5 3UP', 'SE1 7PB', 'E8 4AA', 'E1 6QL', 'SW1A 2AA', 'W1A 1AA', 'EC1A 1BB']
+        const map = L.map('map').setView([51.505, -0.09], 12)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map)
+        function geocodePostcode(postcode) {
+          const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(postcode)
+          return fetch(url)
+            .then((res) => res.json())
+            .then((data) => {
+              if (data && data.length > 0) {
+                const lat = parseFloat(data[0].lat)
+                const lon = parseFloat(data[0].lon)
+                return { postcode, latlng: L.latLng(lat, lon) }
+              } else {
+                throw new Error('Postcode not found: ' + postcode)
+              }
+            })
         }
-
-        sorted.push(remaining.splice(closestIndex, 1)[0]);
-      }
-
-      return sorted;
-    }
-
-    Promise.all(postcodes.map(geocodePostcode))
-      .then(locations => {
-        map.fitBounds(locations.map(l => l.latlng));
-        const sorted = sortLocationsGreedy(locations);
-
-        L.Routing.control({
-          waypoints: sorted.map(loc => loc.latlng),
-          routeWhileDragging: false,
-          draggableWaypoints: false,
-          addWaypoints: false
-        }).addTo(map);
-
-        sorted.forEach((loc, i) => {
-          L.marker(loc.latlng).addTo(map).bindPopup(`${i + 1}. ${loc.postcode}`);
-        });
-      })
-      .catch(err => {
-        console.error(err);
-        alert(err.message);
-      });
-  </script>
-</body>
-</html>
-
-{% endblock body   %}
+        
+        function haversine(latlng1, latlng2) {
+          const R = 6371 // km
+          const dLat = ((latlng2.lat - latlng1.lat) * Math.PI) / 180
+          const dLon = ((latlng2.lng - latlng1.lng) * Math.PI) / 180
+          const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos((latlng1.lat * Math.PI) / 180) * Math.cos((latlng2.lat * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+          return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        }
+        
+        function sortLocationsGreedy(locations) {
+          const sorted = [locations[0]]
+          const remaining = locations.slice(1)
+        
+          while (remaining.length > 0) {
+            const last = sorted[sorted.length - 1]
+            let closestIndex = 0
+            let minDistance = haversine(last.latlng, remaining[0].latlng)
+        
+            for (let i = 1; i < remaining.length; i++) {
+              const dist = haversine(last.latlng, remaining[i].latlng)
+              if (dist < minDistance) {
+                minDistance = dist
+                closestIndex = i
+              }
+            }
+        
+            sorted.push(remaining.splice(closestIndex, 1)[0])
+          }
+        
+          return sorted
+        }
+        
+        Promise.all(postcodes.map(geocodePostcode))
+          .then((locations) => {
+            map.fitBounds(locations.map((l) => l.latlng))
+            const sorted = sortLocationsGreedy(locations)
+        
+            L.Routing.control({
+              waypoints: sorted.map((loc) => loc.latlng),
+              routeWhileDragging: false,
+              draggableWaypoints: false,
+              addWaypoints: false
+            }).addTo(map)
+        
+            sorted.forEach((loc, i) => {
+              L.marker(loc.latlng)
+                .addTo(map)
+                .bindPopup(`${i + 1}. ${loc.postcode}`)
+            })
+          })
+          .catch((err) => {
+            console.error(err)
+            alert(err.message)
+          })
+      </script>
+    </body>
+  </html>
+{% endblock %}
