@@ -97,7 +97,7 @@ def job_create(request):
         form = JobForm(request.POST)
         if form.is_valid():
             try:
-                Job.objects.get(job_id=form.cleaned_data['job_id']
+                Job.objects.get(job_id=form.cleaned_data['job_id'])
                 jobi=True
             except Job.DoesNotExist:
                 jobi=False
