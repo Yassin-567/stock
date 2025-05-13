@@ -4,9 +4,10 @@
 {% block body %}
   {% if messages %}
     {% for message in messages %}
-      <div class="alert alert-warning">{{ message }}</div>
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
     {% endfor %}
   {% endif %}
+
   <section class="form-section">
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}

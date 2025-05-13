@@ -5,6 +5,11 @@
   <h1>Add new engineer</h1>
   {% if messages %}
     {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message|safe }}</div>
+    {% endfor %}
+  {% endif %}
+  {% if messages %}
+    {% for message in messages %}
       <div class="alert alert-{{ message.tags }}">
         <p>{{ message|safe }}</p> {% comment %}dded safe as django skip html{% endcomment %}
       </div>

@@ -3,9 +3,11 @@
 {% load custom_tags %}
 
 {% block body %}
-  {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-  {% endfor %}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
 
   <!-- Modern Form Section -->
   <section class="form-section">

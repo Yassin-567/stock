@@ -2,9 +2,12 @@
 {% load static %}
 {% load custom_tags %}
 {% block body %}
-  {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-  {% endfor %}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
   <H3>Update user</H3>
   {% if user|is_in_group:'Ban' %}
     <h2><span style="

@@ -82,6 +82,7 @@ def register_user(request):
 @login_required(login_url='login', redirect_field_name='inventory')
 @no_ban
 def inventory(request):
+    
     rjobs = Job.objects.annotate(item_count=Count('items')).filter(items_arrived=True).prefetch_related('items')
     items=Item.objects.filter(company=request.user.company)
     
@@ -639,6 +640,50 @@ def engineer(request):
                 messages.error(request,"Engineer with the same name exists")
             return render(request,'inventory/eng.html',{'form':form})
     return render(request,'inventory/eng.html',{'form':form})
+
+def create_batch_items(request):
+    if request.method == 'POST':
+        
+        item_data = {
+            'name': request.POST['name'],
+            'part_number': request.POST['part_number'],
+            'reference': request.POST['reference'],
+            'price': float(request.POST['price']) ,
+            'supplier': request.POST['supplier'],
+            'arrived_quantity': int(request.POST['arrived_quantity']),
+            'company':request.user.company
+        }
+        
+        # Save to database
+
+        item=Item.objects.create(**item_data)
+        WarehouseItem.objects.create(item=item,warehouse_quantity=item.arrived_quantity,company=request.user.company,status='arrived')
+        messages.success(request,f'{item.arrived_quantity} of {item.name} added to the warehouse')
+        # Remove this item from session
+        items = request.session.get('batch_items', [])
+        items = [item for item in items if item['part_number'] != item_data['part_number']]
+        request.session['batch_items'] = items
+
+        return redirect('batch_entry')
+
+import pandas as pd
+
+def batch_entry(request):
+    if request.method == 'POST' and request.FILES.get('excel_file'):
+        excel_file = request.FILES['excel_file']
+        df = pd.read_excel(excel_file)
+        data = df.to_dict(orient='records')
+
+        # Save all items in session
+        request.session['batch_items'] = data
+        return redirect('batch_entry')  # refresh the page
+
+    # Load current items from session
+    data = request.session.get('batch_items', [])
+    return render(request, 'inventory/batch_entry.html', {'data': data})
+def clear_batch(request):
+    request.session['batch_items'] =[]
+    return redirect('batch_entry')
 import requests
 from django.shortcuts import render
 

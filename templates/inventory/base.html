@@ -66,6 +66,9 @@
               <li class="nav-item">
                 <a class="nav-link fw-bold text-light" href="{% url 'item_add' True %}">Add item to the warehouse</a>
               </li>
+              <li class="nav-item">
+                <a class="nav-link fw-bold text-light" href="{% url 'batch_entry' %}">Add many items to the warehouse</a>
+              </li>
               <!-- Admin Panel -->
               {% if request.user|is_admin %}
                 <li class="nav-item">

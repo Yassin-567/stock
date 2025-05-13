@@ -167,7 +167,7 @@ class Item(models.Model):
     name=models.CharField(max_length=70)
     part_number=models.TextField(max_length=30)
     reference=models.TextField(blank=True,null=True,max_length=40)
-    price=models.DecimalField(max_digits=10, decimal_places=2)
+    price=models.DecimalField(max_digits=10, decimal_places=2,)
     supplier=models.CharField(max_length=70)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company")
     added_date=models.DateTimeField(auto_now_add=True)
