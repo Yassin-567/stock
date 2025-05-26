@@ -3,6 +3,11 @@
 {% load custom_tags %}
 
 {% block body %}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
   <h3>Warehouse Items</h3>
   {% if warehouse_items %}
     <ul>
@@ -33,7 +38,7 @@
     <ul>
       {% for item in moved_items %}
         <li>
-          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.item.name }}</a> - Part Number: {{ item.item.part_number }} - Price: ${{ item.item.price }} - Status: {{ item.get_status_display }} - Quantity Moved: {{ item.quantity_moved }}
+          <a href="{% url 'update_warehouse_item' item.id %}">{{ item.item.name }}</a> - Part Number: {{ item.item.part_number }} - Price: ${{ item.item.price }} - Status: {{ item.get_status_display }} - Quantity Moved: {{ item.warehouse_quantity }}
         </li>
       {% endfor %}
     </ul>
@@ -41,15 +46,17 @@
     <p>No items have been moved for jobs.</p>
   {% endif %}
   <h3>Taken moved items</h3>
-  {% if used_moved_items %}
+  {% comment %} {% if used_moved_items %}
+    {% endcomment %}
     <ul>
       {% for item in used_moved_items %}
         <li>
           <a href="{% url 'update_warehouse_item' item.id %}">{{ item.item.name }}</a> - Part Number: {{ item.item.part_number }} - Price: ${{ item.item.price }} - Status: {{ item.get_status_display }} - Quantity: Moved: {{ item.quantity_moved }}
-          <span style="color: ;">Taken for job <a href="{% url 'update_job' item.job.id %}">{{ item.job }}</a></span>
+          <span style="color: ;">Taken for job <a href="">{{ item.job }}</a></span> <span>but was ordered for{{ item.was_for_job.address }}</span>
         </li>
       {% endfor %}
     </ul>
-  {% endif %}
+    {% comment %}
+  {% endif %} {% endcomment %}
   <hr />
 {% endblock %}

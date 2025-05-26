@@ -25,7 +25,7 @@ class CustomUserManager(BaseUserManager):
 
         # Ensure the user has at least one group.
         if not user.groups.exists():
-            default_group, _ = Group.objects.get_or_create(name='Default')
+            default_group, _ = Group.objects.get_or_create(name='Employee')
             user.groups.add(default_group)
 
         return user
@@ -99,37 +99,33 @@ class Job(models.Model):
     items_arrived=models.BooleanField(default=False, )
     post_code=models.CharField(max_length=10, null=True, blank=True)
     quoted=models.BooleanField(default=False)
-    
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
-
     def save(self, *args, **kwargs):
+        print(555)
         old_status = None
         if self.pk:
             old_instance = type(self).objects.get(pk=self.pk)
             old_status = old_instance.status
-        print("old status", old_status)
         super().save(*args, **kwargs)
         self.items_arrived=False #soublw check here
         if self.items.count() > 0:
             self.items_arrived =  not self.items.exclude(status="arrived").exists() 
         if self.status=="quoted":
             self.quoted=True
-        if self.status == "completed":
-            for item in self.items.all():
-                if item.arrived_quantity != 0:
-                    if item.job_quantity == item.arrived_quantity:
-                        item.warehouse_quantity = 0
-                        item.is_used=True
-                    item.status="arrived"
-                    item.save(no_recursion=True)
+        if self.status != "completed" and old_status == "completed" and self.status != "cancelled":
             
-        elif self.status != "completed" and old_status == "completed" and self.status != "cancelled":
             for item in self.items.all():
                 if item.is_used:
+                
                     print("item is used")
                     item.notes='Job was completed then reopened, double check if the item was used.'
                     item.save(no_recursion=True) 
+        if self.status=='completed':
+            for item in self.items.all():
+                print(item)
+                item.is_used=True
+                item.save(update_fields=['is_used'])
         super().save(*args, **kwargs)
     
     def __str__(self):
@@ -148,6 +144,7 @@ class Comment(models.Model):
 
     class Meta:
         ordering = ['-added_date']
+    
     def __str__(self):
         return self.comment#[:20] + "..." if len(self.comment) > 20 else self.comment
     def save(self,*args, **kwargs):
@@ -156,14 +153,12 @@ class Comment(models.Model):
         super().save(*args, **kwargs) 
         
     
-
-class Item(models.Model):
-    CHOICES=[
+CHOICES=[
         ('ordered', 'Ordered'),
         ('arrived', 'Arrived'),
         ('not_ordered','Not ordered'),
     ]
-    
+class Item(models.Model):    
     name=models.CharField(max_length=70)
     part_number=models.TextField(max_length=30)
     reference=models.TextField(blank=True,null=True,max_length=40)
@@ -172,24 +167,13 @@ class Item(models.Model):
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company")
     added_date=models.DateTimeField(auto_now_add=True)
     added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user")
-    #is_warehouse_item=models.BooleanField(default=False)
-    #is_moved_to_warehouse=models.BooleanField(default=False)
-    #warehouse_quantity=models.PositiveSmallIntegerField(default=0)
-    #job_quantity=models.PositiveSmallIntegerField(default=0)
-    #arrived_quantity=models.PositiveSmallIntegerField(default=0)
     required_quantity=models.PositiveSmallIntegerField(default=0)
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
-    #status=models.CharField(max_length=20,choices=CHOICES,default="not_ordered")
     notes=models.TextField(null=True, blank=True)
     def __str__(self):
         return self.name
 
 class JobItem(models.Model):
-    CHOICES=[
-        ('ordered', 'Ordered'),
-        ('arrived', 'Arrived'),
-        ('not_ordered','Not ordered'),
-    ]
     job = models.ForeignKey(Job, on_delete=models.DO_NOTHING, related_name="items")
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="job_items")
     job_quantity = models.PositiveSmallIntegerField(default=0)  # How many needed for this job
@@ -197,20 +181,25 @@ class JobItem(models.Model):
     status=models.CharField(max_length=20,choices=CHOICES,default="not_ordered")
     is_used=models.BooleanField(default=False)
     from_warehouse=models.BooleanField(default=False)
+    was_for_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="moveditems")
+
+    def save(self,*args, **kwargs):
+        if self.job.status=='ready':
+            for item in self.job.items.all():
+                if item.status!='arrived':
+                    self.job.status='paused'
+                    self.job.save(update_fields=['status'])
+                    return
+        super().save(*args, **kwargs) 
     def __str__(self):
         return str(self.item.name)
+
 class WarehouseItem(models.Model):
-    CHOICES=[
-        ('ordered', 'Ordered'),
-        ('arrived', 'Arrived'),
-        ('not_ordered','Not ordered'),
-    ]
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="warehouse_company_items")
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="warehouse_items")
     warehouse_quantity = models.PositiveSmallIntegerField(default=0)  
-    status=models.CharField(max_length=20,choices=CHOICES,default="not_ordered")
     is_used=models.BooleanField(default=False)
-    is_moved_from_job=models.BooleanField(default=False)
-
+    is_moved_from_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="warehousemoveditems")
+    
     def __str__(self):
         return str(self.item.name)

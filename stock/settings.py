@@ -26,9 +26,9 @@ SECRET_KEY = 'django-insecure-^1!b7rh22^^$_@f7dkxx1g29wo-=caz_r=kycv+=_3_n1jxbt#
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
-CSRF_TRUSTED_ORIGINS = [
-    "https://stock-production-e9d0.up.railway.app"
-]
+# CSRF_TRUSTED_ORIGINS = [
+#     "https://stock-production-e9d0.up.railway.app"
+# ]
 
 
 # Application definition
@@ -85,18 +85,18 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 #Database
 #https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# DATABASES = {
-#    'default': {
-#       'ENGINE': 'django.db.backends.sqlite3',
-#        'NAME': BASE_DIR / 'db.sqlite3',
-#    }
-# }
+DATABASES = {
+   'default': {
+      'ENGINE': 'django.db.backends.sqlite3',
+       'NAME': BASE_DIR / 'db.sqlite3',
+   }
+}
 
 from decouple import config
 import dj_database_url
 
-DATABASES = {
-    'default': dj_database_url.parse(config('DATABASE_URL')) }
+# DATABASES = {
+#     'default': dj_database_url.parse(config('DATABASE_URL')) }
 
 
 
@@ -135,7 +135,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 STATIC_ROOT=os.path.join(BASE_DIR, 'static')
 STATIC_URL = 'static/'
-STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 
 STATICFILES_DIRS =[ os.path.join(BASE_DIR, 'stock/static')]
@@ -151,7 +150,7 @@ EMAIL_HOST = "smtp.gmail.com"  # Change this based on your email provider
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "yassinalaa3310@gmail.com"
-EMAIL_HOST_PASSWORD = "agwq dsxr bdvo hvho"
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 AUTH_USER_MODEL = 'inventory.CustomUser'
 # settings.py
 TIME_ZONE = 'Africa/Cairo'  # Set to your correct timezone

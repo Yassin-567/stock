@@ -24,7 +24,7 @@ from django.core.mail import send_mail
 # from django.core.mail import send_mail
 
 
-
+@login_required(login_url='login', redirect_field_name='inventory')
 def logout_user(request):
     if not request.user.is_authenticated:
         messages.error(request, 'You are not logged in.')
@@ -116,6 +116,7 @@ def job_create(request):
     return render(request, 'inventory/job_create.html', {'form': form})
 @login_required
 def update_job(request, pk):
+    
     job=Job.objects.filter(company=request.user.company).get(job_id=pk)
     items=JobItem.objects.filter(job=job)
     items_count=0
@@ -129,69 +130,95 @@ def update_job(request, pk):
         'company': request.user.company,
         })
     comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
-    
-    if request.method == 'POST' and 'save' in request.POST:
+    if request.method=="POST":  
+        if 'yes_complete' in request.POST:
+            
+            post_data = request.session.pop('job_post_data', None)
+            if post_data:
+                form = JobForm(post_data, instance=job, updating=True)
+                if form.is_valid():
+                    form.save()
+                    for item in job.items.all():
+                        print(item)
+                        item.is_used=True
+                        item.save(update_fields=['is_used'])
+                    messages.success(request, "Job completed.")
+                return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
+        post_data = request.session.pop('job_post_data', None) #in case of no retunr back
+        if post_data and request.method == 'POST' and 'no_return_back' in request.POST :#---
+            form = JobForm(post_data, instance=job, updating=True)  #----
+        if 'save' in request.POST:
+            
+            form = JobForm(request.POST, instance=job,updating=True)
+            
+            if form.is_valid() :
+                
+                if form.cleaned_data['status']=='completed':
+                    
+                    li=[]
+                    li=[item for item in job.items.all() if item.job_quantity != item.arrived_quantity]
+                    if len(li)>0:
+                        request.session['job_post_data'] = request.POST  # Save the POST data
+                        return render(request,'inventory/confirm.html',{'items':li,'complete_request':True,'job':job})
+                form.save()
+                
+                messages.success(request, 'Job updated successfully')
+                items=JobItem.objects.filter(job=job)
         comments_form=CommentForm(request.POST)
-        form = JobForm(request.POST, instance=job,updating=True)
-        
-        if form.is_valid() and comments_form.is_valid():
-            form.save()
+        if comments_form.is_valid() and 'add_comment' in request.POST: 
             
             comment = comments_form.save(commit=False)
             comment.added_by = request.user 
             comment.company = request.user.company
             comment.save()
             comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
-            messages.success(request, 'Job updated successfully')
-            comments_form = CommentForm(initial={
-        'content_type': ContentType.objects.get_for_model(Job),
-        'object_id': job.job_id,
-        'company': request.user.company,
-        })
-            form = JobForm(instance=job,)
-            items=JobItem.objects.filter(job=job)
-    if request.method == 'POST' and 'send_email' in request.POST :
-            if job.engineer is not None and job.status=="ready":
-                recipient_list=[]
-                recipient_list.append(job.engineer.email)
-                # parts=[]
-                # for part in job.items.all():
-                #     parts.append(part)
-                parts = [str(part) for part in job.items.all()]
-                parts_text = "\n".join(parts)
-                print(parts)
-                print(parts_text)
-                send_mail(
-                    subject=f'Job {job.address}',
-                    message=f'Hi, please take the following parts:\n\n{parts_text}',
-                    from_email='yassinalaa3310@gmail.com',
-                    recipient_list=['yassinalaa3310@gmail.com'],
-                    fail_silently=False,
-                )
-                
-                messages.success(request,f'Email sent to {job.engineer.name}')
-                form = JobForm(instance=job,updating=True,)
-                comments_form=CommentForm(initial={
-                    'content_type': ContentType.objects.get_for_model(Job),
-                    'object_id': job.job_id,
-                    'company': request.user.company,
-                    })
-                comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
-                
-                return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
-            messages.error(request,"ddd")
-            comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
             comments_form = CommentForm(initial={
             'content_type': ContentType.objects.get_for_model(Job),
             'object_id': job.job_id,
             'company': request.user.company,
             })
-            form = JobForm(instance=job,)
-            items=JobItem.objects.filter(job=job)
-            return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
+            form = JobForm(instance=job,updating=True)
+            
+        if 'send_email' in request.POST :
+                if job.engineer is not None and job.status=="ready":
+                    recipient_list=[]
+                    recipient_list.append(job.engineer.email)
+                    # parts=[]
+                    # for part in job.items.all():
+                    #     parts.append(part)
+                    parts = [str(part) for part in job.items.all()]
+                    parts_text = "\n".join(parts)
+                    print(parts)
+                    print(parts_text)
+                    send_mail(
+                        subject=f'Job {job.address}',
+                        message=f'Hi, please take the following parts:\n\n{parts_text}',
+                        from_email='yassinalaa3310@gmail.com',
+                        recipient_list=['yassinalaa3310@gmail.com'],
+                        fail_silently=False,
+                    )
+                    messages.success(request,f'Email sent to {job.engineer.name}')
+                    form = JobForm(instance=job,updating=True,)
+                    comments_form=CommentForm(initial={
+                        'content_type': ContentType.objects.get_for_model(Job),
+                        'object_id': job.job_id,
+                        'company': request.user.company,
+                        })
+                    comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
+                    return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
+                messages.error(request,"ddd")
+                comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
+                comments_form = CommentForm(initial={
+                'content_type': ContentType.objects.get_for_model(Job),
+                'object_id': job.job_id,
+                'company': request.user.company,
+                })
+                form = JobForm(instance=job,)
+                items=JobItem.objects.filter(job=job)
+                return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
     context={'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count}
     return render(request, 'inventory/job_update.html', context)       
-###########################ITEM######################
+###########################-ITEM-######################
 @login_required
 def item_add(request,pk=None,no_job=False):
     try:
@@ -222,24 +249,30 @@ def item_add(request,pk=None,no_job=False):
                                 
                                 if item.warehouse_quantity>0 and item.warehouse_quantity>= required_quantity:
                                     if JobItem.objects.filter(job=job,item=item.item,):
+                                        print('pppooopppooopppooo')
                                         jobitem=JobItem.objects.filter(job=job,item=item.item,).first()
                                         jobitem.job_quantity=jobitem.job_quantity+required_quantity
                                         jobitem.arrived_quantity=jobitem.job_quantity
                                         jobitem.save(update_fields=['job_quantity'])
                                         item.warehouse_quantity=item.warehouse_quantity-required_quantity
                                         item.save(update_fields=['warehouse_quantity'])
-                                    else:
+                                        if item.warehouse_quantity==0:
+                                            item.delete()
+                                    else: 
+                                        
                                         JobItem.objects.create(
                                         job=job,
-                                        from_warehouse=True,
+                                        from_warehouse=True if item.is_moved_from_job==None else False,
                                         item=item.item,
                                         status='arrived',
                                         job_quantity=+required_quantity,
                                         arrived_quantity=+required_quantity,
+                                        was_for_job=item.is_moved_from_job if item.is_moved_from_job else None
                                         )
                                         item.warehouse_quantity=item.warehouse_quantity-required_quantity
                                         item.save(update_fields=['warehouse_quantity'])
-                                        print(item.warehouse_quantity)
+                                        if item.warehouse_quantity==0:
+                                            item.delete()
                                 else:
                                     messages.error(request,"Not enough stock")
                                     return redirect('inventory')
@@ -286,7 +319,7 @@ def item_add(request,pk=None,no_job=False):
                             messages.success(request, f'{item}-is added to job {job}')
                             return render(request, 'inventory/add_item.html', {'form': form,'stock_items_form':stock_items_form})
                         elif pk is None and no_job: 
-
+                            print(995666)
                             item=form.save(commit=False)
                             
                             pn=form.cleaned_data['part_number']
@@ -345,11 +378,19 @@ def update_item(request, pk):
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,'completed':completed}
             return render(request, 'inventory/update_item.html', context)
         if "delete" in request.POST:
-            itemname=item.item.name
-            item.item.delete()
-            item.delete()
-            messages.success(request, f"Item {itemname} deleted successfully.")
+            return render(request,'inventory/confirm.html',{'item':item,'job_item':True})
+        if 'yes_delete' in request.POST:
+            try:
+                with transaction.atomic():
+                    item.delete()
+                    messages.success(request,f'{item} deleted succssefully')
+            except:
+                messages.error(request,f'{item} deleting failed')
+                return redirect(f'update_item',pk=pk)
             return redirect('inventory')
+        elif 'no_return_back' in request.POST:
+            print("s")
+            return redirect(f'update_item',pk=pk)
         form = ItemForm(request.POST, request.FILES, instance=item,updating=True)
         if 'move_item' in request.POST :
             try:
@@ -357,29 +398,38 @@ def update_item(request, pk):
 
                 # Optional: Check if already used or empty
                 if job_item.is_used or job_item.arrived_quantity == 0:
-                    print('used?',job_item.is_used)
-                    print('used?',job_item.arrived_quantity)
+                    
                     messages.error(request, "Nothing to move or already used.")
                     form = JobItemForm(instance=item,item=item)
                     comments_form=CommentForm(initial={
-        'content_type': ContentType.objects.get_for_model(JobItem),
-        'object_id': item.id,
-        'company': request.user.company,
-        })
+                    'content_type': ContentType.objects.get_for_model(JobItem),
+                    'object_id': item.id,
+                    'company': request.user.company,
+                    })
                     context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,'completed':completed}
                     return render(request, 'inventory/update_item.html', context)
-                if not job_item.from_warehouse :
+                try:
+                    WarehouseItem.objects.get(Q(company=request.user.company) & Q(item=item.item))
+                    create_new=False
+                except:
+                    create_new=True
+                if not job_item.from_warehouse or create_new :
+                    job=job_item.was_for_job if job_item.was_for_job else job
                     # Create WarehouseItem
                     WarehouseItem.objects.create(
                         item=job_item.item,
                         warehouse_quantity=job_item.arrived_quantity,
                         company=request.user.company,
                         #is_used=job_item.is_used,
-                        is_moved_from_job=True 
+                        is_moved_from_job=job if job_item.was_for_job else None  ,   
                     )
                 else:
-                    
-                    wi=WarehouseItem.objects.get(item=job_item.item)
+                
+                    try:
+                        wi=WarehouseItem.objects.get(Q(item=job_item.item) & Q(is_moved_from_job=True))
+                    except:
+                        print(5555)
+                        wi=WarehouseItem.objects.get(item=job_item.item)
                     wi.warehouse_quantity+=job_item.job_quantity
                     wi.save(update_fields=['warehouse_quantity'])
                 # Delete JobItem after successful move
@@ -388,7 +438,6 @@ def update_item(request, pk):
             except JobItem.DoesNotExist:
                 messages.error(request,"Moving failed")
             return redirect('inventory') 
-       
         form = JobItemForm(request.POST, request.FILES, instance=item,item=item)
         comments_form=CommentForm(request.POST)
         prevq=item.job_quantity
@@ -401,7 +450,6 @@ def update_item(request, pk):
                     witem=WarehouseItem.objects.get(item=item.item)
                     witem.warehouse_quantity+=prevq-job_quantiy
                     witem.save(update_fields=['warehouse_quantity'])
-
                     # else:
                     #     print(job_quantiy,prevq,"less")
                     item=form.save(commit=False)
@@ -426,6 +474,7 @@ def update_item(request, pk):
 ########################
 @login_required
 def update_warehouse_item(request, pk):
+    print(WarehouseItem.objects.filter(company=request.user.company,id=pk))
     item = WarehouseItem.objects.filter(company=request.user.company,id=pk)[0].item
     warehouse_item = WarehouseItem.objects.filter(company=request.user.company,id=pk)[0]
     
@@ -443,7 +492,6 @@ def update_warehouse_item(request, pk):
     if request.method == 'POST':
         comments_form=CommentForm(request.POST)
         if comments_form.is_valid() and "just_add_comment" in request.POST :
-            
             comment = comments_form.save(commit=False)
             comment.added_by = request.user 
             comment.company = request.user.company
@@ -455,14 +503,20 @@ def update_warehouse_item(request, pk):
             'company': request.user.company,
             })
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
-            return render(request, 'inventory/update_item.html', context)
+            return render(request, 'inventory/update_warehouse_item.html', context)
         if "delete" in request.POST:
-            # itemname=item.name
-            # item.delete()
-            # messages.success(request, f"Item {itemname} deleted successfully.")
-            messages.success(request, f"Oops deleting isn't available now")
-            return redirect('inventory')
-        
+            return render(request,'inventory/confirm.html',{'item':warehouse_item,'warehouse_item':True})
+        if 'yes_delete' in request.POST:
+            try:
+                with transaction.atomic():
+                    warehouse_item.delete()
+                    messages.success(request,f'{warehouse_item} deleted succssefully')
+            except:
+                messages.error(request,f'{warehouse_item} deleting failed')
+                return redirect(f'update_warehouse_item',pk=pk)
+            return redirect('warehouse')
+        elif 'no_return_back' in request.POST:
+            return redirect(f'update_warehouse_item',pk=pk)
         form = WarehouseitemForm(request.POST, request.FILES, instance=item,warehouse_item=warehouse_item)
         # handler=WareohuseFormHandler(form,)
         # handler.set_form_fields()
@@ -470,17 +524,16 @@ def update_warehouse_item(request, pk):
         if form.is_valid() and 'edit' in request.POST: 
             item=form.save(commit=False)
             item.company=request.user.company
-            item.save(update_fields=['arrived_quantity'],)#updating=True
+            item.save(update_fields=['arrived_quantity','reference','name','price','supplier'],)#updating=True
             arrived_quantity=form.cleaned_data['arrived_quantity']
             warehouse_item.warehouse_quantity=arrived_quantity
             warehouse_item.save(update_fields=['warehouse_quantity'])
             form = WarehouseitemForm( instance=item,warehouse_item=warehouse_item)
-            
             messages.success(request,f'Item {warehouse_item} updated successfully')
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
             return render(request, 'inventory/update_item.html', context)
-    context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments}
-    return render(request, 'inventory/update_item.html', context)
+    context = {'form': form,'item': item,'warehouse_item':warehouse_item,'comments_form':comments_form,"comments":comments}
+    return render(request, 'inventory/update_warehouse_item.html', context)
     
 @owner_only
 @login_required
@@ -614,11 +667,11 @@ def register_company(request):
     return render(request, 'auths/register_company.html', {'company_form': company_form, 'user_form': user_form})
 #############
 def warehouse(request):
-    warehouse_items=WarehouseItem.objects.filter(company=request.user.company)
-    moved_items=WarehouseItem.objects.filter(is_moved_from_job=True ,company=request.user.company)
-    used_warehouse_items=WarehouseItem.objects.filter(company=request.user.company,is_used=True)
-    used_moved_items=WarehouseItem.objects.filter(is_moved_from_job=True ,company=request.user.company,is_used=True)
-    
+    warehouse_items=WarehouseItem.objects.filter(company=request.user.company,is_moved_from_job=None)
+    moved_items=WarehouseItem.objects.filter(is_moved_from_job__isnull=False ,company=request.user.company , warehouse_quantity__gt=0)
+    used_warehouse_items=JobItem.objects.filter(job__company=request.user.company,is_used=True,from_warehouse=True)
+    used_moved_items=JobItem.objects.filter(job__company=request.user.company,is_used=True,was_for_job__isnull=False)
+    print(used_moved_items)
     return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items,'moved_items':moved_items,'used_warehouse_items':used_warehouse_items,'used_moved_items':used_moved_items})
 
 def engineer(request):
@@ -643,7 +696,6 @@ def engineer(request):
 
 def create_batch_items(request):
     if request.method == 'POST':
-        
         item_data = {
             'name': request.POST['name'],
             'part_number': request.POST['part_number'],
@@ -653,21 +705,30 @@ def create_batch_items(request):
             'arrived_quantity': int(request.POST['arrived_quantity']),
             'company':request.user.company
         }
-        
         # Save to database
-
         item=Item.objects.create(**item_data)
-        WarehouseItem.objects.create(item=item,warehouse_quantity=item.arrived_quantity,company=request.user.company,status='arrived')
+
+        try:
+            
+            exist=WarehouseItem.objects.get(item__part_number=item.part_number)
+            
+        except WarehouseItem.DoesNotExist:
+            exist=False
+        if exist:
+            wi=WarehouseItem.objects.get(item__part_number=item.part_number)
+            wi.warehouse_quantity+=item.arrived_quantity
+            wi.save(update_fields=['warehouse_quantity'])
+
+        else:
+            WarehouseItem.objects.create(item=item,warehouse_quantity=item.arrived_quantity,company=request.user.company,status='arrived')
         messages.success(request,f'{item.arrived_quantity} of {item.name} added to the warehouse')
         # Remove this item from session
         items = request.session.get('batch_items', [])
         items = [item for item in items if item['part_number'] != item_data['part_number']]
         request.session['batch_items'] = items
-
         return redirect('batch_entry')
 
 import pandas as pd
-
 def batch_entry(request):
     if request.method == 'POST' and request.FILES.get('excel_file'):
         excel_file = request.FILES['excel_file']
@@ -693,4 +754,13 @@ def fetch_api_data(request):
     data = response.json()  # Convert to dict
 
     return render(request, 'inventory/api_data.html', {'data': data})
+
+def fetch_jobs(request):
+    url = "https://8dea2507-abbb-44c8-8ca4-ac142d8f9edb.mock.pstmn.io/jobs"
+    data=response = requests.get(url)
+    data = response.json()  
+    #data = data.get("items", [])# Convert to dict
+    
+    return render(request, 'inventory/sf.html', {'data': data})
+
 #youssif_USF_SPY

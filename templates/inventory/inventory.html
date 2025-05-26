@@ -27,6 +27,18 @@
         border-radius: 5px;
         box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
       ">"Job is done"</small></h2>
+      {% elif job.status == 'cancelled' %}
+        <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small style="
+        display: inline-block;
+        padding: 5px 10px;
+        font-size: 1.2rem;
+        font-weight: normal;
+        color: #333;
+        background-color: rgb(167, 30, 12);
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
+      ">"Job is Cancelled"</small></h2>
       {% else %}
         <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }}</h2>
         <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>

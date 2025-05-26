@@ -1,5 +1,6 @@
 {% extends 'inventory/base.html' %}
 {% load static %}
+{% load custom_tags %}
 
 {% block body %}
   {% if messages %}
@@ -10,19 +11,20 @@
 
   <!-- Modern Form Section -->
   <h2 style="margin-bottom: 20px; font-size: 1.5rem; font-weight: bold;">
+    Part Number:
     <span style="
     display: inline-block;
     padding: 5px 10px;
     margin-left: 10px;
     font-size: 1.2rem;
-    
+    font-weight: normal;
+    color: #333;
     background-color:rgba(182, 182, 182, 0.79);
     border: 1px solid #ddd;
     border-radius: 5px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  "><span style="color: rgba(0, 0, 0, 0.77);">Part Number:</span><span style="font-weight: bolder;
-    color: rgb(212, 123, 5);">{{ item.item.part_number }}</span></span>
-    {% if item.status == 'arrived' %}
+  ">{{ item.part_number }}</span>
+    {% if warehouse_item.status == 'arrived' %}
       <span style="
     display: inline-block;
     padding: 5px 10px;
@@ -34,7 +36,7 @@
     border: 1px solid #ddd;
     border-radius: 5px;
     box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
-  ">{{ item.status }}</span>
+  ">{{ warehouse_item.status }}</span>
     {% else %}
       <span style="
     display: inline-block;
@@ -47,26 +49,12 @@
     border: 1px solid #ddd;
     border-radius: 5px;
     box-shadow: 0 1px 3px rgba(255, 253, 253, 0.1);
-  ">{{ item.status }}</span>
-    {% endif %}
-    {% if item.from_warehouse %}
-      <span style="
-    display: inline-block;
-    padding: 5px 10px;
-    margin-left: 10px;
-    font-size: 1.2rem;
-    font-weight: normal;
-    color: rgb(0, 0, 0);
-    background-color:rgba(157, 119, 192, 0.79);
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    box-shadow: 0 1px 3px rgba(255, 253, 253, 0.1);
-  ">From warehouse</span>
+  ">{{ warehouse_item.get_status_display }}</span>
     {% endif %}
   </h2>
 
   <section class="form-section">
-    <h3>Part name:{{ item.item.name }} for job: {{ item.job }}</h3>
+    <h3>{{ item.item.name }}</h3>
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
       <div class="form-group">
@@ -78,7 +66,7 @@
         {% endif %}
       </div>
 
-      <form action="POST">
+      <form method="POST">
         {% csrf_token %}
         <section class="form-section">
           <div class="form-group">{{ comments_form.as_p }}</div>
@@ -90,10 +78,10 @@
     </form>
     {% if not completed %}
       <span>
-        <form action="{% url 'update_item' item.id %}" method="POST" class="delete-form" style="display: inline;">
+        <form action="{% url 'update_warehouse_item' warehouse_item.id %}" method="POST" class="delete-form" style="display: inline;">
           {% csrf_token %}
           {% if not item.from_warehouse %}
-            <button name="delete" type="submit" class="btn btn-danger">Delete</button>
+            <button name="delete" type="submit" class="btn btn-danger">Delete{{ warehouse_item.id }}</button>
           {% endif %}
 
           {% comment %}
@@ -101,7 +89,6 @@
         <form action="{% url 'update_item' item.id %}" method="POST" class="delete-form" style="display: inline;">
           {% endcomment %}
           {% comment %} {% csrf_token %} {% endcomment %}
-          <button name="move_item" type="submit" class="btn btn-submit">Move</button>
         </form>
       </span>
     {% endif %}
@@ -114,15 +101,15 @@
     <ul class="item-items">
       <li class="item-item">
         <div class="item-info">
-          <h4>{{ item.item.name }} - {{ item.get_status_display }}</h4>
+          <h4>{{ item.name }} - {{ warehouse_item.get_status_display }}</h4>
           {% if item.item.image %}
-            <img class="item-img" src="{{ item.image.url }}" alt="{{ item.item.name }}" />
+            <img class="item-img" src="{{ item.image.url }}" alt="{{ item.name }}" />
           {% endif %}
           <p>
-            <strong>Reference:</strong> {{ item.item.reference }}
+            <strong>Reference:</strong> {{ item.reference }}
           </p>
           <p>
-            <strong>Added by:</strong> {{ item.item.added_by.username }} <br /><strong>At</strong>: {{ item.item.added_date }}
+            <strong>Added by:</strong> {{ item.added_by.username }} <br /><strong>At</strong>: {{ item.added_date }}
           </p>
         </div>
       </li>

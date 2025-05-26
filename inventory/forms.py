@@ -115,7 +115,6 @@ class CommentForm(forms.ModelForm):
             'company': forms.HiddenInput(),
         }
     
-''
 class StokcItemsForm(forms.ModelForm): #for adding items from warehouse to job only
     stock_items = forms.ModelMultipleChoiceField(
         queryset=Item.objects.none(),
@@ -204,7 +203,7 @@ class WarehouseitemForm(forms.ModelForm):
     class Meta:
         model = Item
         fields = '__all__' 
-        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','is_moved_to_warehouse','notes','is_move_to_warehouse','arrived_quantity','required_quantity']
+        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','item','status','is_moved_from_job','is_moved_to_warehouse','notes','is_move_to_warehouse','arrived_quantity','required_quantity']
         labels = {
             'name': 'Part Name',
         }
@@ -222,14 +221,13 @@ class WarehouseitemForm(forms.ModelForm):
                 'class': 'form-control',}),
             'reference':forms.Textarea(attrs={'rows':1})
         }
-    def __init__(self, *args,warehouse_item,**kwargs):
+    def __init__(self, *args,warehouse_item, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['arrived_quantity'] = forms.IntegerField(
                 initial=warehouse_item.warehouse_quantity if warehouse_item else None,
                 label="Stock Quantity",
-                widget=forms.NumberInput(attrs={'class': 'form-control'})
-            )
-        
+                widget=forms.NumberInput(attrs={'class': 'form-control'}))
+       
 class EngineerForm(forms.ModelForm):
     class Meta:
         model = Engineer

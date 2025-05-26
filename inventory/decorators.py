@@ -4,6 +4,8 @@ from django.contrib import messages
 from django.shortcuts import render,redirect
 from .forms import loginForm
 from . import views
+
+
 def admins_only(view_func):
     @wraps(view_func)
     def wrapper_func(request, *args, **kwargs):
@@ -18,7 +20,6 @@ def admins_only(view_func):
 def no_ban(view_func):
     @wraps(view_func)
     def wrapper_func(request, *args, **kwargs):
-        # Check if the user is banned
         if not request.user.company.owner==request.user :
             if request.user.groups.filter(name="Ban").exists():
                 messages.error(request, f'<span style="color: red; font-weight: bold;">{request.user.username}</span> is banned from {request.user.company.company_name}')

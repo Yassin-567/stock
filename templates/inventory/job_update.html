@@ -61,9 +61,15 @@
         <button type="submit" name="send_email" class="btn-submit">Send email</button><span><h6>Send a list with the required parts for the engineer</h6></span>
       </div>
 
-      <section class="form-section">
-        <div class="form-group">{{ comments_form.as_p }}</div>
-      </section>
+      <form method="POST">
+        {% csrf_token %}
+        <section class="form-section">
+          <div class="form-group">{{ comments_form.as_p }}</div>
+          <div>
+            <button name="add_comment" type="submit" class="btn-submit">Add comment</button>
+          </div>
+        </section>
+      </form>
     </form>
   </section>
 

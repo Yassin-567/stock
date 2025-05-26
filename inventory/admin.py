@@ -17,9 +17,13 @@ admin.site.register(Engineer, )
 # admin.site.site_header='Stock'
 # admin.site.site_title='Stock'
 class JobItemAdmin(admin.ModelAdmin):
+
     list_display = ('id',  )
+class WarehouseItemAdmin(admin.ModelAdmin):
+    list_display = ('item','id',  )
 admin.site.register(JobItem,JobItemAdmin)
-admin.site.register(WarehouseItem)
+admin.site.register(WarehouseItem,WarehouseItemAdmin)
+    
 admin.site.register(Job,  )
 
 # @admin.register(Comment)
@@ -27,7 +31,7 @@ class CommentAdmin(admin.ModelAdmin):
     list_display = ('content_object', 'comment', 'added_date', 'added_by',"content_type","id")
 admin.site.register(Comment, CommentAdmin )
 class CustomUserAdmin(admin.ModelAdmin):
-    list_display = ('username', 'email','is_staff','company','company__owner')   
+    list_display = ('username', 'email','is_staff','company','company__owner','password')   
     
 admin.site.register(CustomUser, CustomUserAdmin )
 class CompanyAdmin(admin.ModelAdmin): 

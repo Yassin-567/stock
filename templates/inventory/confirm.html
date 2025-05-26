@@ -1,0 +1,31 @@
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+{% if warehouse_item %}
+  Are you sure you want to delete: {{ item }}
+  Quantity:{{ item.warehouse_quantity }}
+  <form action="{% url 'update_warehouse_item' item.id %}" method="POST">
+    {% csrf_token %}
+    <button name="yes_delete" type="submit" class="btn btn-danger">YES</button>
+    <button name="no_return_back" type="submit" class="btn btn-submit">NO, Return back</button>
+  </form>
+{% elif job_item %}
+  Are you sure you want to delete: {{ item }}
+  Quantity:{{ item.warehouse_quantity }}
+  <form action="{% url 'update_item' item.id %}" method="POST">
+    {% csrf_token %}
+    <button name="yes_delete" type="submit" class="btn btn-danger">YES</button>
+    <button name="no_return_back" type="submit" class="btn btn-submit">NO, Return back</button>
+  </form>
+{% endif %}
+{% if complete_request %}
+  {% for item in items %}
+    {{ item.job_quantity }} of {{ item }} is required, only {{ item.arrived_quantity }} arrived
+  {% endfor %}Are you sure you want to complete the job?<form action="{% url 'update_job' job.job_id %}" method="POST">
+    {% csrf_token %}
+    <button name="yes_complete" type="submit" class="btn btn-danger">YES</button>
+    <button name="no_return_back" type="submit" class="btn btn-submit">NO, Return back</button>
+  </form>
+{% endif %}
