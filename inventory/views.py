@@ -81,7 +81,7 @@ def register_user(request):
     return render(request, 'auths/register.html', {'form': form})
 @login_required(login_url='login', redirect_field_name='inventory')
 @no_ban
-def inventory(request):
+def inventory(request,pk=None):
     
     rjobs = Job.objects.annotate(item_count=Count('items')).filter(items_arrived=True).prefetch_related('items')
     items=Item.objects.filter(company=request.user.company)
@@ -91,6 +91,13 @@ def inventory(request):
     context={'rjobs':rjobs,
             'items':items,
             }
+    if request.method=='POST' and "reset_notes" in request.POST:
+        jobitem=JobItem.objects.get(id=pk)
+        item=Item.objects.get(id=jobitem.item.id)
+        item.notes=None
+        item.save(update_fields=['notes'])
+        jobitem.is_used=False
+        jobitem.save(update_fields=['is_used'])
     return render(request,'inventory/inventory.html',context)
 
 @login_required

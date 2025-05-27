@@ -49,12 +49,25 @@
       <p>Company: {{ job.company }}</p>
 
       <h3>Unique items= {{ job.items.count }} Total required items={{ job|total_quantity }} Arrived={{ job|total_arrived_quantity }}</h3>
-
       <ul>
         {% for jobitem in job.items.all %}
           <li>
             <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.item.name }}</a> - Part Number: {{ jobitem.item.part_number }} - Price: ${{ jobitem.item.price }}
-            ({{ jobitem.get_status_display }}){% if jobitem.item.is_used %}
+            {% if jobitem.status == 'arrived' %}
+              <span style="color: rgb(0, 0, 0);background-color: rgb(17, 255, 9);border: 1000px;border-radius: 25%;">{{ jobitem.get_status_display }}</span>
+            {% elif jobitem.status == 'ordered' %}
+              <span style="color: rgb(0, 0, 0);background-color: rgba(228, 216, 51, 0.99);border: 1000px;border-radius: 25%;">{{ jobitem.get_status_display }}</span>
+            {% else %}
+              <span style="color: rgb(0, 0, 0);background-color: rgba(255, 98, 98, 0.99);border: 1000px;border-radius: 25%;">{{ jobitem.get_status_display }}</span>
+            {% endif %}
+            {% if jobitem.item.notes %}
+              <small>{{ jobitem.item.notes }}</small> <form action="{% url 'inventory' jobitem.id %}" method="POST">
+                {% csrf_token %}
+                <small><button name="reset_notes" type="submit" class="btn btn-danger">It's not used</button></small>
+              </form>
+            {% endif %}
+
+            {% if jobitem.item.is_used %}
               <span style="
             display: inline-block;
     padding: 1px 10px;

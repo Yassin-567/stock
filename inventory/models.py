@@ -119,8 +119,9 @@ class Job(models.Model):
                 if item.is_used:
                 
                     print("item is used")
-                    item.notes='Job was completed then reopened, double check if the item was used.'
-                    item.save(no_recursion=True) 
+                    item.item.notes='Job was completed then reopened, double check if the item still exists.'
+                    item.item.save(update_fields=['notes'])
+                    
         if self.status=='completed':
             for item in self.items.all():
                 print(item)
