@@ -42,11 +42,11 @@
         font-size: 1.2rem;
         font-weight: normal;
         color: #333;
-        background-color: rgba(39, 240, 106, 0.79);
+        background-color: rgb(0, 206, 69);
         border: 1px solid #ddd;
         border-radius: 5px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      ">Quoted</span>
+      ">Quoted: $<span style="color: rgb(34, 41, 4);">{{ job.quotation }}</span></span>
     {% endif %}
   </h2>
 
@@ -54,6 +54,12 @@
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
 
+      <div id="id_quotation">
+        <label for="quotation" style="color: rgb(0, 124, 206);">Add quotation price</label>
+        <input type="floatformat" step="0.01" name="quotation" style="background-color: rgb(56, 167, 12);" />
+      </div>
+
+      <br />
       <div class="form-group">{{ form.as_p }}</div>
 
       <div class="form-group">
@@ -82,7 +88,7 @@
       {% for comment in comments %}
         <div class="comment-card">
           <span>Added by {{ comment.added_by.username }}</span>
-          <p>{{ comment }}</p>
+          <p style="color: rgba(117, 58, 255, 0.79);">{{ comment }}</p>
           <span>{{ comment.added_date }}</span>
         </div>
       {% empty %}
@@ -90,4 +96,25 @@
       {% endfor %}
     </div>
   </section>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const statusField = document.getElementById('id_status')
+      const quotingPriceGroup = document.getElementById('id_quotation')
+      function toggleQuotingPrice() {
+        if (!statusField || !quotingPriceGroup) return
+        const value = statusField.value.toLowerCase()
+        if (value === 'quoted' || value === 'waiting') {
+          quotingPriceGroup.style.display = ''
+        } else {
+          quotingPriceGroup.style.display = 'none'
+          const input = quotingPriceGroup.querySelector('input')
+          if (input) input.value = ''
+        }
+      }
+      if (statusField && quotingPriceGroup) {
+        toggleQuotingPrice()
+        statusField.addEventListener('change', toggleQuotingPrice)
+      }
+    })
+  </script>
 {% endblock %}

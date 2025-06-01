@@ -40,6 +40,18 @@ h4 {
     transition: background 0.3s;
 }
 
+.errorlist {
+    color: #d8000c;
+    /* Red color for errors */
+    background: #ffd2d2;
+    /* Light red background */
+    border: 1px solid #d8000c;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    list-style: none;
+}
+
 .btn-submit:hover {
     background: #0056b3;
 }

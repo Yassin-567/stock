@@ -12,7 +12,15 @@
   {% if rjobs %}
     {% for job in rjobs %}
       {% if job.status != 'ready' and job.items_arrived and job.status != 'completed' %}
-        <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small>"Required parts have arrived but the job isn't marked as Ready"</small></h2>
+        <h2>
+          Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <br /><small style="color: rgb(0, 129, 43);">
+            Parts arrived, is this job ready?<form action="{% url 'inventory' job.job_id %}" method="POST">
+              {% csrf_token %}
+              <small><button name="job_is_ready" type="submit" class="btn btn-submit">Yes</button></small>
+            </form>
+          </small>
+        </h2>
+        <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>
       {% elif job.status == 'ready' and not job.items_arrived %}
         <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small>"Required parts have not arrived but the job is marked as Ready"</small></h2>
       {% elif job.status == 'completed' %}
@@ -21,8 +29,8 @@
         padding: 5px 10px;
         font-size: 1.2rem;
         font-weight: normal;
-        color: #333;
-        background-color: rgb(71, 197, 102);
+        color: rgb(255, 255, 255);
+        background-color: rgb(92, 21, 48);
         border: 1px solid #ddd;
         border-radius: 5px;
         box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
@@ -33,7 +41,7 @@
         padding: 5px 10px;
         font-size: 1.2rem;
         font-weight: normal;
-        color: #333;
+        color: rgb(255, 255, 255);
         background-color: rgb(167, 30, 12);
         border: 1px solid #ddd;
         border-radius: 5px;
@@ -46,7 +54,6 @@
       <p>Address: {{ job.address }}</p>
       <p>Parent Account: {{ job.parent_account }}</p>
       <p>Added Date: {{ job.added_date }}</p>
-      <p>Company: {{ job.company }}</p>
 
       <h3>Unique items= {{ job.items.count }} Total required items={{ job|total_quantity }} Arrived={{ job|total_arrived_quantity }}</h3>
       <ul>
@@ -55,10 +62,10 @@
             <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.item.name }}</a> - Part Number: {{ jobitem.item.part_number }} - Price: ${{ jobitem.item.price }}
             {% if jobitem.status == 'arrived' %}
               <span style="color: rgb(0, 0, 0);background-color: rgb(17, 255, 9);border: 1000px;border-radius: 25%;">{{ jobitem.get_status_display }}</span>
-            {% elif jobitem.status == 'ordered' %}
-              <span style="color: rgb(0, 0, 0);background-color: rgba(228, 216, 51, 0.99);border: 1000px;border-radius: 25%;">{{ jobitem.get_status_display }}</span>
+            {% elif jobitem.ordered %}
+              <span style="color: rgb(0, 0, 0);background-color: rgba(228, 216, 51, 0.99);border: 1000px;border-radius: 25%;">Ordered</span>
             {% else %}
-              <span style="color: rgb(0, 0, 0);background-color: rgba(255, 98, 98, 0.99);border: 1000px;border-radius: 25%;">{{ jobitem.get_status_display }}</span>
+              <span style="color: rgb(0, 0, 0);background-color: rgba(255, 98, 98, 0.99);border: 1000px;border-radius: 25%;">Not ordered</span>
             {% endif %}
             {% if jobitem.item.notes %}
               <small>{{ jobitem.item.notes }}</small> <form action="{% url 'inventory' jobitem.id %}" method="POST">

@@ -79,17 +79,19 @@ class JobForm(forms.ModelForm):
     class Meta:
         model = Job
         fields = '__all__'
-        exclude = ['user', 'company','items_arrived']
+        exclude = ['user', 'company','quotation']
         labels = {
             'name': 'Part Name',
         }
         widgets = {
             'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-            'status': forms.Select(attrs={'class': 'form-select', 'id': 'status'}),
+            'status': forms.Select(attrs={'class': 'form-select', 'id': 'id_status'}),
+            #'quotation':forms.NumberInput(attrs={'id':'id_quoting_price'}),
             'price': forms.NumberInput(attrs={'class': 'form-control'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             #'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control', 'id': 'arrived_quantity'}),
             'quoted':forms.HiddenInput(),
+            'items_arrived':forms.HiddenInput(),
             'job_id': forms.TextInput(attrs={  # Override widget for job_id
                 'type': 'text',  # Set input type to text
                 'inputmode': 'numeric',  # Allow numeric input
@@ -98,12 +100,21 @@ class JobForm(forms.ModelForm):
                 'class': 'form-control',
             }),
         }
+
     def __init__(self, *args, updating=False, **kwargs):
         super().__init__(*args, **kwargs)
         
         if updating:
             # Disable fields if updating
             self.fields['job_id'].widget=forms.HiddenInput()
+    def clean(self,*args, **kwargs):
+        cleaned_data=super().clean()
+        status=cleaned_data.get('status')
+        items_arrived=cleaned_data.get('items_arrived')
+        print(cleaned_data)
+        if status=='ready' and not items_arrived:
+            raise forms.ValidationError("Job can't be ready untill all its items arrive")
+        return cleaned_data
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
@@ -151,7 +162,7 @@ class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
         fields = '__all__' 
-        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','is_moved_to_warehouse','notes','is_move_to_warehouse']
+        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','is_moved_to_warehouse','notes']
         labels = {
             'name': 'Part Name',
         }
@@ -188,22 +199,35 @@ class JobItemForm(forms.ModelForm):
     class Meta:
         model=JobItem
         fields='__all__'
-        exclude=['job','from_warehouse','is_used']
+        exclude=['job','from_warehouse','is_used','was_for_job','status',]
     def __init__(self, *args,item,**kwargs):
         super().__init__(*args, **kwargs)
+
         self.fields['item'].widget=forms.HiddenInput()
         self.fields['job_quantity'].label='Required quantity'
+        #self.fields['status'].choices=[  (value, label) for value, label in self.fields['status'].choices if value != 'arrived']
         if item.from_warehouse:
             self.fields['arrived_quantity'].widget=forms.HiddenInput()
             self.fields['status'].widget=forms.HiddenInput()
         # if item.item.from_warehouse:
         #     self.fields['job_quantity'].widget=forms.HiddenInput()
-  
+    def clean(self,*args, **kwargs):
+        cleaned_data = super().clean()
+        job_quantity = cleaned_data.get('job_quantity')
+        arrived_quantity = cleaned_data.get('arrived_quantity')
+        ordered = cleaned_data.get('ordered')
+        
+        if job_quantity == arrived_quantity and not ordered:
+            raise forms.ValidationError("Items can't arrive without ordering")
+        elif job_quantity<arrived_quantity:
+            raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
+
+        return cleaned_data
 class WarehouseitemForm(forms.ModelForm):
     class Meta:
         model = Item
         fields = '__all__' 
-        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','item','status','is_moved_from_job','is_moved_to_warehouse','notes','is_move_to_warehouse','arrived_quantity','required_quantity']
+        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','item','status','is_moved_from_job','was_for_job','is_moved_to_warehouse','notes','is_move_to_warehouse','arrived_quantity','required_quantity']
         labels = {
             'name': 'Part Name',
         }

@@ -98,6 +98,10 @@ def inventory(request,pk=None):
         item.save(update_fields=['notes'])
         jobitem.is_used=False
         jobitem.save(update_fields=['is_used'])
+    elif request.method=="POST" and 'job_is_ready' in request.POST:
+        job=Job.objects.get(job_id=pk,company=request.user.company)
+        job.status='ready'
+        job.save(update_fields=['status'])
     return render(request,'inventory/inventory.html',context)
 
 @login_required
@@ -139,14 +143,12 @@ def update_job(request, pk):
     comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
     if request.method=="POST":  
         if 'yes_complete' in request.POST:
-            
             post_data = request.session.pop('job_post_data', None)
             if post_data:
                 form = JobForm(post_data, instance=job, updating=True)
                 if form.is_valid():
                     form.save()
                     for item in job.items.all():
-                        print(item)
                         item.is_used=True
                         item.save(update_fields=['is_used'])
                     messages.success(request, "Job completed.")
@@ -155,25 +157,24 @@ def update_job(request, pk):
         if post_data and request.method == 'POST' and 'no_return_back' in request.POST :#---
             form = JobForm(post_data, instance=job, updating=True)  #----
         if 'save' in request.POST:
+            quotation = request.POST.get('quotation') if request.POST.get('quotation') != "" else job.quotation
             
             form = JobForm(request.POST, instance=job,updating=True)
-            
             if form.is_valid() :
-                
                 if form.cleaned_data['status']=='completed':
-                    
                     li=[]
                     li=[item for item in job.items.all() if item.job_quantity != item.arrived_quantity]
                     if len(li)>0:
                         request.session['job_post_data'] = request.POST  # Save the POST data
                         return render(request,'inventory/confirm.html',{'items':li,'complete_request':True,'job':job})
-                form.save()
                 
+                job.quotation=float(quotation) if float(quotation)>0 else None
+                print("STAT",job.status)
+                form.save()
                 messages.success(request, 'Job updated successfully')
                 items=JobItem.objects.filter(job=job)
         comments_form=CommentForm(request.POST)
         if comments_form.is_valid() and 'add_comment' in request.POST: 
-            
             comment = comments_form.save(commit=False)
             comment.added_by = request.user 
             comment.company = request.user.company
@@ -185,7 +186,6 @@ def update_job(request, pk):
             'company': request.user.company,
             })
             form = JobForm(instance=job,updating=True)
-            
         if 'send_email' in request.POST :
                 if job.engineer is not None and job.status=="ready":
                     recipient_list=[]
@@ -256,7 +256,6 @@ def item_add(request,pk=None,no_job=False):
                                 
                                 if item.warehouse_quantity>0 and item.warehouse_quantity>= required_quantity:
                                     if JobItem.objects.filter(job=job,item=item.item,):
-                                        print('pppooopppooopppooo')
                                         jobitem=JobItem.objects.filter(job=job,item=item.item,).first()
                                         jobitem.job_quantity=jobitem.job_quantity+required_quantity
                                         jobitem.arrived_quantity=jobitem.job_quantity
@@ -266,7 +265,6 @@ def item_add(request,pk=None,no_job=False):
                                         if item.warehouse_quantity==0:
                                             item.delete()
                                     else: 
-                                        
                                         JobItem.objects.create(
                                         job=job,
                                         from_warehouse=True if item.is_moved_from_job==None else False,
@@ -317,7 +315,7 @@ def item_add(request,pk=None,no_job=False):
                                                 job=job,
                                                 job_quantity=job_quantity,
                                                 arrived_quantity=arrived_quantity,
-                                                
+                                                was_for_job=job
                                                 )
                             #item.job = job
                             #item.save()
@@ -370,6 +368,7 @@ def update_item(request, pk):
         })
     comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(JobItem), object_id=item.id,company=request.user.company)
     if request.method == 'POST':
+        
         comments_form=CommentForm(request.POST)
         if comments_form.is_valid() and "just_add_comment" in request.POST :
             comment = comments_form.save(commit=False)
@@ -417,6 +416,7 @@ def update_item(request, pk):
                     return render(request, 'inventory/update_item.html', context)
                 try:
                     WarehouseItem.objects.get(Q(company=request.user.company) & Q(item=item.item))
+                    print("EXX")
                     create_new=False
                 except:
                     create_new=True
@@ -430,6 +430,7 @@ def update_item(request, pk):
                         #is_used=job_item.is_used,
                         is_moved_from_job=job if job_item.was_for_job else None  ,   
                     )
+                    print('dd',)
                 else:
                 
                     try:
@@ -449,6 +450,7 @@ def update_item(request, pk):
         comments_form=CommentForm(request.POST)
         prevq=item.job_quantity
         if form.is_valid() and 'edit' in request.POST: 
+            
             job_quantiy=form.cleaned_data['job_quantity']
             if item.from_warehouse:
                 if WarehouseItem.objects.get(item=item.item).warehouse_quantity>=job_quantiy-prevq:

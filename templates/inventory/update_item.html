@@ -35,7 +35,7 @@
     border-radius: 5px;
     box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
   ">{{ item.status }}</span>
-    {% else %}
+    {% elif item.ordered %}
       <span style="
     display: inline-block;
     padding: 5px 10px;
@@ -43,11 +43,24 @@
     font-size: 1.2rem;
     font-weight: normal;
     color: rgb(0, 0, 0);
-    background-color:rgba(124, 119, 119, 0.79);
+    background-color: rgba(228, 216, 51, 0.99);
     border: 1px solid #ddd;
     border-radius: 5px;
     box-shadow: 0 1px 3px rgba(255, 253, 253, 0.1);
-  ">{{ item.status }}</span>
+  ">Ordered</span>
+    {% else %}
+      <span style="
+  display: inline-block;
+  padding: 5px 10px;
+  margin-left: 10px;
+  font-size: 1.2rem;
+  font-weight: normal;
+  color: rgb(0, 0, 0);
+  background-color:rgba(255, 98, 98, 0.99);
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgba(255, 253, 253, 0.1);
+">Not Ordered</span>
     {% endif %}
     {% if item.from_warehouse %}
       <span style="

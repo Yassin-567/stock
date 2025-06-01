@@ -92,6 +92,7 @@ class Job(models.Model):
     address = models.CharField(max_length=70)
     job_id=models.BigIntegerField()
     status=models.CharField(choices=status_chouces, max_length=20)
+    quotation=models.DecimalField(max_digits=10, decimal_places=2,blank=True,null=True)
     engineer=models.ForeignKey(Engineer,on_delete=models.SET_NULL,null=True,blank=True)
     parent_account=models.CharField(max_length=70)
     added_date=models.DateField(auto_now_add=True)
@@ -101,8 +102,9 @@ class Job(models.Model):
     quoted=models.BooleanField(default=False)
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
-    def save(self, *args, **kwargs):
-        print(555)
+        ordering=['-added_date']
+    def save(self, *args,no_recursion=False, **kwargs):
+        
         old_status = None
         if self.pk:
             old_instance = type(self).objects.get(pk=self.pk)
@@ -121,12 +123,14 @@ class Job(models.Model):
                     print("item is used")
                     item.item.notes='Job was completed then reopened, double check if the item still exists.'
                     item.item.save(update_fields=['notes'])
-                    
-        if self.status=='completed':
+        # if self.items_arrived:
+        #     self.status='ready'            
+        if self.status=='completed' and not no_recursion :
             for item in self.items.all():
-                print(item)
+                
                 item.is_used=True
                 item.save(update_fields=['is_used'])
+       
         super().save(*args, **kwargs)
     
     def __str__(self):
@@ -155,9 +159,10 @@ class Comment(models.Model):
         
     
 CHOICES=[
-        ('ordered', 'Ordered'),
+        
         ('arrived', 'Arrived'),
-        ('not_ordered','Not ordered'),
+        (' ','')
+        
     ]
 class Item(models.Model):    
     name=models.CharField(max_length=70)
@@ -175,23 +180,38 @@ class Item(models.Model):
         return self.name
 
 class JobItem(models.Model):
+    
     job = models.ForeignKey(Job, on_delete=models.DO_NOTHING, related_name="items")
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="job_items")
     job_quantity = models.PositiveSmallIntegerField(default=0)  # How many needed for this job
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
-    status=models.CharField(max_length=20,choices=CHOICES,default="not_ordered")
+    status=models.CharField(max_length=20,choices=CHOICES,blank=True,null=True,default=None)
+    ordered=models.BooleanField(default=False)
     is_used=models.BooleanField(default=False)
     from_warehouse=models.BooleanField(default=False)
     was_for_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="moveditems")
 
     def save(self,*args, **kwargs):
-        if self.job.status=='ready':
-            for item in self.job.items.all():
-                if item.status!='arrived':
-                    self.job.status='paused'
-                    self.job.save(update_fields=['status'])
-                    return
+        if self.job_quantity==self.arrived_quantity and self.ordered:
+            
+            self.status='arrived'
+        
+        elif self.ordered and self.job_quantity!=self.arrived_quantity:
+            print("GG")
+            self.status=None
+        elif not self.ordered:
+            self.status=None
         super().save(*args, **kwargs) 
+        for item in self.job.items.all():
+            if item.status=='arrived':
+                self.job.items_arrived=True
+            else:
+                self.job.status='paused'
+                self.job.items_arrived=False
+                break
+        self.job.save(update_fields=['status','items_arrived'],no_recursion=True)
+        return
+        
     def __str__(self):
         return str(self.item.name)
 
