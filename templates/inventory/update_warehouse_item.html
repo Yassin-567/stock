@@ -24,33 +24,6 @@
     border-radius: 5px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   ">{{ item.part_number }}</span>
-    {% if warehouse_item.status == 'arrived' %}
-      <span style="
-    display: inline-block;
-    padding: 5px 10px;
-    margin-left: 10px;
-    font-size: 1.2rem;
-    font-weight: normal;
-    color: #333;
-    background-color:rgba(5, 122, 1, 0.79);
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
-  ">{{ warehouse_item.status }}</span>
-    {% else %}
-      <span style="
-    display: inline-block;
-    padding: 5px 10px;
-    margin-left: 10px;
-    font-size: 1.2rem;
-    font-weight: normal;
-    color: rgb(0, 0, 0);
-    background-color:rgba(124, 119, 119, 0.79);
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    box-shadow: 0 1px 3px rgba(255, 253, 253, 0.1);
-  ">{{ warehouse_item.get_status_display }}</span>
-    {% endif %}
   </h2>
 
   <section class="form-section">

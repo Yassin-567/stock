@@ -2,9 +2,9 @@ from django.contrib import admin
 from .models import CustomUser , Company , Job,Item,Comment,JobItem,WarehouseItem,Engineer
 # Register your model here.
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name','reference', )
-    list_display_links = ('name', 'reference')
-    search_fields = ('name', 'reference')
+    list_display = ('id', 'name', )
+    list_display_links = ('name', )
+    search_fields = ('name',)
     #fields=[('name', )] #in case you need to show specific fields
 # class CustomUserAdmin(admin.ModelAdmin):
 #     list_display = ('username', 'email','is_staff' )

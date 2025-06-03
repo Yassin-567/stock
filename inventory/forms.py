@@ -79,7 +79,7 @@ class JobForm(forms.ModelForm):
     class Meta:
         model = Job
         fields = '__all__'
-        exclude = ['user', 'company','quotation']
+        exclude = ['user','quotation']
         labels = {
             'name': 'Part Name',
         }
@@ -103,7 +103,7 @@ class JobForm(forms.ModelForm):
 
     def __init__(self, *args, updating=False, **kwargs):
         super().__init__(*args, **kwargs)
-        
+        self.fields['company'].widget=forms.HiddenInput()
         if updating:
             # Disable fields if updating
             self.fields['job_id'].widget=forms.HiddenInput()
@@ -111,9 +111,15 @@ class JobForm(forms.ModelForm):
         cleaned_data=super().clean()
         status=cleaned_data.get('status')
         items_arrived=cleaned_data.get('items_arrived')
-        print(cleaned_data)
-        if status=='ready' and not items_arrived:
+        job_id=cleaned_data.get('job_id')
+        company=cleaned_data.get('company')
+        job=Job.objects.get(Q(job_id=job_id)&Q(company=company))
+        items_count=job.items.all().count()
+        if status=='ready' and  not items_arrived and items_count>0 :
+           
             raise forms.ValidationError("Job can't be ready untill all its items arrive")
+        elif status=='ready' and job.items.exclude(is_used=False).exists():
+            raise forms.ValidationError("There is a used item")
         return cleaned_data
 class CommentForm(forms.ModelForm):
     class Meta:
@@ -178,7 +184,7 @@ class ItemForm(forms.ModelForm):
                 #'pattern': '[0-9]*',  # Numeric pattern
                 'placeholder': 'Enter part number',
                 'class': 'form-control',}),
-            'reference':forms.Textarea(attrs={'rows':1})
+            
         }
 
     def __init__(self, *args, updating=False,completed=False,job=False, **kwargs):
@@ -195,14 +201,26 @@ class ItemForm(forms.ModelForm):
                     field.widget.attrs['disabled'] = 'disabled'
         elif job==None:
             self.fields['required_quantity'].widget=forms.HiddenInput()
+    def clean(self,*args, **kwargs):
+        cleaned_data = super().clean()
+        job_quantity = cleaned_data.get('required_quantity')
+        arrived_quantity = cleaned_data.get('arrived_quantity')
+        ordered = cleaned_data.get('ordered')
+        
+        if job_quantity == arrived_quantity and not ordered:
+            raise forms.ValidationError("Items can't arrive without ordering")
+        elif job_quantity<arrived_quantity:
+            raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
+
+        return cleaned_data
 class JobItemForm(forms.ModelForm):
     class Meta:
         model=JobItem
         fields='__all__'
-        exclude=['job','from_warehouse','is_used','was_for_job','status',]
+        exclude=['job','from_warehouse','is_used','status','was_for_job',]
+        widgets={'reference':forms.Textarea(attrs={'rows':1}),}
     def __init__(self, *args,item,**kwargs):
         super().__init__(*args, **kwargs)
-
         self.fields['item'].widget=forms.HiddenInput()
         self.fields['job_quantity'].label='Required quantity'
         #self.fields['status'].choices=[  (value, label) for value, label in self.fields['status'].choices if value != 'arrived']
@@ -225,9 +243,9 @@ class JobItemForm(forms.ModelForm):
         return cleaned_data
 class WarehouseitemForm(forms.ModelForm):
     class Meta:
-        model = Item
+        model = WarehouseItem
         fields = '__all__' 
-        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','item','status','is_moved_from_job','was_for_job','is_moved_to_warehouse','notes','is_move_to_warehouse','arrived_quantity','required_quantity']
+        exclude = ['added_by','company','is_used','item','status','is_moved_from_job','was_for_job','is_moved_to_warehouse','notes','is_move_to_warehouse',]
         labels = {
             'name': 'Part Name',
         }
@@ -245,12 +263,12 @@ class WarehouseitemForm(forms.ModelForm):
                 'class': 'form-control',}),
             'reference':forms.Textarea(attrs={'rows':1})
         }
-    def __init__(self, *args,warehouse_item, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['arrived_quantity'] = forms.IntegerField(
-                initial=warehouse_item.warehouse_quantity if warehouse_item else None,
-                label="Stock Quantity",
-                widget=forms.NumberInput(attrs={'class': 'form-control'}))
+    # def __init__(self, *args,warehouse_item, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     # self.fields['arrived_quantity'] = forms.IntegerField(
+    #     #         initial=warehouse_item.warehouse_quantity if warehouse_item else None,
+    #     #         label="Stock Quantity",
+    #     #         widget=forms.NumberInput(attrs={'class': 'form-control'}))
        
 class EngineerForm(forms.ModelForm):
     class Meta:

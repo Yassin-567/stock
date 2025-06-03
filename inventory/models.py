@@ -110,9 +110,12 @@ class Job(models.Model):
             old_instance = type(self).objects.get(pk=self.pk)
             old_status = old_instance.status
         super().save(*args, **kwargs)
-        self.items_arrived=False #soublw check here
+        self.items_arrived=False 
+        print("UU")
         if self.items.count() > 0:
+
             self.items_arrived =  not self.items.exclude(status="arrived").exists() 
+        
         if self.status=="quoted":
             self.quoted=True
         if self.status != "completed" and old_status == "completed" and self.status != "cancelled":
@@ -130,7 +133,7 @@ class Job(models.Model):
                 
                 item.is_used=True
                 item.save(update_fields=['is_used'])
-       
+        
         super().save(*args, **kwargs)
     
     def __str__(self):
@@ -167,7 +170,6 @@ CHOICES=[
 class Item(models.Model):    
     name=models.CharField(max_length=70)
     part_number=models.TextField(max_length=30)
-    reference=models.TextField(blank=True,null=True,max_length=40)
     price=models.DecimalField(max_digits=10, decimal_places=2,)
     supplier=models.CharField(max_length=70)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company")
@@ -175,6 +177,7 @@ class Item(models.Model):
     added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user")
     required_quantity=models.PositiveSmallIntegerField(default=0)
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
+    ordered=models.BooleanField(default=False)
     notes=models.TextField(null=True, blank=True)
     def __str__(self):
         return self.name
@@ -185,6 +188,7 @@ class JobItem(models.Model):
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="job_items")
     job_quantity = models.PositiveSmallIntegerField(default=0)  # How many needed for this job
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
+    reference=models.TextField(blank=True,null=True,max_length=40)
     status=models.CharField(max_length=20,choices=CHOICES,blank=True,null=True,default=None)
     ordered=models.BooleanField(default=False)
     is_used=models.BooleanField(default=False)
@@ -219,6 +223,7 @@ class WarehouseItem(models.Model):
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="warehouse_company_items")
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="warehouse_items")
     warehouse_quantity = models.PositiveSmallIntegerField(default=0)  
+    reference=models.TextField(blank=True,null=True,max_length=40)
     is_used=models.BooleanField(default=False)
     is_moved_from_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="warehousemoveditems")
     

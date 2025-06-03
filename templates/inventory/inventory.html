@@ -11,7 +11,7 @@
   <!-- Modern Form Section -->
   {% if rjobs %}
     {% for job in rjobs %}
-      {% if job.status != 'ready' and job.items_arrived and job.status != 'completed' %}
+      {% if job.status != 'ready' and job.items_arrived and job.status != 'completed' and job|all_not_used %}
         <h2>
           Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <br /><small style="color: rgb(0, 129, 43);">
             Parts arrived, is this job ready?<form action="{% url 'inventory' job.job_id %}" method="POST">
@@ -21,7 +21,7 @@
           </small>
         </h2>
         <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>
-      {% elif job.status == 'ready' and not job.items_arrived %}
+      {% elif job.status == 'ready' and not job.items_arrived and job|total_quantity > 0 %}
         <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small>"Required parts have not arrived but the job is marked as Ready"</small></h2>
       {% elif job.status == 'completed' %}
         <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small style="

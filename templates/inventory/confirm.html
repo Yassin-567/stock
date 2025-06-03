@@ -1,3 +1,5 @@
+{% load static %}
+{% load custom_tags %}
 {% if messages %}
   {% for message in messages %}
     <div class="alert alert-{{ message.tags }}">{{ message }}</div>
@@ -28,4 +30,16 @@
     <button name="yes_complete" type="submit" class="btn btn-danger">YES</button>
     <button name="no_return_back" type="submit" class="btn btn-submit">NO, Return back</button>
   </form>
+{% endif %}
+{% if cancel_request %}
+  <h3>Before cancelling this job!</h3>
+  <h4>Do you want to move it to the warehouse?<small>Items that won't be moved, will stay linked to this job</small></h4>
+  {% for item in items %}
+    {{ item.arrived_quantity }} of {{ item }} has/have arrived.<form action="{% url 'update_item' item.id %}" method="POST">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path|parent_path }}1" />
+      <button name="yes_move" type="submit" class="btn btn-submit">Move</button>
+      <button name="dont_move_used" type="submit" class="btn btn-danger">No, it's used</button>
+    </form>
+  {% endfor %}
 {% endif %}
