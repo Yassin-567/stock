@@ -1,6 +1,6 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
 from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem,Engineer
-from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,StokcItemsForm,JobItemForm,WarehouseitemForm,EngineerForm
+from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,StokcItemsForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -12,11 +12,11 @@ from django.db.models import Count, Q
 from django.forms import HiddenInput,MultipleHiddenInput
 from django.forms import Select
 from django import forms
-from .myfunc import FormHandler, WareohuseFormHandler, calculate_item
 from django.http import HttpResponseForbidden
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
+
 
 #import requests
 
@@ -58,7 +58,7 @@ def login_user(request):
 def register_user(request):
     
     if request.method == "POST":
-        form = registerForm(request.POST,adding_worker=True)
+        form = registerworker(request.POST,)
         
         if form.is_valid():
             user = form.save(commit=False)  # Save user instance but don't commit yet
@@ -67,22 +67,20 @@ def register_user(request):
             user.company = company
             # Ensure the user has a company before saving
             user.save()  # Save the user'
-            user.groups.clear()
-            group = form.cleaned_data['groups']
             
-            user.groups.add(*group)  # Add user to the group
-            messages.success(request, 'You have successfully registered')
+            messages.success(request, 'You have successfully registered a new user')
             return redirect('register')  # Redirect after successful registration
         else:
-            form = registerForm(adding_worker=True)
+            form = registerworker()
             messages.error(request, "Registration failed. Please check the form.")
     else:
-        form = registerForm(adding_worker=True)
+        form = registerworker()
     return render(request, 'auths/register.html', {'form': form})
 @login_required(login_url='login', redirect_field_name='inventory')
 @no_ban
 def inventory(request,pk=None):
     
+
     rjobs = Job.objects.annotate(item_count=Count('items')).filter(items_arrived=True).prefetch_related('items')
     items=Item.objects.filter(company=request.user.company)
     
@@ -110,6 +108,7 @@ def inventory(request,pk=None):
 
 @login_required
 def job_create(request):
+
     if request.method == 'POST':
         form = JobForm(request.POST)
         if form.is_valid():
@@ -127,7 +126,7 @@ def job_create(request):
                 messages.error(request,"This job already exists")
             return redirect('inventory')
     else:
-        form = JobForm()
+        form = JobForm(initial={'company':request.user.company})
     return render(request, 'inventory/job_create.html', {'form': form})
 @login_required
 def update_job(request, pk, cancel=0):
@@ -300,24 +299,30 @@ def item_add(request,pk=None,no_job=False):
                                         item.warehouse_quantity=item.warehouse_quantity-required_quantity
                                         item.save(update_fields=['warehouse_quantity'])
                                         if item.warehouse_quantity==0:
-                                            item.delete()
+                                           # item.delete()
+                                           print('deleting')
                                     else: 
                                         JobItem.objects.create(
                                         job=job,
-                                        from_warehouse=True if item.is_moved_from_job==None else False,
+                                        from_warehouse=True, #if item.is_moved_from_job==None else False,
                                         item=item.item,
                                         status='arrived',
+                                        
                                         job_quantity=+required_quantity,
                                         arrived_quantity=+required_quantity,
+                                        
                                         was_for_job=item.is_moved_from_job if item.is_moved_from_job else None
                                         )
                                         item.warehouse_quantity=item.warehouse_quantity-required_quantity
                                         item.save(update_fields=['warehouse_quantity'])
                                         if item.warehouse_quantity==0:
-                                            item.delete()
+                                            #item.delete()
+                                            print('deleting2')
                                 else:
                                     messages.error(request,"Not enough stock")
-                                    return redirect('inventory')
+                                    form=ItemForm(job=job)
+                                    stock_items_form=StokcItemsForm(company=request.user.company)
+                                    return render(request, 'inventory/add_item.html', {'form': form,'job':job,'stock_items_form':stock_items_form})
                         except IntegrityError:
                             messages.error(request,"Failed")
                         # item.job=job
@@ -330,6 +335,7 @@ def item_add(request,pk=None,no_job=False):
                     stock_items_form=StokcItemsForm(company=request.user.company)
                     return render(request, 'inventory/add_item.html', {'form': form,'job':job,'stock_items_form':stock_items_form})
         elif 'adding_new' in request.POST:
+            
             if form.is_valid():
                 
                 try:
@@ -339,6 +345,7 @@ def item_add(request,pk=None,no_job=False):
                         job_quantity=form.cleaned_data['required_quantity']
                         arrived_quantity=form.cleaned_data['arrived_quantity']
                         ordered=form.cleaned_data['ordered']
+                        reference=form.cleaned_data['reference']
                         if pk is not None:
                             item=form.save(commit=False)
                             item.company=request.user.company
@@ -354,7 +361,9 @@ def item_add(request,pk=None,no_job=False):
                                                 job_quantity=job_quantity,
                                                 arrived_quantity=arrived_quantity,
                                                 ordered=ordered,
-                                                was_for_job=job
+                                                reference=reference,
+                                                was_for_job=job,
+                                                
                                                 )
                             #item.job = job
                             #item.save()
@@ -370,7 +379,6 @@ def item_add(request,pk=None,no_job=False):
                             
                             pn=form.cleaned_data['part_number']
                             try:
-
                                 item_queryset = WarehouseItem.objects.get(item=Item.objects.get(Q(part_number=pn) & Q(company=request.user.company)))
                             except :
                                 item_queryset=False
@@ -385,7 +393,8 @@ def item_add(request,pk=None,no_job=False):
                                 item.save()
                                 WarehouseItem.objects.create(item=item,
                                                         warehouse_quantity=arrived_quantity,
-                                                        company=request.user.company,)
+                                                        company=request.user.company,
+                                                        )
                             messages.success(request, f'{item}-is added to warehouse')
                             return redirect('inventory')
                 except IntegrityError:
@@ -399,8 +408,7 @@ def item_add(request,pk=None,no_job=False):
 @login_required
 def update_item(request, pk):
     item = JobItem.objects.get(Q(id=pk) & Q(job__company=request.user.company))
-    job=Job.objects.filter(company=request.user.company).get(job_id=item.job.job_id) if item.job else None
-    completed=job.status=='completed'
+    completed=item.job.status=='completed'
     form = JobItemForm(instance=item,item=item)#,updating=True,completed=completed
     comments_form=CommentForm(initial={
         'content_type': ContentType.objects.get_for_model(JobItem),
@@ -432,6 +440,7 @@ def update_item(request, pk):
                         item=job_item.item,
                         warehouse_quantity=job_item.arrived_quantity,
                         company=request.user.company,
+                        
                         #is_used=job_item.is_used,
                         is_moved_from_job=job if job_item.was_for_job else None  ,   
                     )
@@ -508,7 +517,9 @@ def update_item(request, pk):
                     WarehouseItem.objects.create(
                         item=job_item.item,
                         warehouse_quantity=job_item.arrived_quantity,
+                        reference=job_item.reference,
                         company=request.user.company,
+                        
                         #is_used=job_item.is_used,
                         is_moved_from_job=job if job_item.was_for_job else None  ,   
                     )
@@ -562,10 +573,15 @@ def update_item(request, pk):
     context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,"completed":completed}
     return render(request, 'inventory/update_item.html', context)
 ########################
+
+
+
+
 @login_required
 def update_warehouse_item(request, pk):
     print('ss')
     warehouse_item = WarehouseItem.objects.get(Q(company=request.user.company),Q(id=pk))
+    
     item=warehouse_item.item
     #job=Job.objects.filter(company=request.user.company).get(job_id=item.job.job_id) if item.job else None
     #completed=job.status=='completed'
@@ -579,15 +595,20 @@ def update_warehouse_item(request, pk):
         })
     comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(WarehouseItem), object_id=warehouse_item.id,company=request.user.company)
     if request.method == 'POST':
+        
+        print("OPOP")
         comments_form=CommentForm(request.POST)
         if comments_form.is_valid() and "just_add_comment" in request.POST :
+            print("P")
             comment = comments_form.save(commit=False)
             comment.added_by = request.user 
             comment.company = request.user.company
             comment.save()
+
             comments= Comment.objects.filter(content_type=ContentType.objects.get_for_model(WarehouseItem), object_id=warehouse_item.id,company=request.user.company)
+
             comments_form=CommentForm(initial={
-            'content_type': ContentType.objects.get_for_model(Item),
+            'content_type': ContentType.objects.get_for_model(WarehouseItem),
             'object_id': warehouse_item.id,
             'company': request.user.company,
             })
@@ -595,6 +616,7 @@ def update_warehouse_item(request, pk):
             return render(request, 'inventory/update_warehouse_item.html', context)
         if "delete" in request.POST:
             return render(request,'inventory/confirm.html',{'item':warehouse_item,'warehouse_item':True})
+        
         if 'yes_delete' in request.POST:
             try:
                 with transaction.atomic():
@@ -658,95 +680,63 @@ def update_company(request,):
 @admins_only
 def admin_panel(request): 
         if request.user.groups.filter(name="Admin").exists() or request.user.company.owner==request.user:
-            groups = Group.objects.all().order_by("name")
+            
             context = {
-                'groups': groups,
+                
                 'users': CustomUser.objects.filter(company=request.user.company),
                 'engineers':Engineer.objects.filter(company=request.user.company)
             }
             return render(request, 'inventory/admin_panel.html',context )
         else:
             return HttpResponse("You are not authorized to view this page")
-@no_ban
+@owner_only
 def update_user(request, pk):
-    if request.user.company.owner==request.user or (request.user.groups.filter(name="Admin").exists() and CustomUser.objects.get(id=pk).groups.filter(name="Employee").exists()): 
-        user = get_object_or_404(CustomUser, pk=pk)
-        show_choices=True
-    else:
-        user = request.user
-    form= registerForm(instance=user )
-    handler = FormHandler(form,user=request.user,target_user=user,show_choices=show_choices)
-    handler.set_form_fields()  
-    context={
-                "form":form,
-                "user":user,
-            }
-    if request.method=="POST":
-        form = registerForm(request.POST,instance=user) 
-        handler = FormHandler(form,user=request.user,target_user=user,show_choices=show_choices)
+    worker=CustomUser.objects.get(Q(company=request.user.company) & Q(pk=pk))
+    form=registerworker(instance=worker,editing=True)
+    if request.method=='POST':
+        form=registerworker(request.POST,instance=worker,editing=True)
         if form.is_valid():
-            user = form.save(commit=False) 
-            group = handler.get_user_group()
-            if 'password' in form.cleaned_data and form.cleaned_data['password']:
-                user.set_password(form.cleaned_data['password'])  
-                user.save()
-                user.groups.clear()
-                if form.cleaned_data["is_banned"]:
-                    group=Group.objects.get(name='Ban')
-                user.groups.add(group)
-                update_session_auth_hash(request, user)
-                messages.success(request, "User updated successfully")
-                user = get_object_or_404(CustomUser, pk=pk)
-                
-                handler.set_form_fields()              
-                context={
-                "form":form,
-            }
-            return render(request, 'inventory/update_user.html',context)  # Replace with actual view name
-        else:
-            messages.error(request,"Error")
-            context={
-            "form":form,
-            "user":user,
-            }
-            return render(request, 'inventory/update_user.html',context)
-    return render(request, 'inventory/update_user.html',context)
+            form.save()
+            messages.success(request,'User updated successfully')
+            form=registerworker(instance=worker,editing=True)
+            return render(request, 'inventory/update_user.html',{'form':form})
+    
+    return render(request, 'inventory/update_user.html',{'form':form})
 
 
 def register_company(request):
     """ Register a new company and its admin user """
     company_form = companyregisterForm(user=request.user,)
-    user_form = registerForm(registering=True)
+    user_form = registerForm()
 
     if request.method == 'POST':
         company_form = companyregisterForm(request.POST,)
-        user_form = registerForm(request.POST,registering=True)
+        user_form = registerForm(request.POST,)
         if company_form.is_valid() and user_form.is_valid():
-            
-            user = user_form.save(commit=False)
-            user.set_password(user_form.cleaned_data['password'])
-            
-            user.is_staff = True
-            user.save()
+            with transaction.atomic():
+                
+                
+                user = user_form.save(commit=False)
+                user.set_password(user_form.cleaned_data['password'])
+                user.is_owner=True
+                user.save()
 
-            # Step 2: Now save the company and assign the owner
-            company = company_form.save(commit=False)
-            company.owner = user
-            company.save()
+                # Step 2: Now save the company and assign the owner
+                company = company_form.save(commit=False)
+                company.owner = user
+                company.save()
 
-            # Step 3: Update user with the company
-            user.company = company
-            user.save()
+                # Step 3: Update user with the company
+                user.company = company
+                user.save()
 
             # Step 3: Assign the user to the "Admin" group
-            admin_group, _ = Group.objects.get_or_create(name='Admin')
-            user.groups.clear()
-            user.groups.add(admin_group)
+            
 
-            messages.success(request, 'Company and admin user registered successfully!')
-        
+                messages.success(request, 'Company was created successfully! Now you can login.')
+           # return redirect('login')
         else:
-            messages.error(request, f"Registration failed. Company Form Errors: {company_form.errors} User Form Errors: {user_form.errors}")
+            messages.warning(request, f"Registration failed.")
     # else:
     #     company_form = companyregisterForm(user=request.user,initial={'group': "owner"})
     #     user_form = registerForm(request.POST,registering=True)
@@ -806,7 +796,7 @@ def create_batch_items(request):
             wi.save(update_fields=['warehouse_quantity'])
 
         else:
-            WarehouseItem.objects.create(item=item,warehouse_quantity=item.arrived_quantity,company=request.user.company,status='arrived')
+            WarehouseItem.objects.create(item=item,warehouse_quantity=item.arrived_quantity,company=request.user.company,reference=item.reference)
         messages.success(request,f'{item.arrived_quantity} of {item.name} added to the warehouse')
         # Remove this item from session
         items = request.session.get('batch_items', [])
@@ -839,7 +829,7 @@ def fetch_api_data(request):
     response = requests.get(url)
     data = response.json()  # Convert to dict
 
-    return render(request, 'inventory/api_data.html', {'data': data})
+    return render(request, 'inventory/api_data.html',{'data':data})
 
 def fetch_jobs(request):
     url = "https://8dea2507-abbb-44c8-8ca4-ac142d8f9edb.mock.pstmn.io/jobs"

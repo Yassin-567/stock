@@ -1,58 +1,148 @@
 {% extends 'inventory/base.html' %}
 {% load static %}
 {% load custom_tags %}
-
 {% block body %}
-  {% for group in groups %}
-    <ul>
-      <li>{{ group }}</li>
-      <ul style="list-style-type:none;">
-        {% for user in users %}
-          {% if user|is_in_group:group %}
-            <li>
-              {{ user.id }},{{ user }}, {{ user.email }}<span><a href="{{ user.id }}">Edit</a>✏</span>
-            </li>
-          {% endif %}
-        {% endfor %}
-      </ul>
-    </ul>
-  {% endfor %}
-  <table>
-    <tr>
-      <td>
-        <strong>Id</strong>
-      </td>
-      <td>
-        <strong>Username</strong>
-      </td>
-    </tr>
-
-    {% for user in users %}
-      <tr>
-        <td>
-          <p>
-            Id[{{ user.id }}] <a href="{{ user.id }}">{{ user }}</a>
-          </p>
-        </td>
-      </tr>
-    {% endfor %}
-  </table>
-
-  <table>
-    <tr>
-      <td>
-        <strong>Engineers</strong>
-      </td>
-    </tr>
-
-    {% for eng in engineers %}
-      <tr>
-        <td>
-          <p>
-            <a href="#">{{ eng.name }}</a>
-          </p>
-        </td>
-      </tr>
-    {% endfor %}
-  </table>
+  <div class="container mt-4">
+    <h2 class="mb-4">Admin Panel</h2>
+    <div class="row">
+      <div class="col-md-4">
+        <div class="card mb-4 shadow-sm">
+          <div class="card-header bg-primary text-white">
+            <h4 class="my-0">Admins</h4>
+          </div>
+          <ul class="list-group list-group-flush">
+            {% for user in users %}
+              {% if user.is_admin %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <span>
+                    <strong>{{ user.username }}</strong><br />
+                    <small>{{ user.email }}</small>
+                  </span>
+                  <a href="{% url 'update_user' user.id %}" class="btn btn-sm btn-outline-primary">Edit ✏</a>
+                </li>
+              {% endif %}
+            {% empty %}
+              <li class="list-group-item text-muted">No admins found.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card mb-4 shadow-sm">
+          <div class="card-header bg-success text-white">
+            <h4 class="my-0">Employees</h4>
+          </div>
+          <ul class="list-group list-group-flush">
+            {% for user in users %}
+              {% if user.is_employee %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <span>
+                    <strong>{{ user.username }}</strong><br />
+                    <small>{{ user.email }}</small>
+                  </span>
+                  <a href="{% url 'update_user' user.id %}" class="btn btn-sm btn-outline-success">Edit ✏</a>
+                </li>
+              {% endif %}
+            {% empty %}
+              <li class="list-group-item text-muted">No employees found.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card mb-4 shadow-sm">
+          <div class="card-header bg-danger text-white">
+            <h4 class="my-0">Banned Users</h4>
+          </div>
+          <ul class="list-group list-group-flush">
+            {% for user in users %}
+              {% if user.is_banned %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <span>
+                    <strong>{{ user.username }}</strong><br />
+                    <small>{{ user.email }}</small>
+                  </span>
+                  <a href="{% url 'update_user' user.id %}" class="btn btn-sm btn-outline-danger">Edit ✏</a>
+                </li>
+              {% endif %}
+            {% empty %}
+              <li class="list-group-item text-muted">No banned users found.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card mb-4 shadow-sm">
+          <div class="card-header bg-secondary text-white">
+            <h4 class="my-0">All Users</h4>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Edit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for user in users %}
+                  <tr>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                      {% if user.is_admin %}
+                        <span class="badge bg-primary">Admin</span>
+                      {% elif user.is_employee %}
+                        <span class="badge bg-success">Employee</span>
+                      {% elif user.is_banned %}
+                        <span class="badge bg-danger">Banned</span>
+                      {% else %}
+                        <span class="badge bg-secondary">User</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <a href="{% url 'update_user' user.id %}" class="btn btn-sm btn-outline-dark">Edit ✏</a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card mb-4 shadow-sm">
+          <div class="card-header bg-info text-white">
+            <h4 class="my-0">Engineers</h4>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for eng in engineers %}
+                  <tr>
+                    <td>
+                      <strong>{{ eng.name }}</strong>
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr>
+                    <td class="text-muted">No engineers found.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock %}

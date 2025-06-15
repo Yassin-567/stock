@@ -21,6 +21,16 @@
           </small>
         </h2>
         <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>
+      {% elif job.items.count == 0 and not job.status == 'ready' %}
+        <h2>
+          Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <br /><small style="color: rgb(0, 129, 43);">
+            No parts, is this job ready?<form action="{% url 'inventory' job.job_id %}" method="POST">
+              {% csrf_token %}
+              <small><button name="job_is_ready" type="submit" class="btn btn-submit">Yes</button></small>
+            </form>
+          </small>
+        </h2>
+        <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>
       {% elif job.status == 'ready' and not job.items_arrived and job|total_quantity > 0 %}
         <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small>"Required parts have not arrived but the job is marked as Ready"</small></h2>
       {% elif job.status == 'completed' %}
@@ -62,12 +72,16 @@
             <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.item.name }}</a> - Part Number: {{ jobitem.item.part_number }} - Price: ${{ jobitem.item.price }}
             {% if jobitem.status == 'arrived' %}
               <span style="color: rgb(0, 0, 0);background-color: rgb(17, 255, 9);border: 1000px;border-radius: 25%;">{{ jobitem.get_status_display }}</span>
-            {% elif jobitem.ordered %}
+            {% elif jobitem.ordered and not jobitem.from_warehouse %}
               <span style="color: rgb(0, 0, 0);background-color: rgba(228, 216, 51, 0.99);border: 1000px;border-radius: 25%;">Ordered</span>
+            {% elif jobitem.was_for_job and jobitem.from_warehouse %}
+              <span style="color: rgb(0, 0, 0);background-color: rgba(119, 163, 192, 0.79);border: 1000px;border-radius: 25%;">was for job {{ jobitem.was_for_job }}</span>
+            {% elif jobitem.from_warehouse %}
+              <span style="color: rgb(0, 0, 0);background-color: rgba(157, 119, 192, 0.79);border: 1000px;border-radius: 25%;">From warehouse</span>
             {% else %}
               <span style="color: rgb(0, 0, 0);background-color: rgba(255, 98, 98, 0.99);border: 1000px;border-radius: 25%;">Not ordered</span>
             {% endif %}
-            {% if jobitem.item.notes %}
+            {% if jobitem.item.notes and job.status != 'completed' %}
               <small>{{ jobitem.item.notes }}</small> <form action="{% url 'inventory' jobitem.id %}" method="POST">
                 {% csrf_token %}
                 <small><button name="reset_notes" type="submit" class="btn btn-danger">It's not used</button></small>

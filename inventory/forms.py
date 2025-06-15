@@ -3,6 +3,7 @@ from .models import CustomUser, Item, Company,Job,Comment,WarehouseItem,JobItem,
 from django.contrib.auth.models import Group
 from django.forms import HiddenInput
 from django.db.models import Q
+from django.core.exceptions import ValidationError
 
 
 class loginForm(forms.Form):
@@ -24,55 +25,137 @@ class companyregisterForm(forms.ModelForm):
             'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+1234567890'}),
             'company_email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Company Email'}),
         }
+    def clean(self):
+        cleaned_data = super().clean()
+        email = cleaned_data.get('company_email')
+        if email and Company.objects.filter(company_email=email).exists():
+            raise ValidationError("A company with this email already exists")
+        return cleaned_data
     def __init__(self, *args, user=None, updating=False,enable_edit=False,**kwargs):
             super().__init__(*args, **kwargs)
             if user is not None and updating: 
                 if  not enable_edit:
-                    
                     for field in self.fields.values():
                         
                         field.widget.attrs['class'] = 'faded-input'
                         field.widget.attrs['disabled'] = 'disabled'
 
 class registerForm(forms.ModelForm):
-    password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Password'}))
-    is_banned=forms.BooleanField( required=False,
-    initial=False,
-    label="Ban this user", 
-    widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter password'
+        }),
+        required=True,
+        help_text='Enter a secure password'
+    )
+    
+    # Add password confirmation field
+    password2 = forms.CharField(
+        label='Confirm Password',
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Confirm password'
+        }),
+        required=True)
+    
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'password', 'groups', 'company']
+        fields = ['username', 'email']  # Don't include password here
         widgets = {
-            'email': forms.EmailInput(),
-            'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Username'}),
-            'company': forms.HiddenInput(),
-            
-            #'groups': forms.MultipleHiddenInput(),  
+            'username': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
         }
+    def clean_email(self):
+        
+        email = self.cleaned_data.get('email')
+        if CustomUser.objects.filter(email=email).exists():
+            raise ValidationError("A user with this email already exists. Please use a different email address.")
+        return email
 
-    def __init__(self, *args,registering=False,adding_worker=False, **kwargs):
-        super().__init__(*args, **kwargs)
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get('password')
+        password2 = cleaned_data.get('password2')
 
-        if registering:
-            self.fields['is_banned'].widget = forms.HiddenInput()
-            self.fields.pop("groups")
-            #self.fields['groups'].widget = forms.MultipleHiddenInput()
-        if adding_worker:
-            self.fields['is_banned'].widget = forms.HiddenInput()
-            self.fields['groups'].queryset = Group.objects.all().exclude(name='Ban')
+        if password and password2 and password != password2:
+            raise forms.ValidationError("Passwords don't match")
+        return cleaned_data
 
     def save(self, commit=True):
-        """ Hash the password before saving """
-        
         user = super().save(commit=False)
-        
-        user.set_password(self.cleaned_data["password"])  # Securely hash password
-        # user.company=Company.objects.get(id=user.company.id)
+        # Only set password if one is provided (for updates)
+        if self.cleaned_data.get('password'):
+            user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()
-            self.save_m2m()  # Save groups if assigned
         return user
+    
+class registerworker(forms.ModelForm):
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter password'
+        }),
+        required=True,
+        help_text='Enter a secure password'
+    )
+    
+    # Add password confirmation field
+    password2 = forms.CharField(
+        label='Confirm Password',
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Confirm password'
+        }),
+        required=True
+    )
+    
+    class Meta:
+        model = CustomUser
+        fields = ['username', 'email','permission']
+        
+        widgets = {
+            'username': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter username'
+            }),
+            'permission': forms.Select(attrs={
+                'class': 'form-control'
+            })
+        }
+    def __init__(self, *args, editing=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.editing = editing
+        
+    # def clean_email(self):
+    #     email = self.cleaned_data.get('email')
+    #     if not self.editing:
+            
+    #         if CustomUser.objects.filter(email=email).exists():
+    #             raise ValidationError("A user with this email already exists. Please use a different email address.")
+    #         return email
+    def clean(self):
+        
+        cleaned_data = super().clean()
+        password = cleaned_data.get('password')
+        password2 = cleaned_data.get('password2')
+        if password and password2 and password != password2:
+            raise forms.ValidationError("Passwords don't match")
+        return cleaned_data
+    
+        
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        
+        user.set_password(self.cleaned_data['password'])
+        if commit:
+            user.save()
+        return user
+
+
+
+
     
 class JobForm(forms.ModelForm):
     
@@ -113,14 +196,15 @@ class JobForm(forms.ModelForm):
         items_arrived=cleaned_data.get('items_arrived')
         job_id=cleaned_data.get('job_id')
         company=cleaned_data.get('company')
-        job=Job.objects.get(Q(job_id=job_id)&Q(company=company))
-        items_count=job.items.all().count()
-        if status=='ready' and  not items_arrived and items_count>0 :
-           
-            raise forms.ValidationError("Job can't be ready untill all its items arrive")
-        elif status=='ready' and job.items.exclude(is_used=False).exists():
-            raise forms.ValidationError("There is a used item")
-        return cleaned_data
+        job=self.instance
+        if job.pk:
+            items_count=job.items.all().count()
+            if status=='ready' and  not items_arrived and items_count>0 :
+            
+                raise forms.ValidationError("Not all items arrived")
+            elif status=='ready' and job.items.exclude(is_used=False).exists():
+                raise forms.ValidationError("There is a used item")
+            return cleaned_data
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
@@ -150,15 +234,15 @@ class StokcItemsForm(forms.ModelForm): #for adding items from warehouse to job o
                 
                 warehouse_quantity__gt= 0,
             )
-    def clean(self):
-        cleaned_data = super().clean()
-        #job_quantity = cleaned_data.get('job_quantity')
-        stock_items = cleaned_data.get('stock_items')[0]
-        # if job_quantity > stock_items.arrived_quantity:
-        #     raise forms.ValidationError(
-        #         f"Only {stock_items.arrived_quantity} parts are available in stock."
-        #     )
-        return cleaned_data
+    # def clean(self):
+    #     cleaned_data = super().clean()
+    #     #job_quantity = cleaned_data.get('job_quantity')
+    #     stock_items = cleaned_data.get('stock_items')[0]
+    #     # if job_quantity > stock_items.arrived_quantity:
+    #     #     raise forms.ValidationError(
+    #     #         f"Only {stock_items.arrived_quantity} parts are available in stock."
+    #     #     )
+    #     return cleaned_data
     class Meta:
         model=Item
         fields=['required_quantity']
@@ -184,7 +268,7 @@ class ItemForm(forms.ModelForm):
                 #'pattern': '[0-9]*',  # Numeric pattern
                 'placeholder': 'Enter part number',
                 'class': 'form-control',}),
-            
+            'reference':forms.Textarea(attrs={'rows':1}),
         }
 
     def __init__(self, *args, updating=False,completed=False,job=False, **kwargs):
@@ -217,16 +301,18 @@ class JobItemForm(forms.ModelForm):
     class Meta:
         model=JobItem
         fields='__all__'
-        exclude=['job','from_warehouse','is_used','status','was_for_job',]
+        exclude=['job','from_warehouse','is_used','status','was_for_job','added_by']
         widgets={'reference':forms.Textarea(attrs={'rows':1}),}
     def __init__(self, *args,item,**kwargs):
         super().__init__(*args, **kwargs)
         self.fields['item'].widget=forms.HiddenInput()
         self.fields['job_quantity'].label='Required quantity'
         #self.fields['status'].choices=[  (value, label) for value, label in self.fields['status'].choices if value != 'arrived']
-        if item.from_warehouse:
+        print('ll',item.from_warehouse)
+        if item.from_warehouse or (item.was_for_job and item.from_warehouse):
             self.fields['arrived_quantity'].widget=forms.HiddenInput()
-            self.fields['status'].widget=forms.HiddenInput()
+            self.fields['ordered'].widget=forms.HiddenInput()
+           # self.fields['status'].widget=forms.HiddenInput()
         # if item.item.from_warehouse:
         #     self.fields['job_quantity'].widget=forms.HiddenInput()
     def clean(self,*args, **kwargs):
@@ -235,11 +321,12 @@ class JobItemForm(forms.ModelForm):
         arrived_quantity = cleaned_data.get('arrived_quantity')
         ordered = cleaned_data.get('ordered')
         
-        if job_quantity == arrived_quantity and not ordered:
+        if job_quantity == arrived_quantity and not ordered and not self.instance.from_warehouse:
             raise forms.ValidationError("Items can't arrive without ordering")
-        elif job_quantity<arrived_quantity:
+        elif job_quantity<arrived_quantity and not  self.instance.from_warehouse:
             raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
-
+        elif job_quantity<arrived_quantity and  self.instance.from_warehouse:
+            raise forms.ValidationError("Required quantity can't be Zero, you can move instead")
         return cleaned_data
 class WarehouseitemForm(forms.ModelForm):
     class Meta:
@@ -263,6 +350,7 @@ class WarehouseitemForm(forms.ModelForm):
                 'class': 'form-control',}),
             'reference':forms.Textarea(attrs={'rows':1})
         }
+    
     # def __init__(self, *args,warehouse_item, **kwargs):
     #     super().__init__(*args, **kwargs)
     #     # self.fields['arrived_quantity'] = forms.IntegerField(

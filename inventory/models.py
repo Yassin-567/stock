@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 
-from django.contrib.auth.models import BaseUserManager, Group
+from django.contrib.auth.models import BaseUserManager
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
@@ -24,9 +24,9 @@ class CustomUserManager(BaseUserManager):
         user.save(using=self._db)
 
         # Ensure the user has at least one group.
-        if not user.groups.exists():
-            default_group, _ = Group.objects.get_or_create(name='Employee')
-            user.groups.add(default_group)
+        # if not user.groups.exists():
+        #     default_group, _ = Group.objects.get_or_create(name='Employee')
+        #     user.groups.add(default_group)
 
         return user
 
@@ -34,9 +34,10 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         user = self.create_user(email, password, **extra_fields)
-        if not user.groups.exists():
-            admin_group, _ = Group.objects.get_or_create(name='Admin')
-            user.groups.add(admin_group)
+
+        # if not user.groups.exists():
+        #     admin_group, _ = Group.objects.get_or_create(name='Admin')
+        #     user.groups.add(admin_group)
         return user
 
 
@@ -44,7 +45,7 @@ class Company(models.Model):
     owner = models.ForeignKey("inventory.CustomUser", on_delete=models.CASCADE, null=True, blank=True,related_name="company_owner")
     employees = models.ManyToManyField('CustomUser', related_name='companies')
     company_name=models.CharField(max_length=70)
-    company_email = models.EmailField(max_length=100)
+    company_email = models.EmailField(unique=True)
     address=models.TextField()
     phone=models.CharField(max_length=15)
     def __str__(self):
@@ -55,24 +56,45 @@ class Company(models.Model):
         ordering = ['company_name']
     
 class CustomUser(AbstractUser):
+    permission_choices=[('admin','Admin'),
+                        ('employee','Employee'),
+                        ('owner','Owner')]
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name="employeees")
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=90, unique=False)
-    groups = models.ManyToManyField('auth.Group', related_name='users',)
+    permission = models.CharField(choices=permission_choices,default='employee')
+    is_owner=models.BooleanField(default=False,)
+    is_admin=models.BooleanField(default=False,)
+    is_employee=models.BooleanField(default=False,)
+    is_banned=models.BooleanField(default=False,)
     REQUIRED_FIELDS = ['username',]
     USERNAME_FIELD = 'email'
+    verbose_name='User'
+    def save(self,*args, **kwargs):
+        if self.is_banned:
+            self.is_admin=False
+            self.is_employee=False
+        elif self.permission=='admin':
+            self.is_admin=True
+            self.is_employee=False
+        elif self.permission=='employee':
+            self.is_admin=False
+            self.is_employee=True
+        else:
+            self.is_admin=False
+            self.is_employee=True
+        super().save()
     def __str__(self):
         return self.username +" ("+ str(self.id)+") "
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        # After saving, enforce that only one group is assigned:
-        if self.pk and self.groups.count() > 1:
-            first_group = self.groups.first()
-            self.groups.set([first_group])
+    # def save(self, *args, **kwargs):
+    #     super().save(*args, **kwargs)
+    #     # After saving, enforce that only one group is assigned:
+    #     if self.pk and self.groups.count() > 1:
+    #         first_group = self.groups.first()
+    #         self.groups.set([first_group])
     class Meta:
         verbose_name_plural = 'users'
-        ordering = ['id']
-
+        ordering = ['is_owner','is_admin','is_employee','is_banned']
 ################################## Items, engineers and Jobs ######################################
 class Engineer(models.Model):
     name=models.CharField(max_length=40,)
@@ -113,8 +135,10 @@ class Job(models.Model):
         self.items_arrived=False 
         print("UU")
         if self.items.count() > 0:
-
-            self.items_arrived =  not self.items.exclude(status="arrived").exists() 
+            for item in self.items.all():
+                if item.status=='arrived':
+                    self.items_arrived=True
+            #self.items_arrived =  not self.items.exclude(status="arrived").exists() 
         
         if self.status=="quoted":
             self.quoted=True
@@ -145,7 +169,6 @@ class Comment(models.Model):
     object_id = models.PositiveIntegerField()  # ID of the related object
     company=models.ForeignKey(Company, on_delete=models.CASCADE,related_name="comment_company")
     content_object = GenericForeignKey('content_type', 'object_id','company')  # Generic relationship
-
     comment = models.TextField(null=True, blank=True)
     added_date = models.DateTimeField(auto_now_add=True)
     added_by = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=False, blank=False, related_name="added_by")
@@ -171,6 +194,8 @@ class Item(models.Model):
     name=models.CharField(max_length=70)
     part_number=models.TextField(max_length=30)
     price=models.DecimalField(max_digits=10, decimal_places=2,)
+    reference=models.TextField(blank=True,null=True,max_length=40)
+
     supplier=models.CharField(max_length=70)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company")
     added_date=models.DateTimeField(auto_now_add=True)
@@ -181,7 +206,6 @@ class Item(models.Model):
     notes=models.TextField(null=True, blank=True)
     def __str__(self):
         return self.name
-
 class JobItem(models.Model):
     
     job = models.ForeignKey(Job, on_delete=models.DO_NOTHING, related_name="items")
@@ -194,7 +218,6 @@ class JobItem(models.Model):
     is_used=models.BooleanField(default=False)
     from_warehouse=models.BooleanField(default=False)
     was_for_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="moveditems")
-
     def save(self,*args, **kwargs):
         if self.job_quantity==self.arrived_quantity and self.ordered:
             
@@ -207,11 +230,13 @@ class JobItem(models.Model):
             self.status=None
         super().save(*args, **kwargs) 
         for item in self.job.items.all():
-            if item.status=='arrived':
+            if item.status=='arrived' or item.from_warehouse:
                 self.job.items_arrived=True
+                self.job.status='ready'
             else:
-                self.job.status='paused'
+                #self.job.status='paused'
                 self.job.items_arrived=False
+                self.job.status='paused'
                 break
         self.job.save(update_fields=['status','items_arrived'],no_recursion=True)
         return

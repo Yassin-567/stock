@@ -10,7 +10,10 @@
   {% endif %}
   <form action="" method="POST">
     {% csrf_token %}
+    <h4>Company's details</h4>
     {{ company_form.as_p }}
+    <hr />
+    <h4>Owner's details</h4>
     {{ user_form.as_p }}
     <button type="submit" class="btn btn-primary">Signup</button><Span>
       Already a user? <a href="{% url 'login' %}">Login</a>
