@@ -22,7 +22,7 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   "><span style="color: rgba(0, 0, 0, 0.77);">Part Number:</span><span style="font-weight: bolder;
     color: rgb(212, 123, 5);">{{ item.item.part_number }}</span></span>
-    {% if item.status == 'arrived' %}
+    {% if item.status == 'arrived' and not item.is_used %}
       <span style="
     display: inline-block;
     padding: 5px 10px;
@@ -35,7 +35,7 @@
     border-radius: 5px;
     box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
   ">{{ item.status }}</span>
-    {% elif item.ordered %}
+    {% elif item.ordered and not item.is_used %}
       <span style="
     display: inline-block;
     padding: 5px 10px;
@@ -48,7 +48,7 @@
     border-radius: 5px;
     box-shadow: 0 1px 3px rgba(255, 253, 253, 0.1);
   ">Ordered</span>
-    {% elif not item.ordered and not item.from_warehouse and not item.was_for_job %}
+    {% elif not item.ordered and not item.from_warehouse and not item.is_used %}
       <span style="
   display: inline-block;
   padding: 5px 10px;
@@ -61,6 +61,19 @@
   border-radius: 5px;
   box-shadow: 0 1px 3px rgba(255, 253, 253, 0.1);
 ">Not Ordered</span>
+    {% elif item.is_used %}
+      <span style="
+  display: inline-block;
+  padding: 5px 10px;
+  margin-left: 10px;
+  font-size: 1.2rem;
+  font-weight: normal;
+  color: rgb(238, 238, 238);
+  background-color:rgba(77, 9, 9, 0.99);
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgba(255, 253, 253, 0.1);
+">Used</span>
     {% endif %}
     {% if item.from_warehouse %}
       <span style="
@@ -98,7 +111,7 @@
       {% csrf_token %}
       <div class="form-group">
         {{ form.as_p }}
-        {% if not completed %}
+        {% if not completed and not item.is_used %}
           <div class="form-group">
             <button name="edit" type="submit" class="btn-submit">Edit</button>
           </div>
@@ -119,7 +132,7 @@
       <span>
         <form action="{% url 'update_item' item.id %}" method="POST" class="delete-form" style="display: inline;">
           {% csrf_token %}
-          {% if not item.from_warehouse %}
+          {% if not item.from_warehouse and not item.is_used and not item.job.status == 'completed' and not item.job.status == 'cancelled' %}
             <button name="delete" type="submit" class="btn btn-danger">Delete</button>
           {% endif %}
 
@@ -128,7 +141,9 @@
         <form action="{% url 'update_item' item.id %}" method="POST" class="delete-form" style="display: inline;">
           {% endcomment %}
           {% comment %} {% csrf_token %} {% endcomment %}
-          <button name="move_item" type="submit" class="btn btn-submit">Move</button>
+          {% if not item.is_used and not item.job.status == 'completed' and not item.job.status == 'cancelled' %}
+            <button name="move_item" type="submit" class="btn btn-submit">Move</button>
+          {% endif %}
         </form>
       </span>
     {% endif %}

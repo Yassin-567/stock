@@ -8,6 +8,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import F
+from .myfunc import job_save,item_save
 #from datetime import datetime
 #from time import strftime
 ############################---USER and COMPANY---############################
@@ -125,40 +126,43 @@ class Job(models.Model):
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
-    def save(self, *args,no_recursion=False, **kwargs):
+
+    def save(self):
+        job_save(self) 
+        super().save()
+    # def save(self, *args,no_recursion=False, **kwargs):
         
-        old_status = None
-        if self.pk:
-            old_instance = type(self).objects.get(pk=self.pk)
-            old_status = old_instance.status
-        super().save(*args, **kwargs)
-        self.items_arrived=False 
-        print("UU")
-        if self.items.count() > 0:
-            for item in self.items.all():
-                if item.status=='arrived':
-                    self.items_arrived=True
-            #self.items_arrived =  not self.items.exclude(status="arrived").exists() 
+    #     old_status = None
+    #     if self.pk:
+    #         old_instance = type(self).objects.get(pk=self.pk)
+    #         old_status = old_instance.status
+    #     super().save(*args, **kwargs)
+    #     self.items_arrived=False 
         
-        if self.status=="quoted":
-            self.quoted=True
-        if self.status != "completed" and old_status == "completed" and self.status != "cancelled":
+    #     if self.items.count() > 0:
+    #         for item in self.items.all():
+    #             if item.status=='arrived' or item.from_warehouse:
+    #                 self.items_arrived=True
+    #         #self.items_arrived =  not self.items.exclude(status="arrived").exists() 
+        
+    #     if self.status=="quoted":
+    #         self.quoted=True
+    #     if self.status != "completed" and old_status == "completed" and self.status != "cancelled" and not no_recursion:
             
-            for item in self.items.all():
-                if item.is_used:
+    #         for item in self.items.all():
+    #             if item.is_used:
                 
-                    print("item is used")
-                    item.item.notes='Job was completed then reopened, double check if the item still exists.'
-                    item.item.save(update_fields=['notes'])
-        # if self.items_arrived:
-        #     self.status='ready'            
-        if self.status=='completed' and not no_recursion :
-            for item in self.items.all():
-                
-                item.is_used=True
-                item.save(update_fields=['is_used'])
-        
-        super().save(*args, **kwargs)
+    #                 print("item is used")
+    #                 item.notes='Job was completed then reopened, double check if the item still exists.'
+    #                 item.save(update_fields=['notes'])
+    #     # if self.items_arrived:
+    #     #     self.status='ready'            
+    #     if self.status=='completed' and not no_recursion :
+    #         for item in self.items.all():
+    #             item.is_used=True
+    #             item.save(update_fields=['is_used'])
+    #         self.status='completed'
+    #     super().save(*args, **kwargs)
     
     def __str__(self):
         return self.address +" ("+ str(self.parent_account)+") "
@@ -203,7 +207,7 @@ class Item(models.Model):
     required_quantity=models.PositiveSmallIntegerField(default=0)
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     ordered=models.BooleanField(default=False)
-    notes=models.TextField(null=True, blank=True)
+    #notes=models.TextField(null=True, blank=True)
     def __str__(self):
         return self.name
 class JobItem(models.Model):
@@ -217,29 +221,35 @@ class JobItem(models.Model):
     ordered=models.BooleanField(default=False)
     is_used=models.BooleanField(default=False)
     from_warehouse=models.BooleanField(default=False)
+    notes=models.TextField(null=True, blank=True)
     was_for_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="moveditems")
-    def save(self,*args, **kwargs):
-        if self.job_quantity==self.arrived_quantity and self.ordered:
-            
-            self.status='arrived'
+    def save(self,*args, dont_move_used=False,**kwargs):
         
-        elif self.ordered and self.job_quantity!=self.arrived_quantity:
-            print("GG")
-            self.status=None
-        elif not self.ordered:
-            self.status=None
-        super().save(*args, **kwargs) 
-        for item in self.job.items.all():
-            if item.status=='arrived' or item.from_warehouse:
-                self.job.items_arrived=True
-                self.job.status='ready'
-            else:
-                #self.job.status='paused'
-                self.job.items_arrived=False
-                self.job.status='paused'
-                break
-        self.job.save(update_fields=['status','items_arrived'],no_recursion=True)
-        return
+        item_save(self,dont_move_used)
+        super().save(*args, **kwargs)
+    #     if self.job_quantity==self.arrived_quantity and self.ordered:
+            
+    #         self.status='arrived'
+        
+    #     elif self.ordered and self.job_quantity!=self.arrived_quantity:
+            
+    #         self.status=None
+    #     elif not self.ordered:
+    #         self.status=None
+    #     super().save(*args, **kwargs) 
+    #     print(dont_move_used)
+    #     if  not dont_move_used :
+    #         for item in self.job.items.all():
+    #             if item.status=='arrived' or item.from_warehouse :
+    #                 self.job.items_arrived=True
+    #                 self.job.status='ready'
+    #             else:
+    #                 #self.job.status='paused'
+    #                 self.job.items_arrived=False
+    #                 self.job.status='paused'
+    #                 break
+    #     self.job.save(update_fields=['status','items_arrived'],no_recursion=True)
+    #     return
         
     def __str__(self):
         return str(self.item.name)

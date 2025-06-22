@@ -121,3 +121,9 @@ h4 {
 .comment-card p {
     margin: 0;
 }
+
+.faded-input {
+    background-color: #f5f5f5;
+    color: #888;
+    opacity: 0.7;
+}

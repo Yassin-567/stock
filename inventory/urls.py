@@ -22,7 +22,6 @@ urlpatterns=[
     path('job/<int:pk>/',views.update_job,name='update_job'),
     path('job/<int:pk>/<int:cancel>',views.update_job,name='update_job'),
     path('item/<int:pk>/',views.update_item,name='update_item'),
-    
     path('witem/<int:pk>/',views.update_warehouse_item,name='update_warehouse_item'),
     path('adpanel/<int:pk>/',views.update_user,name='update_user'),
     path('adpanelc//',views.update_company,name='update_company'),

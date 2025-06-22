@@ -20,15 +20,22 @@ def admins_only(view_func):
 def no_ban(view_func):
     @wraps(view_func)
     def wrapper_func(request, *args, **kwargs):
-        if not request.user.company.owner==request.user :
-            if request.user.is_banned:
-                messages.error(request, f'<span style="color: red; font-weight: bold;">{request.user.username}</span> is banned from {request.user.company.company_name}')
-                session=request.session
-                session.clear()
-                return redirect('login')
-            else:
-                return view_func(request, *args, **kwargs)
+        try:
+            company=request.user.company
+        except:
+            company=None
+        if company:
+            if not request.user.company.owner==request.user :
+                if request.user.is_banned:
+                    messages.error(request, f'<span style="color: red; font-weight: bold;">{request.user.username}</span> is banned from {request.user.company.company_name}')
+                    session=request.session
+                    session.clear()
+                    return redirect('login')
+                else:
+                    return view_func(request, *args, **kwargs)
+       
         return view_func(request, *args, **kwargs)
+        
     return wrapper_func  # Return the modified function
 
 

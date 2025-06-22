@@ -64,7 +64,9 @@
 
       <div class="form-group">
         <button type="submit" name="save" class="btn-submit">Save</button>
-        <button type="submit" name="send_email" class="btn-submit">Send email</button><span><h6>Send a list with the required parts for the engineer</h6></span>
+        {% if job_status == 'ready' %}
+          <button type="submit" name="send_email" class="btn-submit">Send email</button><span><h6>Send a list with the required parts for the engineer</h6></span>
+        {% endif %}
       </div>
 
       <form method="POST">

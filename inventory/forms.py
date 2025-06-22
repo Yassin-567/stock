@@ -186,6 +186,12 @@ class JobForm(forms.ModelForm):
 
     def __init__(self, *args, updating=False, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.instance.status=='cancelled' or self.instance.status=='completed' :
+            for name,field in self.fields.items():
+                if name!='status':
+                    field.widget.attrs['readonly'] = 'readonly'
+                    field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' faded-input'
+
         self.fields['company'].widget=forms.HiddenInput()
         if updating:
             # Disable fields if updating
@@ -194,10 +200,11 @@ class JobForm(forms.ModelForm):
         cleaned_data=super().clean()
         status=cleaned_data.get('status')
         items_arrived=cleaned_data.get('items_arrived')
-        job_id=cleaned_data.get('job_id')
-        company=cleaned_data.get('company')
         job=self.instance
+        
         if job.pk:
+            #if self.fields['status']=='quoted':
+                
             items_count=job.items.all().count()
             if status=='ready' and  not items_arrived and items_count>0 :
             
@@ -252,7 +259,7 @@ class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
         fields = '__all__' 
-        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','is_moved_to_warehouse','notes']
+        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','is_moved_to_warehouse',]
         labels = {
             'name': 'Part Name',
         }
@@ -301,15 +308,19 @@ class JobItemForm(forms.ModelForm):
     class Meta:
         model=JobItem
         fields='__all__'
-        exclude=['job','from_warehouse','is_used','status','was_for_job','added_by']
+        exclude=['job','from_warehouse','is_used','status','was_for_job','added_by','notes']
         widgets={'reference':forms.Textarea(attrs={'rows':1}),}
-    def __init__(self, *args,item,**kwargs):
+    def __init__(self, *args,**kwargs):
         super().__init__(*args, **kwargs)
         self.fields['item'].widget=forms.HiddenInput()
         self.fields['job_quantity'].label='Required quantity'
+        if self.instance.is_used or self.instance.job.status=='completed' :
+            for field in self.fields.values():
+                field.widget.attrs['class'] = 'faded-input'
+                field.widget.attrs['disabled'] = 'disabled'
+
         #self.fields['status'].choices=[  (value, label) for value, label in self.fields['status'].choices if value != 'arrived']
-        print('ll',item.from_warehouse)
-        if item.from_warehouse or (item.was_for_job and item.from_warehouse):
+        if self.instance.from_warehouse or (self.instance.was_for_job and self.instance.from_warehouse):
             self.fields['arrived_quantity'].widget=forms.HiddenInput()
             self.fields['ordered'].widget=forms.HiddenInput()
            # self.fields['status'].widget=forms.HiddenInput()
@@ -332,7 +343,7 @@ class WarehouseitemForm(forms.ModelForm):
     class Meta:
         model = WarehouseItem
         fields = '__all__' 
-        exclude = ['added_by','company','is_used','item','status','is_moved_from_job','was_for_job','is_moved_to_warehouse','notes','is_move_to_warehouse',]
+        exclude = ['added_by','company','is_used','item','status','is_moved_from_job','was_for_job','is_moved_to_warehouse','is_move_to_warehouse',]
         labels = {
             'name': 'Part Name',
         }
