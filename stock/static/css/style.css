@@ -127,3 +127,15 @@ h4 {
     color: #888;
     opacity: 0.7;
 }
+
+.alert.alert-error {
+    background-color: #f8d7da;
+    color: #842029;
+    border: 1px solid #f5c2c7;
+    padding: 12px 20px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-weight: bold;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.08);
+}

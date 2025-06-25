@@ -4,6 +4,7 @@ from django.contrib.auth.models import Group
 from django.forms import HiddenInput
 from django.db.models import Q
 from django.core.exceptions import ValidationError
+from .myfunc import items_arrived,items_not_used
 
 
 class loginForm(forms.Form):
@@ -199,14 +200,14 @@ class JobForm(forms.ModelForm):
     def clean(self,*args, **kwargs):
         cleaned_data=super().clean()
         status=cleaned_data.get('status')
-        items_arrived=cleaned_data.get('items_arrived')
+        items_arrivedd=cleaned_data.get('items_arrived')
         job=self.instance
         
         if job.pk:
             #if self.fields['status']=='quoted':
                 
             items_count=job.items.all().count()
-            if status=='ready' and  not items_arrived and items_count>0 :
+            if status=='ready' and  not (items_arrived(job) and items_not_used(job)) and items_count>0 :
             
                 raise forms.ValidationError("Not all items arrived")
             elif status=='ready' and job.items.exclude(is_used=False).exists():
@@ -300,7 +301,7 @@ class ItemForm(forms.ModelForm):
         
         if job_quantity == arrived_quantity and not ordered:
             raise forms.ValidationError("Items can't arrive without ordering")
-        elif job_quantity<arrived_quantity:
+        elif job_quantity < arrived_quantity:
             raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
 
         return cleaned_data

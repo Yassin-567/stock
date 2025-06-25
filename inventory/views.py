@@ -97,9 +97,9 @@ def inventory(request,pk=None):
         jobitem=JobItem.objects.get(id=pk)
         # item=Item.objects.get(id=jobitem.item.id)
         jobitem.notes=None
-        jobitem.save(update_fields=['notes'])
         jobitem.is_used=False
-        jobitem.save(update_fields=['is_used'])
+        jobitem.save(update_fields=['is_used','notes'])
+        jobitem.job.save(update_fields=['status','items_arrived'])
     elif request.method=="POST" and 'job_is_ready' in request.POST:
         job=Job.objects.get(job_id=pk,company=request.user.company)
         if job.items.exclude(is_used=False).exists():
@@ -112,7 +112,7 @@ def inventory(request,pk=None):
 
 @login_required
 def job_create(request):
-
+    JobForm()
     if request.method == 'POST':
         form = JobForm(request.POST)
         if form.is_valid():
@@ -165,7 +165,8 @@ def update_job(request, pk, cancel=0):
                     form.save()
                     for item in job.items.all():
                         item.is_used=True
-                        item.save(update_fields=['is_used'])
+                        item.save(update_fields=['is_used'],dont_move_used=True)
+                    
                     messages.success(request, "Job completed.")
                 return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
         post_data = request.session.pop('job_post_data', None) #in case of no retunr back
@@ -294,35 +295,34 @@ def item_add(request,pk=None,no_job=False):
                 
                 if len(stock_items)>0:
                     for item in stock_items:
-                        
+                      
                         try:
                             with transaction.atomic():
                                 
                                 if item.warehouse_quantity>0 and item.warehouse_quantity>= required_quantity:
-                                    if JobItem.objects.filter(job=job,item=item.item,):
-                                        jobitem=JobItem.objects.filter(job=job,item=item.item,).first()
-                                        jobitem.job_quantity=jobitem.job_quantity+required_quantity
-                                        jobitem.arrived_quantity=jobitem.job_quantity
-                                        jobitem.save(update_fields=['job_quantity'])
-                                        item.warehouse_quantity=item.warehouse_quantity-required_quantity
-                                        item.save(update_fields=['warehouse_quantity'])
-                                        if item.warehouse_quantity==0:
-                                           # item.delete()
-                                           print('deleting')
-                                    else: 
+                                    # if JobItem.objects.filter(job=job,item=item.item,):
+                                    #     jobitem=JobItem.objects.filter(job=job,item=item.item,).first()
+                                    #     jobitem.job_quantity=jobitem.job_quantity+required_quantity
+                                    #     jobitem.arrived_quantity=jobitem.job_quantity
+                                    #     jobitem.save(update_fields=['job_quantity'])
+                                    #     item.warehouse_quantity=item.warehouse_quantity-required_quantity
+                                    #     item.save(update_fields=['warehouse_quantity'])
+                                    #     if item.warehouse_quantity==0:
+                                    #        # item.delete()
+                                    #        print('deleting')
+                                    # else: 
                                         JobItem.objects.create(
                                         job=job,
                                         from_warehouse=True, #if item.is_moved_from_job==None else False,
                                         item=item.item,
-                                        status='arrived',
-                                        
+                                        arrived=True,
                                         job_quantity=+required_quantity,
                                         arrived_quantity=+required_quantity,
-                                        
                                         was_for_job=item.is_moved_from_job if item.is_moved_from_job else None
                                         )
                                         item.warehouse_quantity=item.warehouse_quantity-required_quantity
-                                        item.save(update_fields=['warehouse_quantity'])
+                                       # item_save(item)
+                                        item.save(update_fields=['warehouse_quantity'])#
                                         if item.warehouse_quantity==0:
                                             #item.delete()
                                             print('deleting2')
@@ -477,7 +477,8 @@ def update_item(request, pk):
                     wi.save(update_fields=['warehouse_quantity'])
                 # Delete JobItem after successful move
                 job_item.job.status='cancelled'
-                job_item.job.save(update_fields=['status'])
+                
+                job_item.job.save()
                 job_item.delete()
                 messages.success(request,"Item moved to warehouse")
             except JobItem.DoesNotExist:
@@ -521,7 +522,7 @@ def update_item(request, pk):
                 if job_item.is_used or job_item.arrived_quantity == 0:
                     
                     messages.error(request, "Nothing to move or already used.")
-                    form = JobItemForm(instance=item,item=item)
+                    form = JobItemForm(instance=item,)
                     comments_form=CommentForm(initial={
                     'content_type': ContentType.objects.get_for_model(JobItem),
                     'object_id': item.id,

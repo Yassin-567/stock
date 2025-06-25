@@ -1,59 +1,74 @@
-def item_save(self, dont_move_used=False):
-    
-    if self.job_quantity == self.arrived_quantity and self.ordered:
-        self.status = 'arrived'
-    elif self.ordered:
-        self.status = None
-    elif not self.ordered:
-        self.status = None
 
-    #self.save(update_fields=['status'])
+def items_arrived(self):
+    from .models import Job, JobItem
+    all_arrived=False
+    if self.pk:
+        if isinstance(self,Job) and self.items.all().count()>0:
+            all_arrived = all(
+                    item.arrived or item.from_warehouse
+                    for item in self.items.all()
+                )
+            self.items_arrived=all_arrived 
+        elif isinstance(self,Job) :
+            all_arrived=True
+            self.items_arrived=all_arrived 
+        elif isinstance(self,JobItem):
+            all_arrived = all(
+                    item.arrived or item.from_warehouse
+                    for item in self.job.items.all()
+                )
+    return all_arrived
 
-    if not dont_move_used:
-        for item in self.job.items.all():
-            if item.status == 'arrived' or item.from_warehouse:
-                self.job.items_arrived = True
-                self.job.status = 'ready'
-            else:
-                self.job.items_arrived = False
-                self.job.status = 'paused'
-                break
-        job_save(self=self.job,no_recursion=True)
-    super(type(self), self).save()
+def items_not_used(self):
+    from .models import Job, JobItem
+    not_used=False
+    if self.pk:
+        if isinstance(self,Job) and self.items.all().count()>0:
+            not_used = all(
+                    not item.is_used
+                    for item in self.items.all()
+                )
+            self.items_arrived=not_used 
+        elif isinstance(self,Job) :
+            not_used=True
+            self.items_arrived=not_used 
+        elif isinstance(self,JobItem):
+            not_used = all(
+                    not item.is_used
+                    for item in self.job.items.all()
+                )
+    return not_used
 
-def job_save(self, *args,no_recursion=False, **kwargs):
+
+
+def job_reopened(self,):
+    if self.pk:
         old_status = None
-        if self.pk:
-            old_instance = type(self).objects.get(pk=self.pk)
-            old_status = old_instance.status
-       # super().save(*args, **kwargs)
-        self.items_arrived=False 
+        old_instance = type(self).objects.get(pk=self.pk)
+        old_status = old_instance.status
+        if self.status != "completed" and old_status == "completed" and self.status != "cancelled" :
+                for item in self.items.all():
+                    if item.is_used:
+                        item.notes='Job was completed then reopened, double check if the item still exists.'
+                        item.save(update_fields=['notes'],no_recursion=True)
+                return True
+        return False
+def item_arrived(self):
+    if self.ordered:
+            if self.arrived_quantity >= self.job_quantity:
+                self.arrived = True
+            else:
+                self.arrived=False
+    else:
+        self.arrived = False
+    return self.arrived
+def item_not_used(self):
+    return self.is_used
+def job_completed(self,):
+    if self.status=='completed':
+        for item in self.items.all():
+            item.is_used=True
+            item.save(update_fields=['is_used'],no_recursion=True)
         
-        if self.items.count() > 0:
-            for item in self.items.all():
-                if item.status=='arrived' or item.from_warehouse:
-                    self.items_arrived=True
-            #self.items_arrived =  not self.items.exclude(status="arrived").exists() 
-        
-        if self.status=="quoted":
-            self.quoted=True
-        if self.status != "completed" and old_status == "completed" and self.status != "cancelled" and not no_recursion:
-            
-            for item in self.items.all():
-                if item.is_used:
-                
-                    print("item is used")
-                    item.notes='Job was completed then reopened, double check if the item still exists.'
-                    item.save(update_fields=['notes'])
-        # if self.items_arrived:
-        #     self.status='ready'            
-        if self.status=='completed' and not no_recursion :
-            for item in self.items.all():
-                item.is_used=True
-                item.save(update_fields=['is_used'])
-            self.status='completed'
-        
-        
-        super(type(self), self).save(*args, **kwargs)
-    
-        
+        return True
+    return False

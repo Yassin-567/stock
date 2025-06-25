@@ -8,7 +8,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import F
-from .myfunc import job_save,item_save
+from .myfunc import items_arrived,job_reopened,item_arrived,job_completed,items_not_used
 #from datetime import datetime
 #from time import strftime
 ############################---USER and COMPANY---############################
@@ -127,9 +127,12 @@ class Job(models.Model):
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
 
-    def save(self):
-        job_save(self) 
-        super().save()
+    def save(self,*args, **kwargs):
+        job_reopened(self,)
+        if not job_completed(self,):
+            self.status = 'ready' if items_arrived(self) and items_not_used(self) else 'paused'
+            self.items_arrived=items_arrived(self) and items_not_used(self)
+        super().save(*args, **kwargs)
     # def save(self, *args,no_recursion=False, **kwargs):
         
     #     old_status = None
@@ -217,16 +220,19 @@ class JobItem(models.Model):
     job_quantity = models.PositiveSmallIntegerField(default=0)  # How many needed for this job
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     reference=models.TextField(blank=True,null=True,max_length=40)
-    status=models.CharField(max_length=20,choices=CHOICES,blank=True,null=True,default=None)
+    #status=models.CharField(max_length=20,choices=CHOICES,blank=True,null=True,default=None)
     ordered=models.BooleanField(default=False)
+    arrived=models.BooleanField(default=False)
     is_used=models.BooleanField(default=False)
     from_warehouse=models.BooleanField(default=False)
     notes=models.TextField(null=True, blank=True)
     was_for_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="moveditems")
-    def save(self,*args, dont_move_used=False,**kwargs):
-        
-        item_save(self,dont_move_used)
+    def save(self,*args, dont_move_used=False,no_recursion=False,**kwargs):
+        item_arrived(self)
         super().save(*args, **kwargs)
+        if not dont_move_used and not no_recursion:
+            self.job.save(update_fields=['status','items_arrived'],)
+        
     #     if self.job_quantity==self.arrived_quantity and self.ordered:
             
     #         self.status='arrived'

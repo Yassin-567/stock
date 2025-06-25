@@ -22,7 +22,7 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   "><span style="color: rgba(0, 0, 0, 0.77);">Part Number:</span><span style="font-weight: bolder;
     color: rgb(212, 123, 5);">{{ item.item.part_number }}</span></span>
-    {% if item.status == 'arrived' and not item.is_used %}
+    {% if item.arrived and not item.is_used %}
       <span style="
     display: inline-block;
     padding: 5px 10px;
@@ -34,7 +34,7 @@
     border: 1px solid #ddd;
     border-radius: 5px;
     box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
-  ">{{ item.status }}</span>
+  ">Arrived</span>
     {% elif item.ordered and not item.is_used %}
       <span style="
     display: inline-block;

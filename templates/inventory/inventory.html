@@ -70,8 +70,8 @@
         {% for jobitem in job.items.all %}
           <li>
             <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.item.name }}</a> - Part Number: {{ jobitem.item.part_number }} - Price: ${{ jobitem.item.price }}
-            {% if jobitem.status == 'arrived' and not jobitem.is_used %}
-              <span style="color: rgb(0, 0, 0);background-color: rgb(17, 255, 9);border: 1000px;border-radius: 25%;">{{ jobitem.get_status_display }}</span>
+            {% if jobitem.arrived and not jobitem.is_used %}
+              <span style="color: rgb(0, 0, 0);background-color: rgb(17, 255, 9);border: 1000px;border-radius: 25%;">Arrived</span>
             {% elif jobitem.ordered and not jobitem.from_warehouse and not jobitem.is_used %}
               <span style="color: rgb(0, 0, 0);background-color: rgba(228, 216, 51, 0.99);border: 1000px;border-radius: 25%;">Ordered</span>
             {% elif jobitem.was_for_job and jobitem.from_warehouse and not jobitem.is_used %}
