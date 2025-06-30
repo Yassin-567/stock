@@ -332,12 +332,17 @@ def item_add(request,pk=None,no_job=False):
             form=ItemForm(request.POST,)
             item_id = request.POST.get('selected_item_id')
             
-            required_quantity = int(request.POST.get('required_quantity', 1))
+            required_quantity = int(request.POST.get('required_quantity'))
             item=WarehouseItem.objects.get(Q(company=request.user.company),Q(id=item_id))
-            print('itme',item)
+            
             try:
                 with transaction.atomic():
-                    
+                    if required_quantity<=0:
+                        messages.error(request,"Quantity must be positive integer")
+                        form=ItemForm(job=job)
+                        warehouse_items=warehouse_items
+                        return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items})
+        
                     if item.warehouse_quantity>0 and item.warehouse_quantity>= required_quantity:
                         # if JobItem.objects.filter(job=job,item=item.item,):
                         #     jobitem=JobItem.objects.filter(job=job,item=item.item,).first()
