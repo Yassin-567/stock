@@ -19,6 +19,7 @@ from . import views
 urlpatterns=[
     path('',views.inventory,name='inventory'),
     path('<int:pk>',views.inventory,name='inventory'),
+    path('search',views.search_view,name='search_view'),
     path('job/<int:pk>/',views.update_job,name='update_job'),
     path('job/<int:pk>/<int:cancel>',views.update_job,name='update_job'),
     path('item/<int:pk>/',views.update_item,name='update_item'),

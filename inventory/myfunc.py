@@ -3,11 +3,13 @@ def items_arrived(self):
     from .models import Job, JobItem
     all_arrived=False
     if self.pk:
+        print('all',all_arrived)
         if isinstance(self,Job) and self.items.all().count()>0:
             all_arrived = all(
                     item.arrived or item.from_warehouse
                     for item in self.items.all()
                 )
+            print('all',all_arrived)
             self.items_arrived=all_arrived 
         elif isinstance(self,Job) :
             all_arrived=True
@@ -54,6 +56,9 @@ def job_reopened(self,):
                 return True
         return False
 def item_arrived(self):
+    if self.from_warehouse:
+        
+        return True
     if self.ordered:
             if self.arrived_quantity >= self.job_quantity:
                 self.arrived = True

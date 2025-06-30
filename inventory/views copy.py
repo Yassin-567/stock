@@ -308,8 +308,7 @@ def item_add(request,pk=None,no_job=False):
         job=None
     
     form=ItemForm(job=job)
-    warehouse_items=WarehouseItem.objects.filter(company=request.user.company,warehouse_quantity__gt=0)
-    #stock_items_form=StokcItemsForm(company=request.user.company)
+    stock_items_form=StokcItemsForm(company=request.user.company)
     #form.fields['job'].widget = MultipleHiddenInput() 
     # if job is None:
     #     form.fields['job_quantity'].widget = HiddenInput()
@@ -319,68 +318,69 @@ def item_add(request,pk=None,no_job=False):
         
         
         if 'searching_warehouse' in request.POST:
-            if pk is not None :
-                query = request.POST.get('search_query')
-
-                if len(query)>0 and not 'reset_search' in request.POST:
-                    print("PASSED")
-                    warehouse_items=WarehouseItem.objects.filter(company=request.user.company,warehouse_quantity__gt=0,item__part_number=query)
-                return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'query':query})
+            if pk is not None:
+                print(555)
+                stock_items_form=StokcItemsForm(request.POST,company=request.user.company,query=2)
+                return render(request, 'inventory/add_item.html', {'form': form,'job':job,'stock_items_form':stock_items_form})
 
         if 'adding_from_stock' in request.POST:
-            
+            if pk is not None:
+                stock_items_form=StokcItemsForm(request.POST,company=request.user.company)
             form=ItemForm(request.POST,)
-            item_id = request.POST.get('selected_item_id')
-            
-            required_quantity = int(request.POST.get('required_quantity', 1))
-            item=WarehouseItem.objects.get(Q(company=request.user.company),Q(id=item_id))
-            print('itme',item)
-            try:
-                with transaction.atomic():
-                    
-                    if item.warehouse_quantity>0 and item.warehouse_quantity>= required_quantity:
-                        # if JobItem.objects.filter(job=job,item=item.item,):
-                        #     jobitem=JobItem.objects.filter(job=job,item=item.item,).first()
-                        #     jobitem.job_quantity=jobitem.job_quantity+required_quantity
-                        #     jobitem.arrived_quantity=jobitem.job_quantity
-                        #     jobitem.save(update_fields=['job_quantity'])
-                        #     item.warehouse_quantity=item.warehouse_quantity-required_quantity
-                        #     item.save(update_fields=['warehouse_quantity'])
-                        #     if item.warehouse_quantity==0:
-                        #        # item.delete()
-                        #        print('deleting')
-                        # else: 
-                            JobItem.objects.create(
-                            job=job,
-                            from_warehouse=True, #if item.is_moved_from_job==None else False,
-                            item=item.item,
-                            arrived=True,
-                            job_quantity=+required_quantity,
-                            arrived_quantity=+required_quantity,
-                            was_for_job=item.is_moved_from_job if item.is_moved_from_job else None
-                            )
-                            item.warehouse_quantity=item.warehouse_quantity-required_quantity
-                            # item_save(item)
-                            item.save(update_fields=['warehouse_quantity'])#
-                            if item.warehouse_quantity==0:
-                                #item.delete()
-                                print('deleting2')
-                    else:
-                        messages.error(request,"Not enough stock")
-                        form=ItemForm(job=job)
-                        warehouse_items=warehouse_items
-                        return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items})
-            except IntegrityError:
-                messages.error(request,"Failed")
-            # item.job=job
-            # item.is_warehouse_item=True
-            # item.save()
-            # calculate_item(item=item,job_qunatity=job_quantity)
+            if stock_items_form.is_valid():
+                stock_items=stock_items_form.cleaned_data['stock_items'] 
+                required_quantity=stock_items_form.cleaned_data['required_quantity'] 
                 
-            messages.success(request, 'Item added from stock successfully')
-            form=ItemForm(job=job)
-            warehouse_items=warehouse_items
-            return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items})
+                
+                if len(stock_items)>0:
+                    for item in stock_items:
+                      
+                        try:
+                            with transaction.atomic():
+                                
+                                if item.warehouse_quantity>0 and item.warehouse_quantity>= required_quantity:
+                                    # if JobItem.objects.filter(job=job,item=item.item,):
+                                    #     jobitem=JobItem.objects.filter(job=job,item=item.item,).first()
+                                    #     jobitem.job_quantity=jobitem.job_quantity+required_quantity
+                                    #     jobitem.arrived_quantity=jobitem.job_quantity
+                                    #     jobitem.save(update_fields=['job_quantity'])
+                                    #     item.warehouse_quantity=item.warehouse_quantity-required_quantity
+                                    #     item.save(update_fields=['warehouse_quantity'])
+                                    #     if item.warehouse_quantity==0:
+                                    #        # item.delete()
+                                    #        print('deleting')
+                                    # else: 
+                                        JobItem.objects.create(
+                                        job=job,
+                                        from_warehouse=True, #if item.is_moved_from_job==None else False,
+                                        item=item.item,
+                                        arrived=True,
+                                        job_quantity=+required_quantity,
+                                        arrived_quantity=+required_quantity,
+                                        was_for_job=item.is_moved_from_job if item.is_moved_from_job else None
+                                        )
+                                        item.warehouse_quantity=item.warehouse_quantity-required_quantity
+                                       # item_save(item)
+                                        item.save(update_fields=['warehouse_quantity'])#
+                                        if item.warehouse_quantity==0:
+                                            #item.delete()
+                                            print('deleting2')
+                                else:
+                                    messages.error(request,"Not enough stock")
+                                    form=ItemForm(job=job)
+                                    stock_items_form=StokcItemsForm(company=request.user.company)
+                                    return render(request, 'inventory/add_item.html', {'form': form,'job':job,'stock_items_form':stock_items_form})
+                        except IntegrityError:
+                            messages.error(request,"Failed")
+                        # item.job=job
+                        # item.is_warehouse_item=True
+                        # item.save()
+                        # calculate_item(item=item,job_qunatity=job_quantity)
+                        
+                    messages.success(request, 'Item added from stock successfully')
+                    form=ItemForm(job=job)
+                    stock_items_form=StokcItemsForm(company=request.user.company)
+                    return render(request, 'inventory/add_item.html', {'form': form,'job':job,'stock_items_form':stock_items_form})
         elif 'adding_new' in request.POST:
             form=ItemForm(request.POST)
             
@@ -417,10 +417,10 @@ def item_add(request,pk=None,no_job=False):
                             #item.job = job
                             #item.save()
                             form=ItemForm(job=job)
-                            warehouse_items=warehouse_items
+                            stock_items_form=StokcItemsForm(company=request.user.company)
                             messages.success(request, f'{item}-is added to job {job}')
                             
-                            return render(request, 'inventory/add_item.html', {'form': form,'warehouse_items':warehouse_items,'job':job})
+                            return render(request, 'inventory/add_item.html', {'form': form,'stock_items_form':stock_items_form,'job':job})
                         
                         elif pk is None and no_job: 
                             
@@ -451,9 +451,9 @@ def item_add(request,pk=None,no_job=False):
                 # Raise an IntegrityError manually to roll back the transaction
                     #raise IntegrityError("Job does not exist, rolling back item save.")
                     
-                    return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items})
-    warehouse_items=warehouse_items
-    return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items})
+                    return render(request, 'inventory/add_item.html', {'form': form,'job':job,'stock_items_form':stock_items_form})
+    stock_items_form=StokcItemsForm(company=request.user.company)
+    return render(request, 'inventory/add_item.html', {'form': form,'job':job,'stock_items_form':stock_items_form})
 @login_required
 def update_item(request, pk):
     item = JobItem.objects.get(Q(id=pk) & Q(job__company=request.user.company))

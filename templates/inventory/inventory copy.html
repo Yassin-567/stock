@@ -1,0 +1,157 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+{% load custom_tags %}
+{% block body %}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Modern Form Section -->
+  {% if rjobs %}
+    {% for job in rjobs %}
+      {% if job.status != 'ready' and job.items_arrived and job.status != 'completed' and job|all_not_used %}
+        <h2>
+          Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <br /><small style="color: rgb(0, 129, 43);">
+            Parts arrived, is this job ready?<form action="{% url 'inventory' job.job_id %}" method="POST">
+              {% csrf_token %}
+              <small><button name="job_is_ready" type="submit" class="btn btn-submit">Yes</button></small>
+            </form>
+          </small>
+        </h2>
+        <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>
+      {% elif job.items.count == 0 and not job.status == 'ready' and job.status != 'cancelled' and job.status != 'completed' %}
+        <h2>
+          Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <br /><small style="color: rgb(0, 129, 43);">
+            No parts needed, is this job ready?<form action="{% url 'inventory' job.job_id %}" method="POST">
+              {% csrf_token %}
+              <small><button name="job_is_ready" type="submit" class="btn btn-submit">Yes</button></small>
+            </form>
+          </small>
+        </h2>
+        <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>
+      {% elif job.status == 'ready' and not job.items_arrived and job|total_quantity > 0 %}
+        <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small>"Required parts have not arrived but the job is marked as Ready"</small></h2>
+      {% elif job.status == 'completed' %}
+        <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small style="
+        display: inline-block;
+        padding: 5px 10px;
+        font-size: 1.2rem;
+        font-weight: normal;
+        color: rgb(255, 255, 255);
+        background-color: rgb(131, 25, 108);
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
+      ">"Job is done"</small></h2>
+      {% elif job.status == 'cancelled' %}
+        <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }} <small style="
+        display: inline-block;
+        padding: 5px 10px;
+        font-size: 1.2rem;
+        font-weight: normal;
+        color: rgb(255, 255, 255);
+        background-color: rgb(167, 30, 12);
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
+      ">"Job is Cancelled"</small></h2>
+      {% else %}
+        <h2>Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> - Status: {{ job.get_status_display }}</h2>
+        <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>
+      {% endif %}
+      <p>Address: {{ job.address }}</p>
+      <p>Parent Account: {{ job.parent_account }}</p>
+      <p>Added Date: {{ job.added_date }}</p>
+
+      <h3>Unique items= {{ job.items.count }} Total required items={{ job|total_quantity }} Arrived={{ job|total_arrived_quantity }}</h3>
+      <ul>
+        {% for jobitem in job.items.all %}
+          <li>
+            <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.item.name }}</a> - Part Number: {{ jobitem.item.part_number }} - Price: ${{ jobitem.item.price }}
+            {% if jobitem.arrived and not jobitem.is_used %}
+              <span style="color: rgb(0, 0, 0);background-color: rgb(17, 255, 9);border: 1000px;border-radius: 25%;">Arrived</span>
+            {% elif jobitem.ordered and not jobitem.from_warehouse and not jobitem.is_used %}
+              <span style="color: rgb(0, 0, 0);background-color: rgba(228, 216, 51, 0.99);border: 1000px;border-radius: 25%;">Ordered</span>
+            {% elif jobitem.was_for_job and jobitem.from_warehouse and not jobitem.is_used %}
+              <span style="color: rgb(0, 0, 0);background-color: rgba(119, 163, 192, 0.79);border: 1000px;border-radius: 25%;">was for job {{ jobitem.was_for_job }}</span>
+            {% elif jobitem.from_warehouse and not jobitem.is_used %}
+              <span style="color: rgb(0, 0, 0);background-color: rgba(157, 119, 192, 0.79);border: 1000px;border-radius: 25%;">From warehouse</span>
+            {% elif jobitem.is_used %}
+              <span style="color: rgb(255, 255, 255);background-color: rgba(54, 8, 8, 0.79);border: 1000px;border-radius: 25%;">Used</span>
+            {% else %}
+              <span style="color: rgb(0, 0, 0);background-color: rgba(255, 98, 98, 0.99);border: 1000px;border-radius: 25%;">Not ordered</span>
+            {% endif %}
+            {% if jobitem.notes and job.status != 'completed' %}
+              <small>{{ jobitem.notes }}</small> <form action="{% url 'inventory' jobitem.id %}" method="POST">
+                {% csrf_token %}
+                <small><button name="reset_notes" type="submit" class="btn btn-danger">It's not used</button></small>
+              </form>
+            {% endif %}
+
+            {% if jobitem.item.is_used %}
+              <span style="
+            display: inline-block;
+    padding: 1px 10px;
+    margin-left: 10px;
+    font-size: 1.2rem;
+    font-weight: normal;
+    color: #333;
+    background-color: rgba(182, 182, 182, 0.79);
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      ">Used</span>
+              {{ item.notes }}
+            {% endif %}
+          </li>
+        {% empty %}
+          <li>No items associated with this job.</li>
+        {% endfor %}
+      </ul>
+      <hr />
+    {% endfor %}
+    <div class="pagination">
+      {% if page_obj.has_previous %}
+        <a href="?page=1">&laquo; first</a>
+
+        <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+      {% endif %}
+
+      <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}">next</a>
+        <br />
+        <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+      {% endif %}
+    </div>
+  {% endif %}
+  <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+  {% comment %} <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      let statusField = document.querySelector('#status')
+      let arrivedQuantityField = document.querySelector('#arrived_quantity')
+    
+      if (!statusField || !arrivedQuantityField) {
+        console.error('Status or Arrived Quantity field not found in the DOM!')
+        return
+      }
+    
+      function toggleArrivedQuantity() {
+        if (statusField.value === 'a') {
+          arrivedQuantityField.parentElement.style.display = 'block'
+        } else {
+          arrivedQuantityField.parentElement.style.display = 'none'
+        }
+      }
+    
+      // Run on page load
+      toggleArrivedQuantity()
+    
+      // Listen for changes
+      statusField.addEventListener('change', toggleArrivedQuantity)
+    })
+  </script> {% endcomment %}
+{% endblock %}

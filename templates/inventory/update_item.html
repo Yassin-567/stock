@@ -22,6 +22,8 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   "><span style="color: rgba(0, 0, 0, 0.77);">Part Number:</span><span style="font-weight: bolder;
     color: rgb(212, 123, 5);">{{ item.item.part_number }}</span></span>
+    <span style="font-weight: bolder;
+    color: rgb(212, 123, 5);"></span>
     {% if item.arrived and not item.is_used %}
       <span style="
     display: inline-block;
@@ -106,10 +108,11 @@
   </h2>
 
   <section class="form-section">
-    <h3>Part name:{{ item.item.name }} for job: {{ item.job }}</h3>
+    <h3>Part name:&nbsp{{ item.item.name }}</h3>
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
       <div class="form-group">
+        <span><strong>Job:&nbsp</strong><a href=" {% url 'update_job' item.job.job_id %} ">{{ item.job }}</a></span>
         {{ form.as_p }}
         {% if not completed and not item.is_used %}
           <div class="form-group">
@@ -152,23 +155,13 @@
   <!-- Job Summary Section -->
 
   <section class="items-list">
-    <h3><strong>Item</strong>:{{ item.name }}</h3>
-    <ul class="item-items">
-      <li class="item-item">
-        <div class="item-info">
-          <h4>{{ item.item.name }} - {{ item.get_status_display }}</h4>
-          {% if item.item.image %}
-            <img class="item-img" src="{{ item.image.url }}" alt="{{ item.item.name }}" />
-          {% endif %}
-          <p>
-            <strong>Reference:</strong> {{ item.item.reference }}
-          </p>
-          <p>
-            <strong>Added by:</strong> {{ item.item.added_by.username }} <br /><strong>At</strong>: {{ item.item.added_date }}
-          </p>
-        </div>
-      </li>
-    </ul>
+    <h5>
+      <div>
+        <p>
+          <strong>Added by:</strong> {{ item.item.added_by.username }} <br /><strong>At</strong>: {{ item.item.added_date }}
+        </p>
+      </div>
+    </h5>
   </section>
 
   <section>

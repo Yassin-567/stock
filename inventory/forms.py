@@ -225,23 +225,34 @@ class CommentForm(forms.ModelForm):
         }
     
 class StokcItemsForm(forms.ModelForm): #for adding items from warehouse to job only
+    search = forms.CharField(max_length=100, required=False, label="Search")
+
     stock_items = forms.ModelMultipleChoiceField(
         queryset=Item.objects.none(),
         #widget=forms.CheckboxSelectMultiple(),
         required=False,
         label="Stock Items",)
-    def __init__(self, *args, company=None, **kwargs):
+    def __init__(self, *args, company=None, query=None,**kwargs):
         super().__init__(*args, **kwargs)
         # instance = kwargs.get('instance')
         # print (kwargs)
         #instance.company if instance else kwargs.get('company', None)
-        if company:
+        if company and query:
+            self.fields['stock_items'].queryset = WarehouseItem.objects.filter(
+                item__part_number=query,
+                item__company=company,
+                
+                warehouse_quantity__gt= 0,
+            )
+
+        if company and not query:
             self.fields['stock_items'].queryset = WarehouseItem.objects.filter(
                 
                 item__company=company,
                 
                 warehouse_quantity__gt= 0,
             )
+        
     # def clean(self):
     #     cleaned_data = super().clean()
     #     #job_quantity = cleaned_data.get('job_quantity')
@@ -294,14 +305,16 @@ class ItemForm(forms.ModelForm):
         elif job==None:
             self.fields['required_quantity'].widget=forms.HiddenInput()
     def clean(self,*args, **kwargs):
+
         cleaned_data = super().clean()
         job_quantity = cleaned_data.get('required_quantity')
         arrived_quantity = cleaned_data.get('arrived_quantity')
         ordered = cleaned_data.get('ordered')
-        
-        if job_quantity == arrived_quantity and not ordered:
+        job=cleaned_data.get('job')
+
+        if job_quantity == arrived_quantity and not ordered and job:
             raise forms.ValidationError("Items can't arrive without ordering")
-        elif job_quantity < arrived_quantity:
+        elif job_quantity < arrived_quantity and job:
             raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
 
         return cleaned_data
@@ -377,7 +390,7 @@ class EngineerForm(forms.ModelForm):
         exclude=['company']
 class SearchForm(forms.Form):
     search_text = forms.CharField(max_length=100)#-
-    status_filter = forms.ChoiceField(choices=[('', 'All statuses'), ('a', 'Arrived'), ('c', 'Ordered'), ('d', 'Taken'), ('e', 'Job done'), ('b', '')], required=False)     #-
+    status_filter = forms.ChoiceField(choices=['ready','paused','completed','cancelled','quoted'], required=False)     #-
     supplier_filter = forms.CharField(max_length=90, required=False)#-
     min_price_filter = forms.DecimalField(max_digits=10, decimal_places=2, required=False)#-
     max_price_filter = forms.DecimalField(max_digits=10, decimal_places=2, required=False)#-
