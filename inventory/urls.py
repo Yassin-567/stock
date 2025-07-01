@@ -27,6 +27,7 @@ urlpatterns=[
     path('adpanel/<int:pk>/',views.update_user,name='update_user'),
     path('adpanelc//',views.update_company,name='update_company'),
     path('adpaneleng/',views.engineer,name='add_eng'),
+    path('add_cat/',views.add_category,name='add_category'),
     path('batch_entry',views.batch_entry,name='batch_entry'),
     path('clear_batch',views.clear_batch,name='clear_batch'),
     path('create_batch_items/', views.create_batch_items, name='create_batch_items'),

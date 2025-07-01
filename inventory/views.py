@@ -1,6 +1,6 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
-from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem,Engineer
-from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,StokcItemsForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker
+from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem,Engineer,category
+from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker,CategoriesForm
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -138,7 +138,22 @@ def inventory(request,pk=None):
         return redirect('update_job', jobitem.job.job_id)
     else:
         return render(request,'inventory/inventory.html',context)
-
+def add_category(request):
+    form=CategoriesForm()
+    if request.method=='POST':
+        form=CategoriesForm(request.POST)
+        if form.is_valid():
+            cat=form.save(commit=False)
+            cat.company=request.user.company
+            try:
+                exist_cat=category.objects.get(category__icontains=cat.category)
+                messages.error(request,f'A similar category exists: <span class="cat-highlight" style="color: rgb(230, 15, 15);">{exist_cat}</span>')
+            except:
+                form.save()
+                messages.success(request,f'Added <span class="cat-highlight" style="color: rgb(145, 34, 230);">{cat}</span> category successfully')
+                   
+           
+    return render(request,'inventory/add_cat.html',{"form":form})
 @login_required
 def job_create(request):
     JobForm()
@@ -324,7 +339,7 @@ def item_add(request,pk=None,no_job=False):
 
                 if len(query)>0 and not 'reset_search' in request.POST:
                     print("PASSED")
-                    warehouse_items=WarehouseItem.objects.filter(company=request.user.company,warehouse_quantity__gt=0,item__part_number=query)
+                    warehouse_items=WarehouseItem.objects.filter(company=request.user.company,warehouse_quantity__gt=0,item__part_number__iexact=query)
                 return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'query':query})
 
         if 'adding_from_stock' in request.POST:
@@ -374,7 +389,7 @@ def item_add(request,pk=None,no_job=False):
                         messages.error(request,"Not enough stock")
                         form=ItemForm(job=job)
                         warehouse_items=warehouse_items
-                        return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items})
+                        return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'show_stock':True})
             except IntegrityError:
                 messages.error(request,"Failed")
             # item.job=job
@@ -385,7 +400,7 @@ def item_add(request,pk=None,no_job=False):
             messages.success(request, 'Item added from stock successfully')
             form=ItemForm(job=job)
             warehouse_items=warehouse_items
-            return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items})
+            return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'show_stock':True})
         elif 'adding_new' in request.POST:
             form=ItemForm(request.POST)
             
@@ -711,7 +726,7 @@ def update_warehouse_item(request, pk):
             # item.save(update_fields=['arrived_quantity','reference','name','price','supplier'],)#updating=True
             warehouse_quantity=form.cleaned_data['warehouse_quantity']
             warehouse_item.warehouse_quantity=warehouse_quantity
-            warehouse_item.save(update_fields=['warehouse_quantity'])
+            warehouse_item.save(update_fields=['warehouse_quantity','category'])
             form = WarehouseitemForm( instance=warehouse_item,)
             messages.success(request,f'Item {warehouse_item} updated successfully')
             context = {'form': form,'warehouse_item': item,'comments_form':comments_form,"comments":comments}

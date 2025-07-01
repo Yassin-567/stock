@@ -165,6 +165,11 @@ CHOICES=[
         (' ','')
         
     ]
+class category(models.Model):
+    category=models.CharField(max_length=40,unique=True)
+    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="category_company")
+    def __str__(self):
+        return self.category
 class Item(models.Model):    
     name=models.CharField(max_length=70)
     part_number=models.TextField(max_length=30)
@@ -178,6 +183,11 @@ class Item(models.Model):
     required_quantity=models.PositiveSmallIntegerField(default=0)
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     ordered=models.BooleanField(default=False)
+    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="item_category", null=True, blank=True)
+    def save(self, *args, **kwargs):
+        if not self.category and self.company.id:
+            self.category, _ = category.objects.get_or_create(company=self.company, category='Others')
+        super().save(*args, **kwargs)
     #notes=models.TextField(null=True, blank=True)
     def __str__(self):
         return self.name
@@ -195,22 +205,36 @@ class JobItem(models.Model):
     from_warehouse=models.BooleanField(default=False)
     notes=models.TextField(null=True, blank=True)
     was_for_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="moveditems")
+    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="jobitem_category", null=True, blank=True)
+
     def save(self,*args, dont_move_used=False,no_recursion=False,**kwargs):
         item_arrived(self)
+        if not self.category and self.job.id:
+            self.category, _ = category.objects.get_or_create(company=self.job.company, category='Others')
+
         super().save(*args, **kwargs)
         if not dont_move_used and not no_recursion:
             self.job.save(update_fields=['status','items_arrived'],)
-                
+            
     def __str__(self):
         return str(self.item.name)
 
+
 class WarehouseItem(models.Model):
+
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="warehouse_company_items")
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="warehouse_items")
     warehouse_quantity = models.PositiveSmallIntegerField(default=0)  
     reference=models.TextField(blank=True,null=True,max_length=40)
     is_used=models.BooleanField(default=False)
     is_moved_from_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="warehousemoveditems")
-    
+    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="warehouse_category", null=True, blank=True)
+    def save(self, *args, **kwargs):
+        if not self.category and self.company.id:
+            print("TTT")
+            self.category, _ = category.objects.get_or_create(company=self.company, category='Others')
+        
+        super().save(*args, **kwargs)
+        print(self.category)
     def __str__(self):
         return str(self.item.name)

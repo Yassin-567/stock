@@ -16,8 +16,10 @@
 
   <section class="form-section">
     {% if job %}
-      <button id="toggle-stock-items" class="btn btn-primary" onclick="toggleStockItems()">Show Stock Items</button>
+      <button id="toggle-stock-items" class="btn btn-primary" onclick="toggleStockItems()">Add from stock</button>
+      <br />
     {% endif %}
+    <br />
     <form id="item-form-container" action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
 
@@ -28,7 +30,7 @@
       </div>
     </form>
     {% if job %}
-      <div id="toggle-stock-items">
+      <div id="stock-items-form-container">
         <form method="post" action="">
           {% csrf_token %}
 
@@ -42,10 +44,7 @@
           <ul>
             {% for item in warehouse_items %}
               <li>
-                <label>
-                  <input type="radio" name="selected_item_id" value="{{ item.id }}" required />
-                  {{ item.item.name }} | {{ item.item.part_number }} | {{ item.item.supplier }} | Qty: {{ item.warehouse_quantity }}
-                </label>
+                <label><input type="radio" name="selected_item_id" value="{{ item.id }}" required />Part name:{{ item.item.name }} - Part number: {{ item.item.part_number }} - Supplier:{{ item.item.supplier }} - Qty: {{ item.warehouse_quantity }}</label>
               </li>
             {% endfor %}
           </ul>
@@ -57,44 +56,39 @@
   </section>
   <script>
     function toggleStockItems() {
-      // Get the ItemForm and StockItemsForm containers
       const itemFormContainer = document.getElementById('item-form-container')
       const stockItemsFormContainer = document.getElementById('stock-items-form-container')
       const toggleButton = document.getElementById('toggle-stock-items')
     
-      // Check if the containers exist
       if (itemFormContainer && stockItemsFormContainer) {
-        // Toggle between enabling/disabling forms
-        if (itemFormContainer.querySelector('button[type="submit"]').disabled) {
-          // Enable ItemForm and disable StockItemsForm
-          toggleFormState(itemFormContainer, false)
-          toggleFormState(stockItemsFormContainer, true)
-          toggleButton.textContent = 'Add items from stock'
+        if (itemFormContainer.style.display === 'none') {
+          // Show ItemForm, hide StockItemsForm
+          itemFormContainer.style.display = ''
+          stockItemsFormContainer.style.display = 'none'
+          toggleButton.textContent = 'Show Stock Items'
         } else {
-          // Enable StockItemsForm and disable ItemForm
-          toggleFormState(itemFormContainer, true)
-          toggleFormState(stockItemsFormContainer, false)
-          toggleButton.textContent = 'Add items'
+          // Show StockItemsForm, hide ItemForm
+          itemFormContainer.style.display = 'none'
+          stockItemsFormContainer.style.display = ''
+          toggleButton.textContent = 'Add new item'
         }
       } else {
         console.error('ItemForm or StockItemsForm container not found!')
       }
     }
     
-    function toggleFormState(formContainer, disable) {
-      // Disable or enable all form fields and buttons
-      const fields = formContainer.querySelectorAll('input, select, textarea, button')
-      fields.forEach((field) => {
-        field.disabled = disable
-      })
-    }
-    
-    // Set the default state to enable the ItemForm and disable the StockItemsForm
+    // Set the default state to show ItemForm and hide StockItemsForm
     document.addEventListener('DOMContentLoaded', () => {
-      const itemFormContainer = document.getElementById('item-form-container')
-      const stockItemsFormContainer = document.getElementById('stock-items-form-container')
-      if (itemFormContainer) toggleFormState(itemFormContainer, false) // Enable ItemForm
-      if (stockItemsFormContainer) toggleFormState(stockItemsFormContainer, true) // Disable StockItemsForm
-    })
+  const itemFormContainer = document.getElementById('item-form-container');
+  const stockItemsFormContainer = document.getElementById('stock-items-form-container');
+  // Use Django variable to set default visibility
+  {% if show_stock %}
+    if (itemFormContainer) itemFormContainer.style.display = 'none';
+    if (stockItemsFormContainer) stockItemsFormContainer.style.display = '';
+  {% else %}
+    if (itemFormContainer) itemFormContainer.style.display = '';
+    if (stockItemsFormContainer) stockItemsFormContainer.style.display = 'none';
+  {% endif %}
+});
   </script>
 {% endblock %}

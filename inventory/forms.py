@@ -1,5 +1,5 @@
 from django import forms
-from .models import CustomUser, Item, Company,Job,Comment,WarehouseItem,JobItem,Engineer
+from .models import CustomUser, Item, Company,Job,Comment,WarehouseItem,JobItem,Engineer,category
 from django.contrib.auth.models import Group
 from django.forms import HiddenInput
 from django.db.models import Q
@@ -224,48 +224,6 @@ class CommentForm(forms.ModelForm):
             'company': forms.HiddenInput(),
         }
     
-class StokcItemsForm(forms.ModelForm): #for adding items from warehouse to job only
-    search = forms.CharField(max_length=100, required=False, label="Search")
-
-    stock_items = forms.ModelMultipleChoiceField(
-        queryset=Item.objects.none(),
-        #widget=forms.CheckboxSelectMultiple(),
-        required=False,
-        label="Stock Items",)
-    def __init__(self, *args, company=None, query=None,**kwargs):
-        super().__init__(*args, **kwargs)
-        # instance = kwargs.get('instance')
-        # print (kwargs)
-        #instance.company if instance else kwargs.get('company', None)
-        if company and query:
-            self.fields['stock_items'].queryset = WarehouseItem.objects.filter(
-                item__part_number=query,
-                item__company=company,
-                
-                warehouse_quantity__gt= 0,
-            )
-
-        if company and not query:
-            self.fields['stock_items'].queryset = WarehouseItem.objects.filter(
-                
-                item__company=company,
-                
-                warehouse_quantity__gt= 0,
-            )
-        
-    # def clean(self):
-    #     cleaned_data = super().clean()
-    #     #job_quantity = cleaned_data.get('job_quantity')
-    #     stock_items = cleaned_data.get('stock_items')[0]
-    #     # if job_quantity > stock_items.arrived_quantity:
-    #     #     raise forms.ValidationError(
-    #     #         f"Only {stock_items.arrived_quantity} parts are available in stock."
-    #     #     )
-    #     return cleaned_data
-    class Meta:
-        model=Item
-        fields=['required_quantity']
-
 
 class ItemForm(forms.ModelForm):
     class Meta:
@@ -388,6 +346,17 @@ class EngineerForm(forms.ModelForm):
         model = Engineer
         fields = '__all__'
         exclude=['company']
+
+class CategoriesForm(forms.ModelForm):
+    class Meta:
+        model = category
+        fields = ['category']
+        widgets = {
+            'category': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Category Name'}),
+        }
+    def __init__(self, *args, **kwargs):
+        
+        super().__init__(*args, **kwargs)
 class SearchForm(forms.Form):
     search_text = forms.CharField(max_length=100)#-
     status_filter = forms.ChoiceField(choices=['ready','paused','completed','cancelled','quoted'], required=False)     #-
