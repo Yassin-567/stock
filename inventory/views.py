@@ -87,7 +87,7 @@ def register_user(request):
 def inventory(request,pk=None):
     
     
-    rjobs = Job.objects.annotate(item_count=Count('items')).filter(items_arrived=True).prefetch_related('items')
+    # rjobs = Job.objects.annotate(item_count=Count('items')).filter(items_arrived=True).prefetch_related('items')
     rjobs=Job.objects.filter(company=request.user.company)
     status = request.GET.get('status')
     print(status)
@@ -106,7 +106,7 @@ def inventory(request,pk=None):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     context={
-            
+            'jobs_count':rjobs,
             'rjobs': page_obj,
             'page_obj':page_obj,
             'status':status,
@@ -338,7 +338,7 @@ def item_add(request,pk=None,no_job=False):
                 query = request.POST.get('search_query')
 
                 if len(query)>0 and not 'reset_search' in request.POST:
-                    print("PASSED")
+                    
                     warehouse_items=WarehouseItem.objects.filter(company=request.user.company,warehouse_quantity__gt=0,item__part_number__iexact=query)
                 return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'query':query})
 
@@ -359,17 +359,7 @@ def item_add(request,pk=None,no_job=False):
                         return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items})
         
                     if item.warehouse_quantity>0 and item.warehouse_quantity>= required_quantity:
-                        # if JobItem.objects.filter(job=job,item=item.item,):
-                        #     jobitem=JobItem.objects.filter(job=job,item=item.item,).first()
-                        #     jobitem.job_quantity=jobitem.job_quantity+required_quantity
-                        #     jobitem.arrived_quantity=jobitem.job_quantity
-                        #     jobitem.save(update_fields=['job_quantity'])
-                        #     item.warehouse_quantity=item.warehouse_quantity-required_quantity
-                        #     item.save(update_fields=['warehouse_quantity'])
-                        #     if item.warehouse_quantity==0:
-                        #        # item.delete()
-                        #        print('deleting')
-                        # else: 
+                       
                             JobItem.objects.create(
                             job=job,
                             from_warehouse=True, #if item.is_moved_from_job==None else False,
@@ -377,6 +367,7 @@ def item_add(request,pk=None,no_job=False):
                             arrived=True,
                             job_quantity=+required_quantity,
                             arrived_quantity=+required_quantity,
+                            category=item.category,
                             was_for_job=item.is_moved_from_job if item.is_moved_from_job else None
                             )
                             item.warehouse_quantity=item.warehouse_quantity-required_quantity
@@ -392,11 +383,7 @@ def item_add(request,pk=None,no_job=False):
                         return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'show_stock':True})
             except IntegrityError:
                 messages.error(request,"Failed")
-            # item.job=job
-            # item.is_warehouse_item=True
-            # item.save()
-            # calculate_item(item=item,job_qunatity=job_quantity)
-                
+            
             messages.success(request, 'Item added from stock successfully')
             form=ItemForm(job=job)
             warehouse_items=warehouse_items
@@ -414,6 +401,7 @@ def item_add(request,pk=None,no_job=False):
                         arrived_quantity=form.cleaned_data['arrived_quantity']
                         ordered=form.cleaned_data['ordered']
                         reference=form.cleaned_data['reference']
+                        category=form.cleaned_data['category']
                         if pk is not None:
                             print("KJKJK")
                             item=form.save(commit=False)
@@ -432,7 +420,7 @@ def item_add(request,pk=None,no_job=False):
                                                 ordered=ordered,
                                                 reference=reference,
                                                 was_for_job=job,
-                                                
+                                                category=category
                                                 )
                             #item.job = job
                             #item.save()
@@ -463,6 +451,7 @@ def item_add(request,pk=None,no_job=False):
                                 WarehouseItem.objects.create(item=item,
                                                         warehouse_quantity=arrived_quantity,
                                                         company=request.user.company,
+                                                        category=item.category
                                                         )
                             messages.success(request, f'{item}-is added to warehouse')
                             return redirect('inventory')
@@ -523,7 +512,7 @@ def update_item(request, pk):
                         item=job_item.item,
                         warehouse_quantity=job_item.arrived_quantity,
                         company=request.user.company,
-                        
+                        category=job_item.category,
                         #is_used=job_item.is_used,
                         is_moved_from_job=job if job_item.was_for_job else None  ,   
                     )
@@ -605,7 +594,7 @@ def update_item(request, pk):
                         warehouse_quantity=job_item.arrived_quantity,
                         reference=job_item.reference,
                         company=request.user.company,
-                        
+                        category=job_item.category,
                         #is_used=job_item.is_used,
                         is_moved_from_job=job if job_item.was_for_job else None  ,   
                     )
@@ -862,6 +851,22 @@ def search_view(request):
     return render(request,'inventory/inventory.html',{'form':form})
 def create_batch_items(request):
     if request.method == 'POST':
+        cat_val = request.POST.get('category')
+        print("VAL",cat_val)
+        if cat_val:
+            try:
+                cat_obj = category.objects.get(category__icontains=cat_val)
+                messages.error(request,f'exist similar {cat_obj}')
+                print("1")
+            except category.DoesNotExist:
+                # fallback to Others if not found
+                cat_obj, _ = category.objects.get_or_create(company=request.user.company, category=cat_val)
+                print('2')
+        else:
+            cat_obj, _ = category.objects.get_or_create(company=request.user.company, category='Others')
+            print("3")
+
+        print("CATATA", cat_obj)
         item_data = {
             'name': request.POST['name'],
             'part_number': request.POST['part_number'],
@@ -869,7 +874,8 @@ def create_batch_items(request):
             'price': float(request.POST['price']) ,
             'supplier': request.POST['supplier'],
             'arrived_quantity': int(request.POST['arrived_quantity']),
-            'company':request.user.company
+            'company':request.user.company,
+            'category': cat_obj,
         }
         
         # Save to database
@@ -877,7 +883,7 @@ def create_batch_items(request):
 
         try:
             
-            exist=WarehouseItem.objects.get(item__part_number=item.part_number)
+            exist=WarehouseItem.objects.get(item__part_number=item.part_number )
             
         except WarehouseItem.DoesNotExist:
             exist=False
@@ -887,7 +893,7 @@ def create_batch_items(request):
             wi.save(update_fields=['warehouse_quantity'])
 
         else:
-            WarehouseItem.objects.create(item=item,warehouse_quantity=item.arrived_quantity,company=request.user.company,reference=item.reference)
+            WarehouseItem.objects.create(item=item,warehouse_quantity=item.arrived_quantity,company=request.user.company,reference=item.reference,category=item.category)
         messages.success(request,f'{item.arrived_quantity} of {item.name} added to the warehouse')
         # Remove this item from session
         items = request.session.get('batch_items', [])

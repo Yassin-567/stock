@@ -56,6 +56,7 @@ class Company(models.Model):
         verbose_name_plural = 'companies'
         ordering = ['company_name']
     
+
 class CustomUser(AbstractUser):
     permission_choices=[('admin','Admin'),
                         ('employee','Employee'),
@@ -183,7 +184,7 @@ class Item(models.Model):
     required_quantity=models.PositiveSmallIntegerField(default=0)
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     ordered=models.BooleanField(default=False)
-    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="item_category", null=True, blank=True)
+    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="item_category", null=True, )
     def save(self, *args, **kwargs):
         if not self.category and self.company.id:
             self.category, _ = category.objects.get_or_create(company=self.company, category='Others')
@@ -205,7 +206,7 @@ class JobItem(models.Model):
     from_warehouse=models.BooleanField(default=False)
     notes=models.TextField(null=True, blank=True)
     was_for_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="moveditems")
-    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="jobitem_category", null=True, blank=True)
+    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="jobitem_category", null=True, )
 
     def save(self,*args, dont_move_used=False,no_recursion=False,**kwargs):
         item_arrived(self)
@@ -228,7 +229,7 @@ class WarehouseItem(models.Model):
     reference=models.TextField(blank=True,null=True,max_length=40)
     is_used=models.BooleanField(default=False)
     is_moved_from_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="warehousemoveditems")
-    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="warehouse_category", null=True, blank=True)
+    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="warehouse_category", null=True, )
     def save(self, *args, **kwargs):
         if not self.category and self.company.id:
             print("TTT")

@@ -114,7 +114,7 @@ class registerworker(forms.ModelForm):
     
     class Meta:
         model = CustomUser
-        fields = ['username', 'email','permission']
+        fields = ['username', 'email','permission','is_banned']
         
         widgets = {
             'username': forms.TextInput(attrs={
@@ -252,9 +252,7 @@ class ItemForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         #self.fields['job'].empty_label = None
         if updating:
-            instance = kwargs.get('instance')
-            #company=instance.company
-            #self.fields['job'].queryset=Job.objects.filter(company=company)
+            
             self.fields['part_number'].widget=forms.HiddenInput()
             if completed:
                 for field in self.fields.values():
@@ -262,6 +260,7 @@ class ItemForm(forms.ModelForm):
                     field.widget.attrs['disabled'] = 'disabled'
         elif job==None:
             self.fields['required_quantity'].widget=forms.HiddenInput()
+            self.fields['ordered'].widget=forms.HiddenInput()
     def clean(self,*args, **kwargs):
 
         cleaned_data = super().clean()
