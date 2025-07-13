@@ -85,6 +85,7 @@ def register_user(request):
 @login_required(login_url='login', redirect_field_name='inventory')
 @no_ban
 def inventory(request,pk=None):
+    
         # rjobs = Job.objects.annotate(item_count=Count('items')).filter(items_arrived=True).prefetch_related('items')
     rjobs=Job.objects.filter(company=request.user.company)
     status = request.GET.get('status')
@@ -743,7 +744,7 @@ def update_company(request,):
             
             email=form.cleaned_data['company_email']
             if email!=company_email:
-                request.session['veryfing']="updating_company"
+                request.session['verifying']="updating_company"
                 request.session['company_name'] = form.cleaned_data['company_name']
                 request.session['company_email'] = email
                 request.session['address'] = form.cleaned_data['address']
@@ -778,19 +779,49 @@ def admin_panel(request):
             return render(request, 'inventory/admin_panel.html',context )
         else:
             return HttpResponse("You are not authorized to view this page")
-@owner_only
+# @owner_only
 def update_user(request, pk):
     worker=CustomUser.objects.get(Q(company=request.user.company) & Q(pk=pk))
-    form=registerworker(instance=worker,editing=True)
-    if request.method=='POST':
-        form=registerworker(request.POST,instance=worker,editing=True)
+    form=registerworker(instance=worker,enable_edit=False,updating=True)
+    if request.method=='POST' and 'change_password' in request.POST:
+        form=registerworker(instance=worker,enable_edit=True,updating=True,changing_password=True)
+        changing_password=True
+        return render(request, 'inventory/update_user.html',{'form':form,'editing':True,'changing_password':True})
+    if request.method=='POST' and 'confirm_new_password' in request.POST:
+        form=registerworker(request.POST,instance=worker,enable_edit=True,updating=True,changing_password=True)
+        print("IIIIIIIIIIIIIIIII")
         if form.is_valid():
+            print('fa')
             form.save()
-            messages.success(request,'User updated successfully')
-            form=registerworker(instance=worker,editing=True)
+            form=registerworker(instance=worker,enable_edit=False,updating=True,)
+
+            messages.success(request,'Password changed successfully')
+        return render(request, 'inventory/update_user.html',{'form':form,'editing':False,'changing_password':False})
+    if request.method=='POST' and 'edit' in request.POST:
+        form=registerworker(instance=worker,enable_edit=True,updating=True,)
+        return render(request, 'inventory/update_user.html',{'form':form,'editing':True})
+    if request.method=='POST' and 'update' in request.POST:
+        form=registerworker(request.POST,instance=worker,enable_edit=True,updating=True,)
+        if form.is_valid():
+            
+            email=form.cleaned_data['email']
+            if email!=request.user.email:
+                request.session['verifying']="updating_user"
+                request.session['username'] = form.cleaned_data['username']
+                request.session['register_email'] = email
+                
+                otp=generate_otp()
+                request.session['user_updating_otp']=otp
+                send_otp_email(email,otp)
+                return redirect('otp')
+            else:
+                form.save()
+                messages.success(request,'User updated successfully')
+            
+            
+            form=registerworker(instance=worker,enable_edit=False,updating=True,)
             return render(request, 'inventory/update_user.html',{'form':form})
-    
-    return render(request, 'inventory/update_user.html',{'form':form})
+    return render(request, 'inventory/update_user.html',{'form':form,'editing':False})
 
 
 def register_company(request):
@@ -868,6 +899,25 @@ def register_company(request):
 def verify_otp(request) :
     email=request.session.get('register_email')
     company_email=request.session.get('company_email')
+    if request.method == 'POST' and 'updating_user' in request.POST:
+        input_user_otp=request.POST.get('email_otp')
+        user_session_otp = request.session.get('user_updating_otp')
+        
+        print('ppp',user_session_otp,input_user_otp)
+        if input_user_otp == user_session_otp :
+            username = request.session.get('username')
+
+
+            user=CustomUser.objects.get(id=request.user.id)
+            user.email=email
+            user.username=username
+            user.save(update_fields=['username','email',])
+            for k in ['username','register_email',]:
+                del request.session[k]
+            messages.success(request,"User updated successfully")
+            return redirect('update_user',request.user.id)
+        else:
+            messages.error(request,"Wrong OTP, Try agian.")
     if request.method == 'POST' and 'updating_company' in request.POST:
         input_company_otp=request.POST.get('company_otp')
         company_session_otp = request.session.get('company_updating_otp')
@@ -883,7 +933,8 @@ def verify_otp(request) :
             company.address=address
             company.phone=phone
             company.save(update_fields=['company_name','company_email','address','phone'])
-            request.session.flush()
+            for k in ['company_email','company_name','phone','address']:
+                del request.session[k]
             messages.success(request,"Company updated successfully")
             return redirect('update_company')
         else:

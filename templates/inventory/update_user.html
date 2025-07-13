@@ -26,12 +26,29 @@
   <section class="form-section">
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
+      {% if not editing %}
+        <div class="form-group">
+          <button type="submit" name="edit" class="btn-submit">Edit</button>
+        </div>
+      {% endif %}
+      {% if editing and not changing_password %}
+        <div class="form-group">
+          <button type="submit" name="change_password" class="btn-submit">change password</button>
+        </div>
+      {% endif %}
 
       <div class="form-group">{{ form.as_p }}</div>
 
-      <div class="form-group">
-        <button type="submit" class="btn-submit">Update</button>
-      </div>
+      {% if changing_password %}
+        <div class="form-group">
+          <button type="submit" name="confirm_new_password" class="btn-submit">Confirm new password</button>
+        </div>
+      {% endif %}
+      {% if editing and not changing_password %}
+        <div class="form-group">
+          <button type="submit" name="update" class="btn-submit">Update</button>
+        </div>
+      {% endif %}
     </form>
   </section>
 

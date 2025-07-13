@@ -73,6 +73,8 @@ class registerForm(forms.ModelForm):
             'username': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
         }
+    
+
     def clean_email(self):
         
         email = self.cleaned_data.get('email')
@@ -105,7 +107,6 @@ class registerworker(forms.ModelForm):
             'placeholder': 'Enter password'
         }),
         required=True,
-        help_text='Enter a secure password'
     )
     
     # Add password confirmation field
@@ -120,7 +121,7 @@ class registerworker(forms.ModelForm):
     
     class Meta:
         model = CustomUser
-        fields = ['username', 'email','permission','is_banned']
+        fields = ['username', 'email','permission',]
         
         widgets = {
             'username': forms.TextInput(attrs={
@@ -131,19 +132,9 @@ class registerworker(forms.ModelForm):
                 'class': 'form-control'
             })
         }
-    def __init__(self, *args, editing=False, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.editing = editing
-        
-    # def clean_email(self):
-    #     email = self.cleaned_data.get('email')
-    #     if not self.editing:
-            
-    #         if CustomUser.objects.filter(email=email).exists():
-    #             raise ValidationError("A user with this email already exists. Please use a different email address.")
-    #         return email
+    
     def clean(self):
-        
+        print("999")
         cleaned_data = super().clean()
         password = cleaned_data.get('password')
         password2 = cleaned_data.get('password2')
@@ -155,11 +146,25 @@ class registerworker(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         
-        user.set_password(self.cleaned_data['password'])
+        # user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()
         return user
-
+    def __init__(self,*args, enable_edit=False,updating=False,changing_password=False,**kwargs):
+        
+        super().__init__(*args, **kwargs)
+        if not self.instance.is_owner or self.instance.is_admin:
+            del self.fields['permission']
+        if updating and not changing_password:
+            del self.fields['password']
+            del self.fields['password2']
+        if changing_password:
+            del self.fields['username']
+            del self.fields['email']
+        if self.instance is not None and not enable_edit and updating:
+            for field in self.fields.values():
+                field.widget.attrs['class'] = 'faded-input'
+                field.widget.attrs['disabled'] = 'disabled'
 
 
 class CompanySettingsForm(forms.ModelForm):

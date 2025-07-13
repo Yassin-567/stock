@@ -11,9 +11,8 @@
   {% endif %}
 
   <form method="POST">
-    {% if request.session.veryfing == 'updating_company' or request.session.veryfing == 'registering_company' %}
-      {% csrf_token %}
-
+    {% csrf_token %}
+    {% if request.session.verifying == 'updating_company' or request.session.verifying == 'registering_company' %}
       <div class="form-group">
         <label>Enter the OTP sent to <strong>{{ company_email }}</strong>:</label>
         <input type="text" name="company_otp" class="form-control" required />
@@ -22,7 +21,7 @@
         {% endif %}
       </div>
     {% endif %}
-    {% if request.session.veryfing == 'adding_user' or request.session.veryfing == 'updating_user' or request.session.veryfing == 'registering_company' %}
+    {% if request.session.verifying == 'adding_user' or request.session.verifying == 'updating_user' or request.session.verifying == 'registering_company' %}
       <div class="form-group">
         <label>Enter the OTP sent to <strong>{{ email }}</strong>:</label>
         <input type="text" name="email_otp" class="form-control" required />
@@ -31,6 +30,6 @@
         {% endif %}
       </div>
     {% endif %}
-    <button type="submit" name="{{ request.session.veryfing }}" class="btn btn-primary">Verify</button>
+    <button type="submit" name="{{ request.session.verifying }}" class="btn btn-primary">Verify</button>
   </form>
 {% endblock %}
