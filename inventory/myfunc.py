@@ -77,3 +77,25 @@ def job_completed(self,):
         
         return True
     return False
+
+import random
+
+
+def generate_otp():
+    import random
+    import string
+    code = ''.join(random.choices(string.ascii_uppercase  + string.digits, k=6))
+    # if user:
+    #     user.otp=code
+    #     user.save(update_fields=['otp'])
+    return code
+def send_otp_email(email, otp):
+    from django.core.mail import send_mail
+    from django.conf import settings
+    send_mail(
+        subject='Your OTP Code',
+        message=f'Your OTP code is {otp}',
+        from_email=settings.EMAIL_HOST_USER,
+        recipient_list=[email],
+        fail_silently=False,
+    )

@@ -1,0 +1,36 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+
+{% block body %}
+  <h1>OTP Verification</h1>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="POST">
+    {% if request.session.veryfing == 'updating_company' or request.session.veryfing == 'registering_company' %}
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label>Enter the OTP sent to <strong>{{ company_email }}</strong>:</label>
+        <input type="text" name="company_otp" class="form-control" required />
+        {% if company_error %}
+          <p style="color:red">{{ company_error }}</p>
+        {% endif %}
+      </div>
+    {% endif %}
+    {% if request.session.veryfing == 'adding_user' or request.session.veryfing == 'updating_user' or request.session.veryfing == 'registering_company' %}
+      <div class="form-group">
+        <label>Enter the OTP sent to <strong>{{ email }}</strong>:</label>
+        <input type="text" name="email_otp" class="form-control" required />
+        {% if user_error %}
+          <p style="color:red">{{ user_error }}</p>
+        {% endif %}
+      </div>
+    {% endif %}
+    <button type="submit" name="{{ request.session.veryfing }}" class="btn btn-primary">Verify</button>
+  </form>
+{% endblock %}

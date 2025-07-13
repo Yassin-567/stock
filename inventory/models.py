@@ -9,8 +9,10 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import F
 from .myfunc import items_arrived,job_reopened,item_arrived,job_completed,items_not_used
-#from datetime import datetime
-#from time import strftime
+##
+
+from datetime import datetime
+from time import strftime
 ############################---USER and COMPANY---############################
 class CustomUserManager(BaseUserManager):
     use_in_migrations = True
@@ -49,14 +51,30 @@ class Company(models.Model):
     company_email = models.EmailField(unique=True)
     address=models.TextField()
     phone=models.CharField(max_length=15)
+    
+    
     def __str__(self):
         return self.company_name +" ("+ str(self.id)+") "
     
     class Meta:
         verbose_name_plural = 'companies'
         ordering = ['company_name']
-    
 
+class CompanySettings(models.Model):
+   
+    company = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='settings')    
+    use_own_db = models.BooleanField(default=False)
+    db_name = models.CharField(max_length=100)
+    db_user = models.CharField(max_length=100)
+    db_pass = models.CharField(max_length=100)
+    db_host = models.CharField(max_length=100, default='localhost')
+    db_port = models.CharField(max_length=6, default='5432')
+    # def save(self,*args, **kwargs):
+    #     if self.use_own_db:
+    #         from .utils import migrate_client_db,seed_company_and_users
+    #         migrate_client_db(self)
+    #         #seed_company_and_users(self,self.company.id,)
+    #     super().save()
 class CustomUser(AbstractUser):
     permission_choices=[('admin','Admin'),
                         ('employee','Employee'),
@@ -69,6 +87,7 @@ class CustomUser(AbstractUser):
     is_admin=models.BooleanField(default=False,)
     is_employee=models.BooleanField(default=False,)
     is_banned=models.BooleanField(default=False,)
+    otp=models.CharField(null=True,blank=True)
     REQUIRED_FIELDS = ['username',]
     USERNAME_FIELD = 'email'
     verbose_name='User'
@@ -124,10 +143,11 @@ class Job(models.Model):
     items_arrived=models.BooleanField(default=False, )
     post_code=models.CharField(max_length=10, null=True, blank=True)
     quoted=models.BooleanField(default=False)
+    
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
-
+        
     def save(self,*args, **kwargs):
         job_reopened(self,)
         if not job_completed(self,) and  self.status!='cancelled':
@@ -239,3 +259,4 @@ class WarehouseItem(models.Model):
         print(self.category)
     def __str__(self):
         return str(self.item.name)
+    

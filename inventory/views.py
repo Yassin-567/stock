@@ -1,6 +1,6 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
-from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem,Engineer,category
-from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker,CategoriesForm
+from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem,Engineer,category,CompanySettings
+from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker,CategoriesForm,CompanySettingsForm
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -17,8 +17,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-import uuid
-import random
+from .myfunc import generate_otp,send_otp_email
+from django.contrib.auth.hashers import make_password
 
 #import requests
 
@@ -85,12 +85,10 @@ def register_user(request):
 @login_required(login_url='login', redirect_field_name='inventory')
 @no_ban
 def inventory(request,pk=None):
-    
-    
-    # rjobs = Job.objects.annotate(item_count=Count('items')).filter(items_arrived=True).prefetch_related('items')
+        # rjobs = Job.objects.annotate(item_count=Count('items')).filter(items_arrived=True).prefetch_related('items')
     rjobs=Job.objects.filter(company=request.user.company)
     status = request.GET.get('status')
-    print(status)
+    
     try:
         if status  :
             request.session['status'] = status
@@ -739,11 +737,25 @@ def update_company(request,):
 
 
     if request.method == 'POST' and 'save' in request.POST:
-        
+        company_email=company.company_email
         form = companyregisterForm(request.POST ,request.FILES, instance=company,user=request.user,enable_edit=False)
         if form.is_valid():
-            form.save()
             
+            email=form.cleaned_data['company_email']
+            if email!=company_email:
+                request.session['veryfing']="updating_company"
+                request.session['company_name'] = form.cleaned_data['company_name']
+                request.session['company_email'] = email
+                request.session['address'] = form.cleaned_data['address']
+                request.session['phone'] = form.cleaned_data['phone']
+                
+                otp=generate_otp()
+                request.session['company_updating_otp']=otp
+                send_otp_email(email,otp)
+                return redirect('otp')
+            else:
+                form.save()
+                
             form = companyregisterForm(instance=company,user=request.user,updating=True,enable_edit=False)
             context = {'form': form,'company': company,'enable_edit':False}
             messages.success(request,"Company updated successfuly")
@@ -785,42 +797,171 @@ def register_company(request):
     """ Register a new company and its admin user """
     company_form = companyregisterForm(user=request.user,)
     user_form = registerForm()
+    if request.method == 'POST' and 'signup':
+        company_form = companyregisterForm(request.POST)
+        user_form = registerForm(request.POST)
 
-    if request.method == 'POST':
-        company_form = companyregisterForm(request.POST,)
-        user_form = registerForm(request.POST,)
         if company_form.is_valid() and user_form.is_valid():
-            with transaction.atomic():
-                
-                
-                user = user_form.save(commit=False)
-                user.set_password(user_form.cleaned_data['password'])
-                user.is_owner=True
-                user.save()
+            email = user_form.cleaned_data.get('email')  
+            company_email = company_form.cleaned_data.get('company_email') 
+            email_otp = generate_otp()
+            if email==company_email:
+                company_otp=email_otp
+            else:
+                company_otp = generate_otp()
+            request.session['verifying'] = "registering_company"    
+            request.session['register_email'] = email
+            request.session['company_email'] = company_email
+           
+            request.session['email_otp'] = email_otp
+            request.session['company_otp'] = company_otp
 
-                # Step 2: Now save the company and assign the owner
-                company = company_form.save(commit=False)
-                company.owner = user
-                company.save()
+            request.session['company_data'] = company_form.cleaned_data
+            request.session['user_data'] = user_form.cleaned_data
+            try:
+                send_otp_email(email, email_otp)
+                send_otp_email(company_email, company_otp)
+                messages.success(request,'''Check your email & company's email for OTPs''')
+                return redirect('otp')
+            except:
+                messages.error(request,'Failed to send OTP')
 
-                # Step 3: Update user with the company
-                user.company = company
-                user.save()
+    # if request.method == 'POST' :
+    #     company_form = companyregisterForm(request.POST,)
+    #     user_form = registerForm(request.POST,)
+    #     if company_form.is_valid() and user_form.is_valid():
+    #         with transaction.atomic():
+                
+                # user = user_form.save(commit=False)
+                # user.set_password(user_form.cleaned_data['password'])
+                # user.is_owner=True
+                # user.save()
+
+                # # Step 2: Now save the company and assign the owner
+                # company = company_form.save(commit=False)
+                
+                # company.owner = user
+                
+                # company.save()
+                # cs=CompanySettings.objects.create(company=company) 
+                # cs.company=company
+                # cs.save()  
+                # company.settings=cs
+                # company.save()
+                # # Step 3: Update user with the company
+                # user.company = company
+                # user.save()
+                
 
             # Step 3: Assign the user to the "Admin" group
             
 
-                messages.success(request, 'Company was created successfully! Now you can login.')
-           # return redirect('login')
-        else:
-            messages.warning(request, f"Registration failed.")
-    # else:
-    #     company_form = companyregisterForm(user=request.user,initial={'group': "owner"})
-    #     user_form = registerForm(request.POST,registering=True)
+        #         messages.success(request, 'Company was created successfully! Now you can login.')
+        #         return redirect('login')
+        # else:
+        #     messages.warning(request, f"Registration failed.")
+    
 
     return render(request, 'auths/register_company.html', {'company_form': company_form, 'user_form': user_form})
+
 #############
+def verify_otp(request) :
+    email=request.session.get('register_email')
+    company_email=request.session.get('company_email')
+    if request.method == 'POST' and 'updating_company' in request.POST:
+        input_company_otp=request.POST.get('company_otp')
+        company_session_otp = request.session.get('company_updating_otp')
+        print(company_session_otp)
+        if input_company_otp == company_session_otp :
+            company_name = request.session.get('company_name')
+            phone = request.session.get('phone')
+            address = request.session.get('address')
+
+            company=Company.objects.get(id=request.user.company.id)
+            company.company_name=company_name
+            company.company_email=company_email
+            company.address=address
+            company.phone=phone
+            company.save(update_fields=['company_name','company_email','address','phone'])
+            request.session.flush()
+            messages.success(request,"Company updated successfully")
+            return redirect('update_company')
+        else:
+            messages.error(request,"Wrong OTP, Try agian.")
+    if request.method == 'POST' and 'registering_company' in request.POST:
+        input_company_otp=request.POST.get('company_otp')
+        input_email_otp=request.POST.get('email_otp')
+        
+        company_session_otp = request.session.get('company_otp')
+        email_session_otp = request.session.get('email_otp')
+        
+        if input_company_otp == company_session_otp and input_email_otp==email_session_otp:
+            
+            with transaction.atomic():
+                try:
+                    company_data = request.session.get('company_data')
+                    user_data = request.session.get('user_data')
+                    user_data = request.session.get('user_data').copy()  # Make a copy so we can modify safely
+                    user_data.pop('password2', None)  # Remove password2 if it exists
+                    
+                    user_data['password'] = make_password(user_data['password'])
+                    company = Company.objects.create(**company_data)
+                    user = CustomUser.objects.create(company=company, **user_data)
+                    user.is_owner=True
+                    company.owner=user
+                    company.save(update_fields=['owner'])
+                    user.save(update_fields=['is_owner'])
+                    # Optionally log the user in
+                    request.session.flush()
+
+                    messages.success(request,'Company created successfully')
+                    return redirect('login')
+                except:
+                    messages.error(request,'Failed creating company. Try again')
+        else:
+            messages.error(request,"Wrong OTP. Try again")
+    return render(request, 'auths/otp.html', {'email':email,'company_email':company_email})
+@owner_only
+
+def company_settings(request):
+    # from inventory.utils import  seed_company_and_users   
+    company = request.user.company
+    print(company)
+
+    try:
+        instance = company.settings
+    except CompanySettings.DoesNotExist:
+        instance = None
+
+    form = CompanySettingsForm(request.POST or None, instance=instance)
+
+    if request.method == 'POST' and form.is_valid():
+        settings = form.save(commit=False)
+        settings.company = company
+        settings.save()
+        
+        # from inventory.utils import migrate_client_db, seed_company_and_users
+        # migrate_client_db(settings) 
+        # from inventory.utils import migrate_client_db, seed_company_and_users
+        
+        #     # 2. Migrate the new DB
+        # migrate_client_db(settings)  # only runs `call_command('migrate')`
+
+        # # 3. Now that tables exist, copy company and user
+        # seed_company_and_users(settings)
+
+    return render(request, 'inventory/company_settings.html', {'form': form})
 def warehouse(request):
+    from django.db.models import Sum
+    parts_summary = (
+        WarehouseItem.objects
+        .filter(company=request.user.company)
+        .values('item__part_number', 'item__name', 'category__category')  # updated line
+        .annotate(total_quantity=Sum('warehouse_quantity'))
+        .order_by('item__part_number')
+    )
+
+    print(parts_summary)
     warehouse_items=WarehouseItem.objects.filter(company=request.user.company,is_moved_from_job=None)
     moved_items=WarehouseItem.objects.filter(is_moved_from_job__isnull=False ,company=request.user.company , warehouse_quantity__gt=0)
     used_warehouse_items=JobItem.objects.filter(job__company=request.user.company,is_used=True,from_warehouse=True)
@@ -864,9 +1005,7 @@ def create_batch_items(request):
                 print('2')
         else:
             cat_obj, _ = category.objects.get_or_create(company=request.user.company, category='Others')
-            print("3")
-
-        print("CATATA", cat_obj)
+            
         item_data = {
             'name': request.POST['name'],
             'part_number': request.POST['part_number'],

@@ -1,5 +1,5 @@
 from django import forms
-from .models import CustomUser, Item, Company,Job,Comment,WarehouseItem,JobItem,Engineer,category
+from .models import CustomUser, Item, Company,Job,Comment,WarehouseItem,JobItem,Engineer,category,CompanySettings
 from django.contrib.auth.models import Group
 from django.forms import HiddenInput
 from django.db.models import Q
@@ -29,7 +29,13 @@ class companyregisterForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         email = cleaned_data.get('company_email')
-        if email and Company.objects.filter(company_email=email).exists():
+        company_email=self.instance.company_email
+        
+        try:
+            existing_email= Company.objects.filter(company_email=email).exists()
+        except:
+            existing_email=False
+        if email and existing_email and existing_email==company_email:
             raise ValidationError("A company with this email already exists")
         return cleaned_data
     def __init__(self, *args, user=None, updating=False,enable_edit=False,**kwargs):
@@ -156,8 +162,12 @@ class registerworker(forms.ModelForm):
 
 
 
+class CompanySettingsForm(forms.ModelForm):
+    class Meta:
+        model=CompanySettings
+        fields='__all__'    
+        exclude=['company']
 
-    
 class JobForm(forms.ModelForm):
     
     class Meta:
@@ -200,7 +210,7 @@ class JobForm(forms.ModelForm):
     def clean(self,*args, **kwargs):
         cleaned_data=super().clean()
         status=cleaned_data.get('status')
-        items_arrivedd=cleaned_data.get('items_arrived')
+        
         job=self.instance
         
         if job.pk:

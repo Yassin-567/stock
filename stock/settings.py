@@ -39,11 +39,12 @@ INSTALLED_APPS = [
     #'grappelli', #admin site customization
     
     #'inventory.apps.SuitConfig', #admin site customization
-    "inventory",
+    
     'django_extensions',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
+    "inventory",
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
@@ -59,7 +60,10 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    
     'django.contrib.messages.middleware.MessageMiddleware',
+    # 'inventory.middleware.DynamicDBMiddleware',
+
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -159,9 +163,16 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"  # Change this based on your email provider
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "yassinalaa3310@gmail.com"
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 AUTH_USER_MODEL = 'inventory.CustomUser'
 # settings.py
 TIME_ZONE = 'Africa/Cairo'  # Set to your correct timezone
 USE_TZ = True  # Keep this enabled for consistent behavior
+import sys
+
+# If running migrate or makemigrations, don’t use any routers
+# if any(cmd in sys.argv for cmd in ['migrate', 'makemigrations', 'collectstatic', 'createsuperuser']):
+#     DATABASE_ROUTERS = []
+# else:
+#     DATABASE_ROUTERS = ['inventory.db_router.CompanyRouter']
