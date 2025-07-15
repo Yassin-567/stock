@@ -10,10 +10,11 @@ from .myfunc import items_arrived,items_not_used
 class loginForm(forms.Form):
     email = forms.EmailField()
     password = forms.CharField(widget=forms.PasswordInput)
-    remember_me = forms.BooleanField(required=False)
 
-    fields=['email','password']
-
+class ForgotPasswordForm(forms.Form):
+    email=forms.EmailField()
+class OtpForm(forms.Form):
+    otp=forms.TextInput()
 
 class companyregisterForm(forms.ModelForm):
     
@@ -161,6 +162,7 @@ class registerworker(forms.ModelForm):
         if changing_password:
             del self.fields['username']
             del self.fields['email']
+            del self.fields['permission']
         if self.instance is not None and not enable_edit and updating:
             for field in self.fields.values():
                 field.widget.attrs['class'] = 'faded-input'

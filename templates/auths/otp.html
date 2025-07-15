@@ -9,6 +9,30 @@
       <div class="alert alert-{{ message.tags }}">{{ message }}</div>
     {% endfor %}
   {% endif %}
+  <p id="otp-status">
+    OTP expires in <span id="countdown">{{ left_time }}</span> seconds.
+  </p>
+
+  <script>
+    const countdownEl = document.getElementById('countdown')
+    const otpStatus = document.getElementById('otp-status')
+    let seconds = parseInt(countdownEl?.textContent || '0')
+    
+    if (!isNaN(seconds) && seconds > 0) {
+      const countdown = setInterval(() => {
+        seconds--
+        if (seconds <= 0) {
+          clearInterval(countdown)
+          otpStatus.textContent = 'OTP has expired.'
+          document.querySelector('form button[type="submit"]')?.setAttribute('disabled', true)
+        } else {
+          countdownEl.textContent = seconds
+        }
+      }, 1000)
+    } else {
+      otpStatus.textContent = 'OTP has expired.'
+    }
+  </script>
 
   <form method="POST">
     {% csrf_token %}
@@ -21,7 +45,7 @@
         {% endif %}
       </div>
     {% endif %}
-    {% if request.session.verifying == 'adding_user' or request.session.verifying == 'updating_user' or request.session.verifying == 'registering_company' %}
+    {% if request.session.verifying == 'adding_user' or request.session.verifying == 'updating_user' or request.session.verifying == 'registering_company' or request.session.verifying == 'forgot_password' %}
       <div class="form-group">
         <label>Enter the OTP sent to <strong>{{ email }}</strong>:</label>
         <input type="text" name="email_otp" class="form-control" required />
@@ -31,5 +55,9 @@
       </div>
     {% endif %}
     <button type="submit" name="{{ request.session.verifying }}" class="btn btn-primary">Verify</button>
+  </form>
+  <form method="POST" style="margin-top: 10px;">
+    {% csrf_token %}
+    <button type="submit" name="resend_otp" class="btn btn-secondary">Resend OTP</button>
   </form>
 {% endblock %}

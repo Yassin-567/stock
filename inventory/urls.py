@@ -25,6 +25,7 @@ urlpatterns=[
     path('item/<int:pk>/',views.update_item,name='update_item'),
     path('witem/<int:pk>/',views.update_warehouse_item,name='update_warehouse_item'),
     path('adpanel/<int:pk>/',views.update_user,name='update_user'),
+    path('forgotpassword/',views.forgot_password,name='forgot_password'),
     # path('companysettings/',views.company_settings,name='company_settings'),
     path('adpanelc//',views.update_company,name='update_company'),
     path('adpaneleng/',views.engineer,name='add_eng'),

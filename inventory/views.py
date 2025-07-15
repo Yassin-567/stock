@@ -1,25 +1,21 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
 from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem,Engineer,category,CompanySettings
-from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker,CategoriesForm,CompanySettingsForm
+from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker,CategoriesForm,CompanySettingsForm,ForgotPasswordForm
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-from django.contrib.auth.models import Group
 from .decorators import admins_only,no_ban,owner_only
 from django.db.models import F
 from django.db.models import Count, Q
-from django.forms import HiddenInput,MultipleHiddenInput
-from django.forms import Select
-from django import forms
-from django.http import HttpResponseForbidden
+
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from .myfunc import generate_otp,send_otp_email
 from django.contrib.auth.hashers import make_password
-
+import time
 #import requests
 
 
@@ -39,7 +35,51 @@ def logout_user(request):
         return redirect('login')
     logout(request)
     return redirect('login')
+def forgot_password(request):
+    form=ForgotPasswordForm()
+    if request.method=='POST' and 'confirm_new_password' in request.POST:
+        email=request.session['register_email']
+        user=CustomUser.objects.get(email=email)
+        form=registerworker(request.POST,instance=user,enable_edit=True,updating=True,changing_password=True)
+        
+        if form.is_valid():
+            new_password=form.cleaned_data['password']
+            user.set_password(new_password)
+            user.save(update_fields=['password'])
+            for k in ['register_email','password_otp','verifying','allow_password_change','otp_generated_at']:
+            
+                request.session.pop(k,None)
+              
+            form=registerworker(instance=user,enable_edit=False,updating=True,)
 
+            messages.success(request,'Password changed successfully')    
+            return redirect('login')
+    if request.method=='POST' and 'send_otp' in request.POST:
+        form=ForgotPasswordForm(request.POST)
+        if form.is_valid():
+            email=form.cleaned_data['email']
+            otp=generate_otp()
+            request.session['otp_generated_at']=time.time()
+            request.session['register_email']=email
+            request.session['password_otp']=otp
+            request.session['verifying'] ="forgot_password"
+            send_otp_email(email,otp)
+            return redirect(verify_otp)
+    try:
+        allow_password_change=request.session['allow_password_change'] 
+    except:
+        allow_password_change=False
+    if allow_password_change :
+        print(allow_password_change)
+        email=request.session['register_email']
+        user=CustomUser.objects.get(email=email)
+        form=registerworker(instance=user,enable_edit=True,updating=True,changing_password=True)
+        
+        for k in['allow_password_change','password_otp']:
+            request.session.pop(k,None)
+        return render(request, 'inventory/update_user.html',{'form':form,'editing':True,'changing_password':True})
+
+    return render(request,'auths/forgot_password.html',{'form':form})
 
 def login_user(request):
     form=loginForm()
@@ -751,6 +791,8 @@ def update_company(request,):
                 request.session['phone'] = form.cleaned_data['phone']
                 
                 otp=generate_otp()
+                request.session['otp_generated_at']=time.time()
+
                 request.session['company_updating_otp']=otp
                 send_otp_email(email,otp)
                 return redirect('otp')
@@ -785,7 +827,7 @@ def update_user(request, pk):
     form=registerworker(instance=worker,enable_edit=False,updating=True)
     if request.method=='POST' and 'change_password' in request.POST:
         form=registerworker(instance=worker,enable_edit=True,updating=True,changing_password=True)
-        changing_password=True
+        
         return render(request, 'inventory/update_user.html',{'form':form,'editing':True,'changing_password':True})
     if request.method=='POST' and 'confirm_new_password' in request.POST:
         form=registerworker(request.POST,instance=worker,enable_edit=True,updating=True,changing_password=True)
@@ -811,6 +853,8 @@ def update_user(request, pk):
                 request.session['register_email'] = email
                 
                 otp=generate_otp()
+                request.session['otp_generated_at']=time.time()
+
                 request.session['user_updating_otp']=otp
                 send_otp_email(email,otp)
                 return redirect('otp')
@@ -840,6 +884,7 @@ def register_company(request):
                 company_otp=email_otp
             else:
                 company_otp = generate_otp()
+            request.session['otp_generated_at']=time.time()
             request.session['verifying'] = "registering_company"    
             request.session['register_email'] = email
             request.session['company_email'] = company_email
@@ -857,63 +902,82 @@ def register_company(request):
             except:
                 messages.error(request,'Failed to send OTP')
 
-    # if request.method == 'POST' :
-    #     company_form = companyregisterForm(request.POST,)
-    #     user_form = registerForm(request.POST,)
-    #     if company_form.is_valid() and user_form.is_valid():
-    #         with transaction.atomic():
-                
-                # user = user_form.save(commit=False)
-                # user.set_password(user_form.cleaned_data['password'])
-                # user.is_owner=True
-                # user.save()
 
-                # # Step 2: Now save the company and assign the owner
-                # company = company_form.save(commit=False)
-                
-                # company.owner = user
-                
-                # company.save()
-                # cs=CompanySettings.objects.create(company=company) 
-                # cs.company=company
-                # cs.save()  
-                # company.settings=cs
-                # company.save()
-                # # Step 3: Update user with the company
-                # user.company = company
-                # user.save()
-                
-
-            # Step 3: Assign the user to the "Admin" group
-            
-
-        #         messages.success(request, 'Company was created successfully! Now you can login.')
-        #         return redirect('login')
-        # else:
-        #     messages.warning(request, f"Registration failed.")
     
 
     return render(request, 'auths/register_company.html', {'company_form': company_form, 'user_form': user_form})
 
 #############
 def verify_otp(request) :
+    
     email=request.session.get('register_email')
     company_email=request.session.get('company_email')
+    otp_generated_at = request.session.get('otp_generated_at')
+    otp_expiry_seconds = 300 # 5 minutes
+    print(otp_generated_at,otp_expiry_seconds,)
+    print(email,company_email,)
+    print(request.session.get('verifying'))
+
+    if request.method=='POST' and 'resend_otp' in request.POST:
+        verifying=request.session.get('verifying')
+        if verifying=='forgot_password':
+        
+            otp=generate_otp()
+            request.session['otp_generated_at']=time.time()
+            request.session['password_otp']=otp
+            request.session['verifying'] ="forgot_password"
+            try:
+                send_otp_email(email,otp)
+            except:
+                messages.error(request,"Failed to resened OTP, go back and try again")
+        elif verifying=='updating_user':
+            otp=generate_otp()
+            request.session['otp_generated_at']=time.time()
+
+            request.session['user_updating_otp']=otp
+            send_otp_email(email,otp)
+        elif verifying=='updating_company':
+            request.session['company_email'] = email
+            
+            otp=generate_otp()
+            request.session['otp_generated_at']=time.time()
+            request.session['company_updating_otp']=otp
+            send_otp_email(email,otp)
+        left_time = otp_expiry_seconds - (time.time() - otp_generated_at) 
+        left_time=left_time if left_time>0 else "Expired"
+    if request.method == 'POST' and 'forgot_password' in request.POST:
+        input_user_otp=request.POST.get('email_otp')
+        user_session_otp = request.session.get('password_otp')
+        
+        print('uiuiuiui',user_session_otp,input_user_otp)
+        if (
+            input_user_otp == user_session_otp and
+            otp_generated_at is not None and
+            (time.time() - otp_generated_at <= otp_expiry_seconds)
+        ):
+            
+            request.session['allow_password_change']=True
+            
+            return redirect('forgot_password')
+        else:
+            messages.error(request,"Wrong OTP, Try agian.")
     if request.method == 'POST' and 'updating_user' in request.POST:
         input_user_otp=request.POST.get('email_otp')
         user_session_otp = request.session.get('user_updating_otp')
         
         print('ppp',user_session_otp,input_user_otp)
-        if input_user_otp == user_session_otp :
+        if (
+            input_user_otp == user_session_otp and
+            otp_generated_at is not None and
+            (time.time() - otp_generated_at <= otp_expiry_seconds)
+        ):
             username = request.session.get('username')
-
-
             user=CustomUser.objects.get(id=request.user.id)
             user.email=email
             user.username=username
             user.save(update_fields=['username','email',])
-            for k in ['username','register_email',]:
-                del request.session[k]
+            for k in ['username','register_email','otp_generated_at']:
+                request.session.pop(k,None)
             messages.success(request,"User updated successfully")
             return redirect('update_user',request.user.id)
         else:
@@ -922,7 +986,11 @@ def verify_otp(request) :
         input_company_otp=request.POST.get('company_otp')
         company_session_otp = request.session.get('company_updating_otp')
         print(company_session_otp)
-        if input_company_otp == company_session_otp :
+        if (
+                    input_company_otp==company_session_otp and
+                    otp_generated_at is not None and
+                    (time.time() - otp_generated_at <= otp_expiry_seconds)
+                ):
             company_name = request.session.get('company_name')
             phone = request.session.get('phone')
             address = request.session.get('address')
@@ -933,8 +1001,8 @@ def verify_otp(request) :
             company.address=address
             company.phone=phone
             company.save(update_fields=['company_name','company_email','address','phone'])
-            for k in ['company_email','company_name','phone','address']:
-                del request.session[k]
+            for k in ['company_email','company_name','phone','address','otp_generated_at']:
+                request.session.pop(k,None)
             messages.success(request,"Company updated successfully")
             return redirect('update_company')
         else:
@@ -946,12 +1014,16 @@ def verify_otp(request) :
         company_session_otp = request.session.get('company_otp')
         email_session_otp = request.session.get('email_otp')
         
-        if input_company_otp == company_session_otp and input_email_otp==email_session_otp:
+        if (
+                    input_user_otp == user_session_otp and
+                    input_email_otp==email_session_otp and
+                    otp_generated_at is not None and
+                    (time.time() - otp_generated_at <= otp_expiry_seconds)
+                ):
             
             with transaction.atomic():
                 try:
                     company_data = request.session.get('company_data')
-                    user_data = request.session.get('user_data')
                     user_data = request.session.get('user_data').copy()  # Make a copy so we can modify safely
                     user_data.pop('password2', None)  # Remove password2 if it exists
                     
@@ -971,7 +1043,9 @@ def verify_otp(request) :
                     messages.error(request,'Failed creating company. Try again')
         else:
             messages.error(request,"Wrong OTP. Try again")
-    return render(request, 'auths/otp.html', {'email':email,'company_email':company_email})
+    left_time = otp_expiry_seconds - (time.time() - otp_generated_at) 
+    left_time=left_time if left_time>0 else "Expired"
+    return render(request, 'auths/otp.html', {'email':email,'company_email':company_email,'left_time':left_time})
 @owner_only
 
 def company_settings(request):
