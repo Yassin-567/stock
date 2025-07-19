@@ -59,7 +59,8 @@
               <strong>Total required:</strong> {{ job|total_quantity }},
               <strong>Arrived:</strong> {{ job|total_arrived_quantity }}
             </p>
-            <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>
+            {% if job.status != 'cancelled' and job.status != 'completed' %}
+            <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>{% endif %}
           </div>
 
           <button class="btn btn-toggle" onclick="toggleItems(this)">Show Items</button>

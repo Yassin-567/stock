@@ -204,7 +204,7 @@ class Item(models.Model):
     required_quantity=models.PositiveSmallIntegerField(default=0)
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     ordered=models.BooleanField(default=False)
-    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="item_category", null=True, )
+    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="item_category", null=True,blank=True )
     def save(self, *args, **kwargs):
         if not self.category and self.company.id:
             self.category, _ = category.objects.get_or_create(company=self.company, category='Others')
@@ -259,4 +259,6 @@ class WarehouseItem(models.Model):
         print(self.category)
     def __str__(self):
         return str(self.item.name)
-    
+
+
+

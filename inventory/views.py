@@ -229,15 +229,20 @@ def update_job(request, pk, cancel=0):
         'company': request.user.company,
         })
     comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
-      
+    print(cancel)
     if cancel==1 :
-            
+            print(00000)
             li=[]
-            li=[item for item in job.items.all() if item.ordered and  item.arrived_quantity>0]
+            li=[item for item in job.items.all() if (item.ordered or item.from_warehouse) and  item.arrived_quantity>0 and item.is_used==False ]
+            for i in li:
+                print('pp')
+                print(i,i.ordered,i.is_used)
             if len(li)>0:
                 request.session['job_post_data'] = request.POST
                 return render(request,'inventory/confirm.html',{'items':li,'cancel_request':True,'job':job})
-            messages.success(request,'Now you can cancel this job')
+            job.status='cancelled'
+            job.save(update_fields=['status'])
+            messages.success(request,'Now this job is cancelled')
     if request.method=="POST":
         if 'yes_complete' in request.POST:
             post_data = request.session.pop('job_post_data', None)
@@ -289,7 +294,7 @@ def update_job(request, pk, cancel=0):
                 elif form.cleaned_data['status']=='cancelled'  :
                     
                     li=[]
-                    li=[item for item in job.items.all() if item.ordered and  item.arrived_quantity>0 and not item.is_used or item.from_warehouse ]
+                    li=[item for item in job.items.all() if (item.ordered or item.from_warehouse ) and  item.arrived_quantity>0 and not item.is_used ]
                     if len(li)>0:
                         request.session['job_post_data'] = request.POST
                         return render(request,'inventory/confirm.html',{'items':li,'cancel_request':True,'job':job})
@@ -371,15 +376,18 @@ def item_add(request,pk=None,no_job=False):
     #     form.fields['job_quantity'].widget = forms.TextInput()
     if request.method=='POST':
         
-        
+        if 'reset_search' in request.POST:
+            if pk is not None :
+                
+                warehouse_items=WarehouseItem.objects.filter(company=request.user.company,warehouse_quantity__gt=0,)
+                return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'show_stock':True})
+
         if 'searching_warehouse' in request.POST:
             if pk is not None :
                 query = request.POST.get('search_query')
-
                 if len(query)>0 and not 'reset_search' in request.POST:
-                    
                     warehouse_items=WarehouseItem.objects.filter(company=request.user.company,warehouse_quantity__gt=0,item__part_number__iexact=query)
-                return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'query':query})
+                return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'query':query,'show_stock':True})
 
         if 'adding_from_stock' in request.POST:
             
@@ -519,16 +527,17 @@ def update_item(request, pk):
         comments_form=CommentForm(request.POST)
         if 'dont_move_used' in request.POST:
             next_url = request.POST.get('next')
+            print(next_url)
             job_item = item
             
             if job_item.arrived_quantity>0:
                 job_item.is_used=True
-                job_item.job.status='cancelled'
+                # job_item.job.status='cancelled'
                 job_item.notes=''
                 job_item.save(dont_move_used=True,update_fields=['is_used','notes'])
                 job_item.job.save()#update_fields=['status']
                 if next_url:
-                    return redirect('inventory')
+                    return redirect(next_url)
         elif 'yes_move' in request.POST:
             next_url = request.POST.get('next')
             
@@ -783,26 +792,26 @@ def update_company(request,):
         if form.is_valid():
             
             email=form.cleaned_data['company_email']
-            if email!=company_email:
-                request.session['verifying']="updating_company"
-                request.session['company_name'] = form.cleaned_data['company_name']
-                request.session['company_email'] = email
-                request.session['address'] = form.cleaned_data['address']
-                request.session['phone'] = form.cleaned_data['phone']
-                
-                otp=generate_otp()
-                request.session['otp_generated_at']=time.time()
+            # if email!=company_email:
+            request.session['verifying']="updating_company"
+            request.session['company_name'] = form.cleaned_data['company_name']
+            request.session['company_email'] = email
+            request.session['address'] = form.cleaned_data['address']
+            request.session['phone'] = form.cleaned_data['phone']
+            
+            otp=generate_otp()
+            request.session['otp_generated_at']=time.time()
 
-                request.session['company_updating_otp']=otp
-                send_otp_email(email,otp)
-                return redirect('otp')
-            else:
-                form.save()
+            request.session['company_updating_otp']=otp
+            send_otp_email(email,otp)
+            return redirect('otp')
+            # else:
+            #     form.save()
                 
-            form = companyregisterForm(instance=company,user=request.user,updating=True,enable_edit=False)
-            context = {'form': form,'company': company,'enable_edit':False}
-            messages.success(request,"Company updated successfuly")
-            return render(request, 'inventory/update_company.html',context)
+            # form = companyregisterForm(instance=company,user=request.user,updating=True,enable_edit=False)
+            # context = {'form': form,'company': company,'enable_edit':False}
+            # messages.success(request,"Company updated successfuly")
+            # return render(request, 'inventory/update_company.html',context)
     
     
     context = {'form': form,'company': company,'enable_edit':False}
@@ -827,19 +836,19 @@ def update_user(request, pk):
     form=registerworker(instance=worker,enable_edit=False,updating=True)
     if request.method=='POST' and 'change_password' in request.POST:
         form=registerworker(instance=worker,enable_edit=True,updating=True,changing_password=True)
-        
+
         return render(request, 'inventory/update_user.html',{'form':form,'editing':True,'changing_password':True})
     if request.method=='POST' and 'confirm_new_password' in request.POST:
         form=registerworker(request.POST,instance=worker,enable_edit=True,updating=True,changing_password=True)
-        print("IIIIIIIIIIIIIIIII")
+        
         if form.is_valid():
             print('fa')
             form.save()
             form=registerworker(instance=worker,enable_edit=False,updating=True,)
-
             messages.success(request,'Password changed successfully')
         return render(request, 'inventory/update_user.html',{'form':form,'editing':False,'changing_password':False})
     if request.method=='POST' and 'edit' in request.POST:
+
         form=registerworker(instance=worker,enable_edit=True,updating=True,)
         return render(request, 'inventory/update_user.html',{'form':form,'editing':True})
     if request.method=='POST' and 'update' in request.POST:
@@ -854,7 +863,6 @@ def update_user(request, pk):
                 
                 otp=generate_otp()
                 request.session['otp_generated_at']=time.time()
-
                 request.session['user_updating_otp']=otp
                 send_otp_email(email,otp)
                 return redirect('otp')

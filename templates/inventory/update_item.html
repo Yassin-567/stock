@@ -147,6 +147,11 @@
           {% if not item.is_used and not item.job.status == 'completed' and not item.job.status == 'cancelled' %}
             <button name="move_item" type="submit" class="btn btn-submit">Move</button>
           {% endif %}
+          {% if item.is_used %}
+            <p>
+              Did you get the item back?<button name="move_used_item" type="submit" class="btn btn-danger">Add it to the warehouse</button>
+            </p>
+          {% endif %}
         </form>
       </span>
     {% endif %}

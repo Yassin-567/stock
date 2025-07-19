@@ -19,7 +19,7 @@ admin.site.register(category, )
 # admin.site.site_title='Stock'
 class JobItemAdmin(admin.ModelAdmin):
 
-    list_display = ('id',  )
+    list_display = ('id', 'item__part_number')
 class WarehouseItemAdmin(admin.ModelAdmin):
     list_display = ('item','id',  )
 admin.site.register(JobItem,JobItemAdmin)
