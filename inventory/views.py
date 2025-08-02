@@ -16,6 +16,7 @@ from django.core.paginator import Paginator
 from .myfunc import generate_otp,send_otp_email
 from django.contrib.auth.hashers import make_password
 import time
+from django.conf import settings
 #import requests
 
 
@@ -125,22 +126,44 @@ def register_user(request):
 @login_required(login_url='login', redirect_field_name='inventory')
 @no_ban
 def inventory(request,pk=None):
-    
+    from datetime import datetime
         # rjobs = Job.objects.annotate(item_count=Count('items')).filter(items_arrived=True).prefetch_related('items')
     rjobs=Job.objects.filter(company=request.user.company)
     status = request.GET.get('status')
-    
+    print('st',status)
+    date = request.GET.get('date')
     try:
-        if status  :
-            request.session['status'] = status
-            rjobs = rjobs.filter(status=status) if status!='' else rjobs
-        
-        elif request.session['status'] :
-            status=request.session.pop('status', None)
-            rjobs = rjobs.filter(status=status) if status!='' else rjobs
+
+        date = datetime.strptime(str(date), '%Y-%m-%d').date()
     except:
         pass
-   
+    if 'status' in request.GET and not 'date_filter' in request.GET :
+        try:
+            if status != None:
+                request.session['status'] = status
+                rjobs = rjobs.filter(status=status) if status!='' else rjobs
+            
+            elif request.session['status'] != None :
+                status=request.session.pop('status', None)
+                rjobs = rjobs.filter(status=status) if status!='' else rjobs
+            if date:
+                rjobs = rjobs.filter(date=date) if date!='' else rjobs
+        except:
+            pass
+    elif 'date' in request.GET and date:
+    
+        try:
+            
+            if status  != "":
+                
+                rjobs = rjobs.filter(date=date,status=status) if date!='' else rjobs
+            else:
+                rjobs = rjobs.filter(date=date) if date!='' else rjobs 
+        except ValueError:
+            pass  
+    
+    
+    
     paginator=Paginator(rjobs,10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -321,7 +344,24 @@ def update_job(request, pk, cancel=0):
             })
             form = JobForm(instance=job,updating=True)
         if 'send_email' in request.POST :
+                comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
+                comments_form = CommentForm(initial={
+                'content_type': ContentType.objects.get_for_model(Job),
+                'object_id': job.job_id,
+                'company': request.user.company,
+                })
+                form = JobForm(instance=job,)
+                items=JobItem.objects.filter(job=job)
+                if job.engineer is None  :
+
+                    messages.error(request,"You must assign an engineer for this job")
+                    return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count,'job_status':job_status})       
+                elif  job.status!="ready"   :
+                    messages.error(request,"Job must be ready")
+                    return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count,'job_status':job_status})       
+
                 if job.engineer is not None and job.status=="ready":
+
                     recipient_list=[]
                     recipient_list.append(job.engineer.email)
                     # parts=[]
@@ -333,7 +373,7 @@ def update_job(request, pk, cancel=0):
                     send_mail(
                         subject=f'Job {job.address}',
                         message=f'Hi, please take the following parts:\n\n{parts_text}',
-                        from_email='yassinalaa3310@gmail.com',
+                        from_email=settings.EMAIL_HOST_USER,
                         recipient_list=['yassinalaa3310@gmail.com'],
                         fail_silently=False,
                     )
@@ -345,17 +385,7 @@ def update_job(request, pk, cancel=0):
                         'company': request.user.company,
                         })
                     comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
-                    return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
-                messages.error(request,"Failed")
-                comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
-                comments_form = CommentForm(initial={
-                'content_type': ContentType.objects.get_for_model(Job),
-                'object_id': job.job_id,
-                'company': request.user.company,
-                })
-                form = JobForm(instance=job,)
-                items=JobItem.objects.filter(job=job)
-                return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
+                    return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count,'job_status':job_status})       
     context={'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count,'job_status':job_status}
     return render(request, 'inventory/job_update.html', context)       
 ###########################-ITEM-######################
@@ -776,16 +806,10 @@ def update_warehouse_item(request, pk):
 def update_company(request,):
     company = request.user.company
     form = companyregisterForm(instance=company,user=request.user,updating=True,enable_edit=False)
-
     if request.method=='POST' and 'edit' in request.POST:
-        
         form = companyregisterForm(instance=company,user=request.user,updating=True,enable_edit=True)
-        
         context = {'form': form,'company': company,'enable_edit':True}
         return render(request, 'inventory/update_company.html', context)
-    
-
-
     if request.method == 'POST' and 'save' in request.POST:
         company_email=company.company_email
         form = companyregisterForm(request.POST ,request.FILES, instance=company,user=request.user,enable_edit=False)
@@ -798,22 +822,18 @@ def update_company(request,):
             request.session['company_email'] = email
             request.session['address'] = form.cleaned_data['address']
             request.session['phone'] = form.cleaned_data['phone']
-            
             otp=generate_otp()
             request.session['otp_generated_at']=time.time()
-
             request.session['company_updating_otp']=otp
             send_otp_email(email,otp)
             return redirect('otp')
             # else:
             #     form.save()
-                
+
             # form = companyregisterForm(instance=company,user=request.user,updating=True,enable_edit=False)
             # context = {'form': form,'company': company,'enable_edit':False}
             # messages.success(request,"Company updated successfuly")
             # return render(request, 'inventory/update_company.html',context)
-    
-    
     context = {'form': form,'company': company,'enable_edit':False}
     return render(request, 'inventory/update_company.html', context)
 

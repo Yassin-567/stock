@@ -143,11 +143,14 @@ class Job(models.Model):
     items_arrived=models.BooleanField(default=False, )
     post_code=models.CharField(max_length=10, null=True, blank=True)
     quoted=models.BooleanField(default=False)
-    
+    quote_accepted=models.BooleanField(default=False)
+    quoted_declined=models.BooleanField(default=False)
+    date=models.DateField( auto_now=False, auto_now_add=False,blank=True,null=True)
+    from_time=models.TimeField(auto_now=False,auto_now_add=False,blank=True,null=True)
+    to_time=models.TimeField(auto_now=False,auto_now_add=False,blank=True,null=True)
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
-        
     def save(self,*args, **kwargs):
         job_reopened(self,)
         if not job_completed(self,) and  self.status!='cancelled':
@@ -155,11 +158,9 @@ class Job(models.Model):
             self.status = 'ready' if items_arrived(self) and items_not_used(self) else 'paused'
             self.items_arrived=items_arrived(self) and items_not_used(self)
         super().save(*args, **kwargs)
-    
     def __str__(self):
         return self.address +" ("+ str(self.parent_account)+") "
-
-
+    
 class Comment(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)  # Reference to the model (Job or Item)
     object_id = models.PositiveIntegerField()  # ID of the related object
@@ -171,15 +172,13 @@ class Comment(models.Model):
 
     class Meta:
         ordering = ['-added_date']
-    
     def __str__(self):
         return self.comment#[:20] + "..." if len(self.comment) > 20 else self.comment
     def save(self,*args, **kwargs):
         if not self.comment.strip():
             return
         super().save(*args, **kwargs) 
-        
-    
+
 CHOICES=[
         
         ('arrived', 'Arrived'),

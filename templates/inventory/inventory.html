@@ -9,17 +9,34 @@
   {% endif %}
   <form method="get" class="mb-3">
     <label for="status" class="form-label">Filter by job Status:</label>
-    <select name="status" id="status" class="form-select w-auto d-inline" onchange="this.form.submit()">
-      <option value="" {% if not request.GET.status %}selected{% endif %}>All jobs</option>
-      <option value="ready" {% if request.GET.status == 'ready' %}selected{% endif %}>Ready</option>
-      <option value="paused" {% if request.GET.status == 'paused' %}selected{% endif %}>Paused</option>
-      <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
-      <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Completed</option>
-      <option value="quoted" {% if request.GET.status == 'quoted' %}selected{% endif %}>Quoted</option>
-    </select>
+  <select name="status" onchange="this.form.submit()" class="form-select w-auto d-inline">
+  <option value="" {% if status == '' or not status %}selected{% endif %}>All jobs</option>
+  <option value="ready" {% if status == 'ready' %}selected{% endif %}>Ready</option>
+  <option value="paused" {% if status == 'paused' %}selected{% endif %}>Paused</option>
+  <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+  <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
+  <option value="quoted" {% if status == 'quoted' %}selected{% endif %}>Quoted</option>
+</select>
+
+
+    <!-- Date Filter -->
+    <label for="date" class="form-label mb-0">Filter by Date:</label>
+    <input type="text" id="date" name="date" class="form-control flatpickr_date w-auto d-inline" placeholder="Select date" value="{{ request.GET.date }}" />
+    <button type="submit" name="date_filter" class="btn btn-primary btn-sm" >Apply</button>
   </form>
-  {% if rjobs  %}
-    
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <!-- Flatpickr JS -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+  <script>
+    flatpickr('.flatpickr_date', {
+      enableTime: false,
+      dateFormat: 'Y-m-d',
+      altInput: true,
+      altFormat: 'F j, Y'
+    })
+  </script>
+  {% if rjobs %}
     {% for job in rjobs %}
       <div class="card mb-4 shadow-sm">
         <div class="card-body job-card">
@@ -60,7 +77,8 @@
               <strong>Arrived:</strong> {{ job|total_arrived_quantity }}
             </p>
             {% if job.status != 'cancelled' and job.status != 'completed' %}
-            <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>{% endif %}
+              <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>
+            {% endif %}
           </div>
 
           <button class="btn btn-toggle" onclick="toggleItems(this)">Show Items</button>
@@ -107,13 +125,29 @@
           {% if page_obj.has_previous %}
             <li class="page-item">
               <a class="page-link"
-                 href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value|urlencode }}{% endif %}{% endfor %}"
-                 title="First">&laquo;</a>
+                href="?page=1{% for key, value in request.GET.items %}
+                  {% if key != 'page' %}
+                    
+                    
+                    &{{ key }}={{ value|urlencode }}
+                  {% endif %}
+                {% endfor %}"
+                title="First">
+                &laquo;
+              </a>
             </li>
             <li class="page-item">
               <a class="page-link"
-                 href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value|urlencode }}{% endif %}{% endfor %}"
-                 title="Previous">&lsaquo;</a>
+                href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}
+                  {% if key != 'page' %}
+                    
+                    
+                    &{{ key }}={{ value|urlencode }}
+                  {% endif %}
+                {% endfor %}"
+                title="Previous">
+                &lsaquo;
+              </a>
             </li>
           {% else %}
             <li class="page-item disabled">
@@ -123,35 +157,51 @@
               <span class="page-link">&lsaquo;</span>
             </li>
           {% endif %}
-    
+
           <li class="page-item active">
             <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
           </li>
-    
+
           {% if page_obj.has_next %}
-          <li class="page-item">
-            <a class="page-link"
-               href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value|urlencode }}{% endif %}{% endfor %}"
-               title="Next">&rsaquo;</a>
-          </li>
-          <li class="page-item">
-            <a class="page-link"
-               href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value|urlencode }}{% endif %}{% endfor %}"
-               title="Last">&raquo;</a>
-          </li>
-        {% else %}
-          <li class="page-item disabled">
-            <span class="page-link">&rsaquo;</span>
-          </li>
-          <li class="page-item disabled">
-            <span class="page-link">&raquo;</span>
-          </li>
-        {% endif %}
-      </ul>
-    </nav>
-  </div>
-    {% elif status %}
-    <H3>No {{status}} jobs</H3>
+            <li class="page-item">
+              <a class="page-link"
+                href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}
+                  {% if key != 'page' %}
+                    
+                    
+                    &{{ key }}={{ value|urlencode }}
+                  {% endif %}
+                {% endfor %}"
+                title="Next">
+                &rsaquo;
+              </a>
+            </li>
+            <li class="page-item">
+              <a class="page-link"
+                href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}
+                  {% if key != 'page' %}
+                    
+                    
+                    &{{ key }}={{ value|urlencode }}
+                  {% endif %}
+                {% endfor %}"
+                title="Last">
+                &raquo;
+              </a>
+            </li>
+          {% else %}
+            <li class="page-item disabled">
+              <span class="page-link">&rsaquo;</span>
+            </li>
+            <li class="page-item disabled">
+              <span class="page-link">&raquo;</span>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+  {% elif status %}
+    <H3>No {{ status }} jobs</H3>
   {% endif %}
 
   <link rel="stylesheet" href="{% static 'css/style.css' %}" />

@@ -192,6 +192,17 @@ class JobForm(forms.ModelForm):
             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             #'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control', 'id': 'arrived_quantity'}),
             'quoted':forms.HiddenInput(),
+            'date': forms.DateTimeInput(attrs={
+                'class': 'flatpickr_date',  # You can name this anything
+                'placeholder': 'Select a date'}),
+            'from_time': forms.DateTimeInput(attrs={
+                'class': 'flatpickr_from_time',  # You can name this anything
+                'placeholder': 'Select time'}),
+
+            'to_time': forms.DateTimeInput(attrs={
+                'class': 'flatpickr_to_time',  # You can name this anything
+                'placeholder': 'Select time'}),
+
             'items_arrived':forms.HiddenInput(),
             'job_id': forms.TextInput(attrs={  # Override widget for job_id
                 'type': 'text',  # Set input type to text
@@ -217,12 +228,19 @@ class JobForm(forms.ModelForm):
     def clean(self,*args, **kwargs):
         cleaned_data=super().clean()
         status=cleaned_data.get('status')
-        
+        quote_accepted=cleaned_data.get('quote_accepted')
+        quote_declined=cleaned_data.get('quote_declined')
+        from_time=cleaned_data.get('from_time')
+        to_time=cleaned_data.get('to_time')
         job=self.instance
         
         if job.pk:
             #if self.fields['status']=='quoted':
-                
+            if to_time and from_time and to_time<from_time:
+                raise forms.ValidationError("from biiger than to")
+            if self.instance.quoted :
+                if not quote_accepted and not quote_declined:
+                    raise forms.ValidationError("Was the quote accepted")
             items_count=job.items.all().count()
             if status=='ready' and  not (items_arrived(job) and items_not_used(job)) and items_count>0 :
             

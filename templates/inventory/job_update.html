@@ -128,6 +128,10 @@ box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       <li>No items associated with this job.</li>
     {% endfor %}
   </ol>
+  <!-- Flatpickr CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <!-- Flatpickr JS -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
   <section>
     <h3>Comments</h3>
@@ -162,6 +166,30 @@ box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         toggleQuotingPrice()
         statusField.addEventListener('change', toggleQuotingPrice)
       }
+    })
+  </script>
+  <script>
+    flatpickr('.flatpickr_date', {
+      enableTime: false,
+      dateFormat: 'Y-m-d',
+      altInput: true,
+      altFormat: 'F j, Y'
+    })
+    
+    flatpickr('.flatpickr_from_time', {
+      enableTime: true,
+      noCalendar: true,
+      dateFormat: 'H:i',
+      altInput: true,
+      altFormat: 'h:i K'
+    })
+    
+    flatpickr('.flatpickr_to_time', {
+      enableTime: true,
+      noCalendar: true,
+      dateFormat: 'H:i',
+      altInput: true,
+      altFormat: 'h:i K'
     })
   </script>
 {% endblock %}
