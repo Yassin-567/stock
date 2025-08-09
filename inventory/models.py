@@ -259,5 +259,17 @@ class WarehouseItem(models.Model):
     def __str__(self):
         return str(self.item.name)
 
+from django.utils.translation import gettext_lazy as _
 
-
+class Email(models.Model):
+    
+    class EmailType(models.TextChoices):
+        SINGLE = "single", _("Single")
+        BATCH = "batch", _("Batch")
+    type=models.CharField(choices=EmailType.choices,null=False,blank=False)
+    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="company_emails")
+    user=models.ForeignKey(CustomUser,on_delete=models.DO_NOTHING,related_name="user_emails")
+    to=models.TextField(null=False, blank=False)
+    subject=models.TextField(null=True, blank=True)
+    body=models.TextField(null=True, blank=True)
+    date=models.DateTimeField()

@@ -1,0 +1,54 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+
+{% block body %}
+  <div class="container mt-4">
+    <h1 class="mb-4">📧 Emails History</h1>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message|safe }}</div>
+      {% endfor %}
+    {% endif %}
+  <form method="get" class="mb-3">
+    <label for="type" class="form-label">Filter by emails by sending method:</label>
+  <select name="type" onchange="this.form.submit()" class="form-select w-auto d-inline">
+  <option value="all" {% if type == '' or not type %}selected{% endif %}>All emails</option>
+  <option value="single" {% if type == 'single' %}selected{% endif %}>Single method</option>
+  <option value="batch" {% if type == 'batch' %}selected{% endif %}>Batch method</option>
+</select>
+
+
+      </form>
+    {% if emails %}
+      <div class="row g-3">
+        {% for e in emails %}
+          <div class="col-12 col-md-6">
+            <div class="card shadow-sm h-100">
+              <div class="card-body">
+                <h5 class="card-title">{{ e.subject|default:'(No Subject)' }}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">
+                  Sent by <strong>{{ e.user }}</strong>
+                  in <span class="badge bg-primary">{{ e.type }}</span> mode
+                  <br />
+                  <small>At: {{ e.date|date:'Y-m-d H:i' }}</small>
+                </h6>
+                <p class="mb-1">
+                  <strong>To:</strong> {{ e.to }}
+                </p>
+                <hr />
+                <p class="card-text">{{ e.body|linebreaks }}</p>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="alert alert-info">No emails found in history.</div>
+    {% endif %}
+  </div>
+
+  <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+{% endblock %}

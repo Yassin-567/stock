@@ -233,11 +233,14 @@ class JobForm(forms.ModelForm):
         from_time=cleaned_data.get('from_time')
         to_time=cleaned_data.get('to_time')
         job=self.instance
-        
+        # from datetime import time
+        # n=time(from_time)
+        # print(n)
         if job.pk:
-            #if self.fields['status']=='quoted':
-            if to_time and from_time and to_time<from_time:
-                raise forms.ValidationError("from biiger than to")
+            #if self.fields['status']=='quoted': 
+            if from_time and to_time and from_time >= to_time and to_time  != " ":
+                self.add_error('to_time', 'End time must be after start time.')
+
             if self.instance.quoted :
                 if not quote_accepted and not quote_declined:
                     raise forms.ValidationError("Was the quote accepted")

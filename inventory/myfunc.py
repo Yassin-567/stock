@@ -99,3 +99,49 @@ def send_otp_email(email, otp):
         recipient_list=[email],
         fail_silently=False,
     )
+
+from django.core.mail import send_mail
+from django.conf import settings
+from django.contrib import messages
+from collections import defaultdict
+from django.utils import timezone
+def send_multiple_emails(jobs, request=None,single=False,):
+    print("OOOO")
+    # Group jobs by engineer
+    engineer_jobs = defaultdict(list)
+    for job in jobs:
+        if job.engineer:
+            engineer_jobs[job.engineer].append(job)
+
+    # Send one email to each engineer
+    for engineer, jobs_list in engineer_jobs.items():
+        message_lines = [f"Hi {engineer.name}, please take the following parts for :\n"]
+        
+        for job in jobs_list:
+            parts = [str(part) for part in job.items.all()]
+            if parts:
+                parts_text = ", ".join(parts)
+            else:
+                parts_text = "No parts assigned."
+            message_lines.append(f"Job {job.address}:\n{parts_text}\n")
+
+        full_message = "\n".join(message_lines)
+        print("P")
+        send_mail(
+            subject=f"Your Job Parts List for{job.date}",
+            message=full_message,
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[engineer.email],  # Assumes `engineer.email` exists
+            fail_silently=False,
+        )
+        from .models import Email
+        user=request.user
+        company=request.user.company
+        if single:
+            Email.objects.create(type=Email.EmailType.SINGLE,company=company,user=user,to="yass",subject=f"Your Job Parts List for{job.date}",body=full_message,date=timezone.now(),)
+        else:
+            
+            Email.objects.create(type=Email.EmailType.BATCH,company=company,user=user,to="yass",subject=f"Your Job Parts List for{job.date}",body=full_message,date=timezone.now(),)
+
+        if request:
+            messages.success(request, f'Email sent to {engineer.name}')

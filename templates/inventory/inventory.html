@@ -22,7 +22,15 @@
     <!-- Date Filter -->
     <label for="date" class="form-label mb-0">Filter by Date:</label>
     <input type="text" id="date" name="date" class="form-control flatpickr_date w-auto d-inline" placeholder="Select date" value="{{ request.GET.date }}" />
-    <button type="submit" name="date_filter" class="btn btn-primary btn-sm" >Apply</button>
+    <button type="submit"  class="btn btn-primary btn-sm" >Apply</button>   
+  </form>
+
+  <form method="post" >
+    {% csrf_token %}
+        <label for="date" class="form-label mb-0">Notify engineers:</label>
+    <input type="text" id="date" name="date" class="form-control flatpickr_date w-auto d-inline" placeholder="Select date" value="{{ request.POST.date }}" />
+    <button type="submit" name="send_emails" class="btn btn-primary btn-sm" >Send emails</button>
+
   </form>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
   <!-- Flatpickr JS -->
@@ -43,7 +51,9 @@
           <h2>
             Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> -
             <span class="badge status-{{ job.status }}">{{ job.get_status_display }}</span>
-
+{% if job.date %}
+ <span style="font-size: small;"> <a href="http://127.0.0.1:8000/?status=&date={{ job.date|urlencode }}">{{ job.date }}</a></span>
+{% endif %}
             {% if job.status != 'ready' and job.items_arrived and job.status != 'completed' and job|all_not_used %}
               <small class="job-hint green">Parts arrived, is this job ready?</small>
               <form action="{% url 'inventory' job.job_id %}" method="POST" class="inline-form">

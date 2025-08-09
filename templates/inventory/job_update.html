@@ -181,7 +181,15 @@ box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       noCalendar: true,
       dateFormat: 'H:i',
       altInput: true,
-      altFormat: 'h:i K'
+      altFormat: 'h:i K',
+      allowInput: true,
+      onReady: function (selectedDates, dateStr, instance) {
+        instance._input.addEventListener('keydown', function (e) {
+          if (e.key === 'Backspace' || e.key === 'Delete') {
+            instance.clear()
+          }
+        })
+      }
     })
     
     flatpickr('.flatpickr_to_time', {
@@ -189,7 +197,16 @@ box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       noCalendar: true,
       dateFormat: 'H:i',
       altInput: true,
-      altFormat: 'h:i K'
+      altFormat: 'h:i K',
+      allowInput: true, // ⬅️ Allows manual editing (including clearing)
+      onReady: function (selectedDates, dateStr, instance) {
+        // ⬅️ Enable clear when backspacing or deleting
+        instance._input.addEventListener('keydown', function (e) {
+          if (e.key === 'Backspace' || e.key === 'Delete') {
+            instance.clear()
+          }
+        })
+      }
     })
   </script>
 {% endblock %}

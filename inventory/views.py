@@ -1,5 +1,5 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
-from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem,Engineer,category,CompanySettings
+from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem,Engineer,category,CompanySettings,Email
 from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker,CategoriesForm,CompanySettingsForm,ForgotPasswordForm
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
@@ -13,7 +13,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from .myfunc import generate_otp,send_otp_email
+from .myfunc import generate_otp,send_otp_email,send_multiple_emails
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
@@ -130,14 +130,15 @@ def inventory(request,pk=None):
         # rjobs = Job.objects.annotate(item_count=Count('items')).filter(items_arrived=True).prefetch_related('items')
     rjobs=Job.objects.filter(company=request.user.company)
     status = request.GET.get('status')
-    print('st',status)
+    
     date = request.GET.get('date')
     try:
 
         date = datetime.strptime(str(date), '%Y-%m-%d').date()
     except:
         pass
-    if 'status' in request.GET and not 'date_filter' in request.GET :
+    if 'status' in request.GET :#and not 'date_filter' in request.GET 
+        print('st',status)
         try:
             if status != None:
                 request.session['status'] = status
@@ -153,7 +154,7 @@ def inventory(request,pk=None):
     elif 'date' in request.GET and date:
     
         try:
-            
+            print("5555",status)
             if status  != "":
                 
                 rjobs = rjobs.filter(date=date,status=status) if date!='' else rjobs
@@ -173,6 +174,16 @@ def inventory(request,pk=None):
             'page_obj':page_obj,
             'status':status,
             }
+    if request.method=='POST' and 'send_emails' in request.POST:
+        date=request.POST.get("date")
+        if date:
+            jobs=Job.objects.filter(company=request.user.company,date=date)
+            
+            send_multiple_emails(jobs,request)
+            
+        else:
+            messages.error(request, "Please select a date before sending emails.")
+
     if request.method=='POST' and "reset_notes" in request.POST:
         jobitem=JobItem.objects.get(id=pk)
         # item=Item.objects.get(id=jobitem.item.id)
@@ -216,6 +227,18 @@ def add_category(request):
                    
            
     return render(request,'inventory/add_cat.html',{"form":form})
+def emails_history(request,):
+    if request.method=="GET":
+        if 'type' in request.GET :
+            type=request.GET['type']
+            if type!='all':
+                emails=Email.objects.filter(company=request.user.company,type=type)
+            else:
+                emails=Email.objects.filter(company=request.user.company,)
+        else:
+            type='all'
+            emails=Email.objects.filter(company=request.user.company,)
+    return render(request,'inventory/emails.html',{'emails':emails,'type':type})
 @login_required
 def job_create(request):
     JobForm()
@@ -362,21 +385,24 @@ def update_job(request, pk, cancel=0):
 
                 if job.engineer is not None and job.status=="ready":
 
-                    recipient_list=[]
-                    recipient_list.append(job.engineer.email)
-                    # parts=[]
-                    # for part in job.items.all():
-                    #     parts.append(part)
-                    parts = [str(part) for part in job.items.all()]
-                    parts_text = "\n".join(parts)
-                    
-                    send_mail(
-                        subject=f'Job {job.address}',
-                        message=f'Hi, please take the following parts:\n\n{parts_text}',
-                        from_email=settings.EMAIL_HOST_USER,
-                        recipient_list=['yassinalaa3310@gmail.com'],
-                        fail_silently=False,
-                    )
+                    # recipient_list=[]
+                    # recipient_list.append(job.engineer.email)
+                    # # parts=[]
+                    # # for part in job.items.all():
+                    # #     parts.append(part)
+                    # parts = [str(part) for part in job.items.all()]
+                    # parts_text = "\n".join(parts)
+                    # subject=f'Job {job.address}'
+                    # message=f'Hi, please take the following parts:\n\n{parts_text}'
+                    # send_mail(
+                    #     subject=subject,
+                    #     message=message,
+                    #     from_email=settings.EMAIL_HOST_USER,
+                    #     recipient_list=recipient_list,
+                    #     fail_silently=False,
+                    # )
+                    send_multiple_emails([job],request,single=True,)
+                    # Email.objects.create(type=Email.EmailType.SINGLE,company=request.user.company,user=request.user,to=recipient_list,subject=subject,body=message,date=timezone.now())
                     messages.success(request,f'Email sent to {job.engineer.name}')
                     form = JobForm(instance=job,updating=True,)
                     comments_form=CommentForm(initial={
