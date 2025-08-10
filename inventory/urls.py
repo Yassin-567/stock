@@ -41,7 +41,7 @@ urlpatterns=[
     path('createjob/',views.job_create,name='create_job'),
     path('warehouse/',views.warehouse,name='warehouse'),
     path('emails',views.emails_history,name='emails_history'),
-
+    path('history',views.history,name='history'),
     path('additem/<str:no_job>', views.item_add, name='item_add'),
     path('additem/<int:pk>/', views.item_add, name='item_add'),
     path('register/',views.register_user,name='register'),

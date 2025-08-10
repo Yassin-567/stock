@@ -1,5 +1,5 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
-from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem,Engineer,category,CompanySettings,Email
+from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem,Engineer,category,CompanySettings,Email,History
 from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker,CategoriesForm,CompanySettingsForm,ForgotPasswordForm
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
@@ -13,10 +13,11 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from .myfunc import generate_otp,send_otp_email,send_multiple_emails
+from .myfunc import generate_otp,send_otp_email,send_multiple_emails,save_history
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
+from datetime import datetime
 #import requests
 
 
@@ -132,38 +133,23 @@ def inventory(request,pk=None):
     status = request.GET.get('status')
     
     date = request.GET.get('date')
-    try:
+    # try:
 
-        date = datetime.strptime(str(date), '%Y-%m-%d').date()
-    except:
-        pass
-    if 'status' in request.GET :#and not 'date_filter' in request.GET 
-        print('st',status)
-        try:
-            if status != None:
-                request.session['status'] = status
-                rjobs = rjobs.filter(status=status) if status!='' else rjobs
-            
-            elif request.session['status'] != None :
-                status=request.session.pop('status', None)
-                rjobs = rjobs.filter(status=status) if status!='' else rjobs
-            if date:
-                rjobs = rjobs.filter(date=date) if date!='' else rjobs
-        except:
-            pass
-    elif 'date' in request.GET and date:
-    
-        try:
-            print("5555",status)
-            if status  != "":
-                
-                rjobs = rjobs.filter(date=date,status=status) if date!='' else rjobs
-            else:
-                rjobs = rjobs.filter(date=date) if date!='' else rjobs 
-        except ValueError:
-            pass  
-    
-    
+    #     # date = datetime.strptime(str(date), '%Y-%m-%d').date()
+    # except:
+    #     pass
+    if status is not None:
+        request.session['status'] = status
+    elif request.session.get('status') is not None:
+        status = request.session['status']
+
+    # Apply filters
+    if status and status != 'all':
+        rjobs = rjobs.filter(status=status)
+
+    if date:
+        rjobs = rjobs.filter(date=date)    
+        
     
     paginator=Paginator(rjobs,10)
     page_number = request.GET.get('page')
@@ -296,6 +282,7 @@ def update_job(request, pk, cancel=0):
             if post_data:
                 form = JobForm(post_data, instance=job, updating=True)
                 if form.is_valid():
+                    
                     form.save()
                     for item in job.items.all():
                         item.is_used=True
@@ -349,6 +336,7 @@ def update_job(request, pk, cancel=0):
                     job.quoted=True
                 except:
                     pass
+                save_history(form,request)
                 form.save()
                 form = JobForm(request.POST, instance=job,updating=True)
                 messages.success(request, 'Job updated successfully')
@@ -385,22 +373,7 @@ def update_job(request, pk, cancel=0):
 
                 if job.engineer is not None and job.status=="ready":
 
-                    # recipient_list=[]
-                    # recipient_list.append(job.engineer.email)
-                    # # parts=[]
-                    # # for part in job.items.all():
-                    # #     parts.append(part)
-                    # parts = [str(part) for part in job.items.all()]
-                    # parts_text = "\n".join(parts)
-                    # subject=f'Job {job.address}'
-                    # message=f'Hi, please take the following parts:\n\n{parts_text}'
-                    # send_mail(
-                    #     subject=subject,
-                    #     message=message,
-                    #     from_email=settings.EMAIL_HOST_USER,
-                    #     recipient_list=recipient_list,
-                    #     fail_silently=False,
-                    # )
+            
                     send_multiple_emails([job],request,single=True,)
                     # Email.objects.create(type=Email.EmailType.SINGLE,company=request.user.company,user=request.user,to=recipient_list,subject=subject,body=message,date=timezone.now())
                     messages.success(request,f'Email sent to {job.engineer.name}')
@@ -754,13 +727,34 @@ def update_item(request, pk):
     context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,"completed":completed}
     return render(request, 'inventory/update_item.html', context)
 ########################
+@owner_only
+def history(request):
+    company=request.user.company    
+    selected_user_id = request.GET.get('user_id', 'all')
+    date = request.GET.get('date', 'all')
+    users=CustomUser.objects.filter(company=company)
 
-
+    if request.method=='GET' and 'model' in request.GET:
+        model=request.GET['model']
+        history=History.objects.filter(company=company, content_type__model='job').order_by('-changed_at')
+    else:
+        model='all'
+        history=History.objects.filter(company=company).order_by('-changed_at')
+    if selected_user_id!='all':
+        user=CustomUser.objects.get(Q(company=company) & Q(id=selected_user_id))
+        history=history.filter(user=user)
+    if date!='all':
+        try:
+            date=datetime.strptime(date, "%Y-%m-%d").date()
+            history=history.filter(changed_at__date=date)
+        except:
+            pass
+        
+    return render(request,'inventory/history.html',{'history':history,'model':model,'users':users,'selected_user_id':selected_user_id})
 
 
 @login_required
 def update_warehouse_item(request, pk):
-    print('ss')
     warehouse_item = WarehouseItem.objects.get(Q(company=request.user.company),Q(id=pk))
     
     item=warehouse_item.item

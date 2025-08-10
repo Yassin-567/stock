@@ -273,3 +273,15 @@ class Email(models.Model):
     subject=models.TextField(null=True, blank=True)
     body=models.TextField(null=True, blank=True)
     date=models.DateTimeField()
+
+
+class History(models.Model):
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="company_history")
+    field = models.CharField(max_length=100)
+    old_value = models.TextField(null=True, blank=True)
+    new_value = models.TextField(null=True, blank=True)
+    changed_at = models.DateTimeField(auto_now_add=True)
+    user=models.ForeignKey(CustomUser,on_delete=models.DO_NOTHING,related_name="user_history")

@@ -10,7 +10,7 @@
   <form method="get" class="mb-3">
     <label for="status" class="form-label">Filter by job Status:</label>
   <select name="status" onchange="this.form.submit()" class="form-select w-auto d-inline">
-  <option value="" {% if status == '' or not status %}selected{% endif %}>All jobs</option>
+  <option value="all" {% if status == 'all' or not status %}selected{% endif %}>All jobs</option>
   <option value="ready" {% if status == 'ready' %}selected{% endif %}>Ready</option>
   <option value="paused" {% if status == 'paused' %}selected{% endif %}>Paused</option>
   <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Cancelled</option>
