@@ -52,7 +52,7 @@
             Job ID: <a href="{% url 'update_job' job.job_id %}">{{ job.job_id }}</a> -
             <span class="badge status-{{ job.status }}">{{ job.get_status_display }}</span>
 {% if job.date %}
- <span style="font-size: small;"> <a href="http://127.0.0.1:8000/?status=&date={{ job.date|urlencode }}">{{ job.date }}</a></span>
+ <span style="font-size: small;"> <a href="http://127.0.0.1:8000/?status=all&date={{ job.date|urlencode }}">{{ job.date }}</a></span>
 {% endif %}
             {% if job.status != 'ready' and job.items_arrived and job.status != 'completed' and job|all_not_used %}
               <small class="job-hint green">Parts arrived, is this job ready?</small>

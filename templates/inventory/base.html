@@ -57,25 +57,20 @@
               <li class="nav-item">
                 <a class="nav-link fw-bold text-light" href="{% url 'create_job' %}">Add job</a>
               </li>
-              <li class="nav-item">
-                <a class="nav-link fw-bold text-light" href="{% url 'add_eng' %}">Add new engineer</a>
-              </li>
+
               <li class="nav-item">
                 <a class="nav-link fw-bold text-light" href="{% url 'warehouse' %}">Warehouse</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link fw-bold text-light" href="{% url 'item_add' True %}">Add item to the warehouse</a>
+                <a class="nav-link fw-bold text-light" href="{% url 'item_add' True %}">Add warehouse item</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link fw-bold text-light" href="{% url 'batch_entry' %}">Add many items to the warehouse</a>
+                <a class="nav-link fw-bold text-light" href="{% url 'batch_entry' %}">Bulk Add (Warehouse)</a>
               </li>
               <!-- Admin Panel -->
               {% if request.user|is_admin %}
                 <li class="nav-item">
-                  <a class="nav-link" href="{% url 'admin_panel' %}">Admin Panel</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="{% url 'register' %}">Add User</a>
+                  <a class="nav-link fw-bold text-light" href="{% url 'admin_panel' %}">Admin Panel</a>
                 </li>
               {% endif %}
 

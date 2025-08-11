@@ -1,10 +1,19 @@
 {% extends 'inventory/base.html' %}
 {% load static %}
 {% load custom_tags %}
+
 {% block body %}
   <div class="container mt-4">
     <h2 class="mb-4">Admin Panel</h2>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4 rounded shadow-sm">
+      <div class="container-fluid justify-content-center">
+        <a href="{% url 'history' %}" class="btn btn-outline-primary px-4 me-3">History</a>
+        <a href="{% url 'add_eng' %}" class="btn btn-outline-primary px-4 me-3">Add Engineer</a>
+        <a href="{% url 'register' %}" class="btn btn-outline-primary px-4 me-3">Add User</a>
+      </div>
+    </nav>
     <div class="row">
+      <!-- Admins -->
       <div class="col-md-4">
         <div class="card mb-4 shadow-sm">
           <div class="card-header bg-primary text-white">
@@ -27,6 +36,8 @@
           </ul>
         </div>
       </div>
+
+      <!-- Employees -->
       <div class="col-md-4">
         <div class="card mb-4 shadow-sm">
           <div class="card-header bg-success text-white">
@@ -49,6 +60,8 @@
           </ul>
         </div>
       </div>
+
+      <!-- Banned Users -->
       <div class="col-md-4">
         <div class="card mb-4 shadow-sm">
           <div class="card-header bg-danger text-white">
@@ -72,6 +85,8 @@
         </div>
       </div>
     </div>
+
+    <!-- All Users -->
     <div class="row">
       <div class="col-md-6">
         <div class="card mb-4 shadow-sm">
@@ -114,6 +129,8 @@
           </div>
         </div>
       </div>
+
+      <!-- Engineers -->
       <div class="col-md-6">
         <div class="card mb-4 shadow-sm">
           <div class="card-header bg-info text-white">
@@ -124,6 +141,7 @@
               <thead>
                 <tr>
                   <th>Name</th>
+                  <th style="width: 100px;">Edit</th>
                 </tr>
               </thead>
               <tbody>
@@ -132,10 +150,13 @@
                     <td>
                       <strong>{{ eng.name }}</strong>
                     </td>
+                    <td class="text-center">
+                      <a href="#" class="btn btn-sm btn-outline-dark">Edit ✏</a>
+                    </td>
                   </tr>
                 {% empty %}
                   <tr>
-                    <td class="text-muted">No engineers found.</td>
+                    <td colspan="2" class="text-muted">No engineers found.</td>
                   </tr>
                 {% endfor %}
               </tbody>
