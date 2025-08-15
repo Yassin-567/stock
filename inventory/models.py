@@ -212,7 +212,7 @@ class Item(models.Model):
     def __str__(self):
         return self.name
 class JobItem(models.Model):
-    
+    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="jobitem_company")
     job = models.ForeignKey(Job, on_delete=models.DO_NOTHING, related_name="items")
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="job_items")
     job_quantity = models.PositiveSmallIntegerField(default=0)  # How many needed for this job

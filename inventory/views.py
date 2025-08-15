@@ -115,7 +115,7 @@ def register_user(request):
             user.company = company
             # Ensure the user has a company before saving
             user.save()  # Save the user'
-            
+            save_history(request,form)
             messages.success(request, 'You have successfully registered a new user')
             return redirect('register')  # Redirect after successful registration
         else:
@@ -209,6 +209,7 @@ def add_category(request):
                 messages.error(request,f'A similar category exists: <span class="cat-highlight" style="color: rgb(230, 15, 15);">{exist_cat}</span>')
             except:
                 form.save()
+                save_history(request,form)
                 messages.success(request,f'Added <span class="cat-highlight" style="color: rgb(145, 34, 230);">{cat}</span> category successfully')
                    
            
@@ -240,6 +241,7 @@ def job_create(request):
                 job = form.save(commit=False)
                 job.company = request.user.company
                 job.save()
+                save_history(request,form)
                 messages.success(request, 'Job created successfully')
             else:
                 messages.error(request,"This job already exists")
@@ -273,7 +275,9 @@ def update_job(request, pk, cancel=0):
                 request.session['job_post_data'] = request.POST
                 return render(request,'inventory/confirm.html',{'items':li,'cancel_request':True,'job':job})
             job.status='cancelled'
+            job._current_user=request.user
             job.save(update_fields=['status'])
+            # save_history(request,form)
             messages.success(request,'Now this job is cancelled')
     if request.method=="POST":
         if 'yes_complete' in request.POST:
@@ -282,8 +286,9 @@ def update_job(request, pk, cancel=0):
             if post_data:
                 form = JobForm(post_data, instance=job, updating=True)
                 if form.is_valid():
-                    
-                    form.save()
+                    obj.form.save(commit=False)
+                    obj._current_user=request.user
+                    obj.save()
                     for item in job.items.all():
                         item.is_used=True
                         item.save(update_fields=['is_used'],dont_move_used=True)
@@ -300,7 +305,7 @@ def update_job(request, pk, cancel=0):
                     # Try to convert to float (or int if you want only integers)
                     quotation = float(quotation)
                     
-                    print("O")
+                    
                     if quotation <= 0:
                         raise ValueError("Quotation must be positive")
                 except (TypeError, ValueError):
@@ -336,8 +341,10 @@ def update_job(request, pk, cancel=0):
                     job.quoted=True
                 except:
                     pass
-                save_history(form,request)
-                form.save()
+                obj = form.save(commit=False)   # get the instance without saving
+                obj._current_user = request.user
+
+                obj.save()
                 form = JobForm(request.POST, instance=job,updating=True)
                 messages.success(request, 'Job updated successfully')
                 items=JobItem.objects.filter(job=job)
@@ -479,7 +486,7 @@ def item_add(request,pk=None,no_job=False):
                         reference=form.cleaned_data['reference']
                         category=form.cleaned_data['category']
                         if pk is not None:
-                            print("KJKJK")
+                            print("KJKJK2")
                             item=form.save(commit=False)
                             item.company=request.user.company
                             
@@ -490,6 +497,7 @@ def item_add(request,pk=None,no_job=False):
                             job=Job.objects.filter(company=request.user.company).get(job_id=pk)
 
                             JobItem.objects.create(item=item,
+                                                   company=request.user.company,
                                                 job=job,
                                                 job_quantity=job_quantity,
                                                 arrived_quantity=arrived_quantity,
@@ -498,6 +506,7 @@ def item_add(request,pk=None,no_job=False):
                                                 was_for_job=job,
                                                 category=category
                                                 )
+                            
                             #item.job = job
                             #item.save()
                             form=ItemForm(job=job)
@@ -542,6 +551,7 @@ def item_add(request,pk=None,no_job=False):
 @login_required
 def update_item(request, pk):
     item = JobItem.objects.get(Q(id=pk) & Q(job__company=request.user.company))
+  
     completed=item.job.status=='completed'
     
     form = JobItemForm(instance=item,)#,updating=True,completed=completed
@@ -558,13 +568,19 @@ def update_item(request, pk):
             next_url = request.POST.get('next')
             print(next_url)
             job_item = item
+            print("pp")
             
             if job_item.arrived_quantity>0:
                 job_item.is_used=True
                 # job_item.job.status='cancelled'
                 job_item.notes=''
-                job_item.save(dont_move_used=True,update_fields=['is_used','notes'])
-                job_item.job.save()#update_fields=['status']
+                print("SSSSSSSSSSSAAA")
+                job_item._current_user = request.user  # temporary attribute, not DB field
+                print('llk')
+                job_item.save()
+                
+                # job_item.job._current_user = request.user
+                # job_item.job.save(user=request.user)#update_fields=['status']
                 if next_url:
                     return redirect(next_url)
         elif 'yes_move' in request.POST:
@@ -706,7 +722,9 @@ def update_item(request, pk):
                     witem.save(update_fields=['warehouse_quantity'])
                     # else:
                     item=form.save(commit=False)
+                    save_history(request,form)
                     item.save()
+                    
                     
                 else:
                     witem=WarehouseItem.objects.get(item=item.item)
@@ -813,7 +831,9 @@ def update_warehouse_item(request, pk):
             # item.save(update_fields=['arrived_quantity','reference','name','price','supplier'],)#updating=True
             warehouse_quantity=form.cleaned_data['warehouse_quantity']
             warehouse_item.warehouse_quantity=warehouse_quantity
+            save_history(request,form)
             warehouse_item.save(update_fields=['warehouse_quantity','category'])
+            
             form = WarehouseitemForm( instance=warehouse_item,)
             messages.success(request,f'Item {warehouse_item} updated successfully')
             context = {'form': form,'warehouse_item': item,'comments_form':comments_form,"comments":comments}
@@ -879,10 +899,12 @@ def update_user(request, pk):
 
         return render(request, 'inventory/update_user.html',{'form':form,'editing':True,'changing_password':True})
     if request.method=='POST' and 'confirm_new_password' in request.POST:
+        print("PP")
         form=registerworker(request.POST,instance=worker,enable_edit=True,updating=True,changing_password=True)
         
         if form.is_valid():
-            print('fa')
+            
+            
             form.save()
             form=registerworker(instance=worker,enable_edit=False,updating=True,)
             messages.success(request,'Password changed successfully')
@@ -894,6 +916,7 @@ def update_user(request, pk):
     if request.method=='POST' and 'update' in request.POST:
         form=registerworker(request.POST,instance=worker,enable_edit=True,updating=True,)
         if form.is_valid():
+
             
             email=form.cleaned_data['email']
             if email!=request.user.email:
@@ -902,6 +925,7 @@ def update_user(request, pk):
                 request.session['register_email'] = email
                 
                 otp=generate_otp()
+                
                 request.session['otp_generated_at']=time.time()
                 request.session['user_updating_otp']=otp
                 send_otp_email(email,otp)
@@ -1154,6 +1178,7 @@ def engineer(request):
                 ex=False
             if not ex:
                 eng.company=request.user.company
+                save_history(request,eng,)
                 eng.save()
                 messages.success(request,f"Engineer {eng.name} is added")
             else:
@@ -1166,16 +1191,13 @@ def search_view(request):
 def create_batch_items(request):
     if request.method == 'POST':
         cat_val = request.POST.get('category')
-        print("VAL",cat_val)
         if cat_val:
             try:
                 cat_obj = category.objects.get(category__icontains=cat_val)
                 messages.error(request,f'exist similar {cat_obj}')
-                print("1")
             except category.DoesNotExist:
                 # fallback to Others if not found
                 cat_obj, _ = category.objects.get_or_create(company=request.user.company, category=cat_val)
-                print('2')
         else:
             cat_obj, _ = category.objects.get_or_create(company=request.user.company, category='Others')
             
@@ -1191,7 +1213,9 @@ def create_batch_items(request):
         }
         
         # Save to database
+        
         item=Item.objects.create(**item_data)
+
 
         try:
             

@@ -21,7 +21,7 @@
                 <option value="{{ m }}" {% if model == m %}selected{% endif %}>{{ m }}</option>
             {% endfor %} {% endcomment %}
         </select>
-    {{selected_user_id}}
+
     <label for="user" class="form-label">Filter by user:</label>
     <select name="user_id" onchange="this.form.submit()" class="form-select w-auto d-inline">
        
