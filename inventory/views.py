@@ -47,7 +47,7 @@ def forgot_password(request):
         if form.is_valid():
             new_password=form.cleaned_data['password']
             user.set_password(new_password)
-            user.save(update_fields=['password'])
+            user.save(update_fields=['password'],)
             for k in ['register_email','password_otp','verifying','allow_password_change','otp_generated_at']:
             
                 request.session.pop(k,None)
@@ -114,8 +114,9 @@ def register_user(request):
             company = Company.objects.get(id=request.user.company.id)
             user.company = company
             # Ensure the user has a company before saving
-            user.save()  # Save the user'
-            save_history(request,form)
+            
+            user.save(request=request)  # Save the user'
+            
             messages.success(request, 'You have successfully registered a new user')
             return redirect('register')  # Redirect after successful registration
         else:
@@ -170,13 +171,13 @@ def inventory(request,pk=None):
         else:
             messages.error(request, "Please select a date before sending emails.")
 
-    if request.method=='POST' and "reset_notes" in request.POST:
+    if request.method=='POST' and "reset_was_it_used" in request.POST:
         jobitem=JobItem.objects.get(id=pk)
         # item=Item.objects.get(id=jobitem.item.id)
-        jobitem.notes=None
+        jobitem.was_it_used=False
         jobitem.is_used=False
-        jobitem.save(update_fields=['is_used','notes'])
-        jobitem.job.save(update_fields=['status','items_arrived'])
+        jobitem.save(update_fields=['is_used','was_it_used'],request=request)
+        jobitem.job.save(update_fields=['status','items_arrived'],request=request)
         print("STAT",status)
         return render(request,'inventory/inventory.html',{
             
@@ -240,8 +241,8 @@ def job_create(request):
             if not jobi:
                 job = form.save(commit=False)
                 job.company = request.user.company
-                job.save()
-                save_history(request,form)
+                job.save(request=request)
+                
                 messages.success(request, 'Job created successfully')
             else:
                 messages.error(request,"This job already exists")
@@ -342,9 +343,8 @@ def update_job(request, pk, cancel=0):
                 except:
                     pass
                 obj = form.save(commit=False)   # get the instance without saving
-                obj._current_user = request.user
-
-                obj.save()
+                
+                obj.save(request=request)
                 form = JobForm(request.POST, instance=job,updating=True)
                 messages.success(request, 'Job updated successfully')
                 items=JobItem.objects.filter(job=job)
@@ -443,19 +443,21 @@ def item_add(request,pk=None,no_job=False):
         
                     if item.warehouse_quantity>0 and item.warehouse_quantity>= required_quantity:
                        
-                            JobItem.objects.create(
+                            x=JobItem(
                             job=job,
                             from_warehouse=True, #if item.is_moved_from_job==None else False,
                             item=item.item,
+                            company=request.user.company,
                             arrived=True,
                             job_quantity=+required_quantity,
                             arrived_quantity=+required_quantity,
                             category=item.category,
                             was_for_job=item.is_moved_from_job if item.is_moved_from_job else None
                             )
+                            x.save(request=request)
                             item.warehouse_quantity=item.warehouse_quantity-required_quantity
                             # item_save(item)
-                            item.save(update_fields=['warehouse_quantity'])#
+                            item.save(update_fields=['warehouse_quantity'],request=request)#
                             if item.warehouse_quantity==0:
                                 #item.delete()
                                 print('deleting2')
@@ -466,7 +468,10 @@ def item_add(request,pk=None,no_job=False):
                         return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'show_stock':True})
             except IntegrityError:
                 messages.error(request,"Failed")
-            
+                form=ItemForm(job=job)
+                warehouse_items=warehouse_items
+                return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'show_stock':True})
+
             messages.success(request, 'Item added from stock successfully')
             form=ItemForm(job=job)
             warehouse_items=warehouse_items
@@ -492,11 +497,11 @@ def item_add(request,pk=None,no_job=False):
                             
                             item.added_by=request.user
                             
-                            item.save()
+                            item.save(request=request,dont_save_history=True)
                             
                             job=Job.objects.filter(company=request.user.company).get(job_id=pk)
 
-                            JobItem.objects.create(item=item,
+                            job_item=JobItem(item=item,
                                                    company=request.user.company,
                                                 job=job,
                                                 job_quantity=job_quantity,
@@ -506,6 +511,7 @@ def item_add(request,pk=None,no_job=False):
                                                 was_for_job=job,
                                                 category=category
                                                 )
+                            job_item.save(request=request)
                             
                             #item.job = job
                             #item.save()
@@ -550,10 +556,12 @@ def item_add(request,pk=None,no_job=False):
     return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items})
 @login_required
 def update_item(request, pk):
+    # import random
+    # import string
     item = JobItem.objects.get(Q(id=pk) & Q(job__company=request.user.company))
-  
+    # item.reference=random.choices(string.ascii_uppercase  + string.digits, k=6)
+    # item.save(request=request)
     completed=item.job.status=='completed'
-    
     form = JobItemForm(instance=item,)#,updating=True,completed=completed
     comments_form=CommentForm(initial={
         'content_type': ContentType.objects.get_for_model(JobItem),
@@ -573,10 +581,8 @@ def update_item(request, pk):
             if job_item.arrived_quantity>0:
                 job_item.is_used=True
                 # job_item.job.status='cancelled'
-                job_item.notes=''
-                print("SSSSSSSSSSSAAA")
+                job_item.was_it_used=False
                 job_item._current_user = request.user  # temporary attribute, not DB field
-                print('llk')
                 job_item.save()
                 
                 # job_item.job._current_user = request.user
@@ -682,7 +688,7 @@ def update_item(request, pk):
                 if not job_item.from_warehouse or create_new :
                     job=job_item.was_for_job if job_item.was_for_job else job
                     # Create WarehouseItem
-                    WarehouseItem.objects.create(
+                    x=WarehouseItem(
                         item=job_item.item,
                         warehouse_quantity=job_item.arrived_quantity,
                         reference=job_item.reference,
@@ -691,6 +697,7 @@ def update_item(request, pk):
                         #is_used=job_item.is_used,
                         is_moved_from_job=job if job_item.was_for_job else None  ,   
                     )
+                    x.save(request=request)
                     
                 else:
                 
@@ -722,8 +729,8 @@ def update_item(request, pk):
                     witem.save(update_fields=['warehouse_quantity'])
                     # else:
                     item=form.save(commit=False)
-                    save_history(request,form)
-                    item.save()
+                    
+                    item.save(request=request)
                     
                     
                 else:
@@ -734,7 +741,7 @@ def update_item(request, pk):
                     return render(request, 'inventory/update_item.html', context)
             else:
                 item=form.save(commit=False)
-                item.save()
+                item.save(request=request)
                 
 
             form = JobItemForm( instance=item,)#request.POST, request.FILES,updating=True
@@ -751,9 +758,13 @@ def history(request):
     selected_user_id = request.GET.get('user_id', 'all')
     date = request.GET.get('date', 'all')
     users=CustomUser.objects.filter(company=company)
-
-    if request.method=='GET' and 'model' in request.GET:
+    try:
         model=request.GET['model']
+    except:
+        pass
+    if request.method=='GET' and 'model' in request.GET and model!='all':
+        model=model
+        
         history=History.objects.filter(company=company, content_type__model='job').order_by('-changed_at')
     else:
         model='all'
@@ -1094,25 +1105,37 @@ def verify_otp(request) :
                 ):
             
             with transaction.atomic():
-                try:
+                # try:
                     company_data = request.session.get('company_data')
                     user_data = request.session.get('user_data').copy()  # Make a copy so we can modify safely
                     user_data.pop('password2', None)  # Remove password2 if it exists
                     
                     user_data['password'] = make_password(user_data['password'])
-                    company = Company.objects.create(**company_data)
-                    user = CustomUser.objects.create(company=company, **user_data)
+                    company = Company(**company_data,)
+                    company.save(dont_save_history=True)
+                    user = CustomUser(company=company, **user_data,)
+                    user.save(dont_save_history=True)
                     user.is_owner=True
                     company.owner=user
-                    company.save(update_fields=['owner'])
-                    user.save(update_fields=['is_owner'])
+                    company.save(update_fields=['owner'],dont_save_history=True)
+                    user.save(update_fields=['is_owner'],dont_save_history=True)
+                    History.objects.create(
+                    content_type=ContentType.objects.get_for_model(company),
+                    object_id=company.pk,  # now PK is available
+                    company=company,
+                    field="",
+                    old_value="",
+                    new_value="",
+                    user=user ,
+                    created=True
+                    )
                     # Optionally log the user in
                     request.session.flush()
 
                     messages.success(request,'Company created successfully')
                     return redirect('login')
-                except:
-                    messages.error(request,'Failed creating company. Try again')
+                # except:
+                #     messages.error(request,'Failed creating company. Try again')
         else:
             messages.error(request,"Wrong OTP. Try again")
     left_time = otp_expiry_seconds - (time.time() - otp_generated_at) 

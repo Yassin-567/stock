@@ -1,3 +1,4 @@
 1-ADD the allowd_fields in signal
 2-fix the "u get the item back", add to warehouse?
 3-Apply History to all
+5-Need to add history for moving items from and to warehouse in a way that is more informative

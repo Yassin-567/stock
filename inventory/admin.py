@@ -23,10 +23,12 @@ class JobItemAdmin(admin.ModelAdmin):
     list_display = ('id', 'item__part_number')
 class WarehouseItemAdmin(admin.ModelAdmin):
     list_display = ('item','id',  )
+class JobAdmin(admin.ModelAdmin):
+    list_display = ('address','id',  )
 admin.site.register(JobItem,JobItemAdmin)
 admin.site.register(WarehouseItem,WarehouseItemAdmin)
     
-admin.site.register(Job,  )
+admin.site.register(Job, JobAdmin )
 admin.site.register(Email,  )
 admin.site.register(CompanySettings,  )
 

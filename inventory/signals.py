@@ -1,26 +1,38 @@
 # your_app/signals.py
 
-from django.db.models.signals import pre_save
+from django.db.models.signals import pre_save,post_save
 from django.dispatch import receiver
 from django.contrib.contenttypes.models import ContentType
-from .models import History
-
+from .models import History,Company,CustomUser,Job,category,JobItem,WarehouseItem
+from django.contrib.sessions.models import Session
 @receiver(pre_save)
-def log_model_changes(sender, instance, **kwargs):
-    
+def log_model_changes(sender, instance,**kwargs):
+
     # Avoid logging History model changes to prevent recursion
+    if sender == Session:
+        return
     if sender == History:
         return
-
-    # Skip models without a company field (customize if needed)
     
+    # Skip models without a company field (customize if needed)
+    try:
+        if instance.dont_save_history:
+            return
+    except:
+        pass
     if not hasattr(instance, "company") :
         return
+    
 
     # Only track existing objects (updates)
-    
+    try:
+        x=instance.request
+        x=instance.request.user
+    except:
+        return
     if not instance.pk:
         return
+    
 
     try:
         old_instance = sender.objects.get(pk=instance.pk)
@@ -31,22 +43,28 @@ def log_model_changes(sender, instance, **kwargs):
     changed_fields = []
     old_values = []
     new_values = []
+
     allowed_fields=['']
-    print("222",instance)
     for field in instance._meta.fields:
-        print(field)
+        
         field_name = field.name
-        if field_name in allowed_fields:
+        
+        if field_name  :
+            
             old_value = getattr(old_instance, field_name)
             new_value = getattr(instance, field_name)
             if old_value != new_value:
                 changed_fields.append(field_name)
                 old_values.append(str(old_value))
                 new_values.append(str(new_value))
-
+    
+    try:
+        changed_fields.remove("last_login")
+    except:
+        pass
     if changed_fields:
-        print(instance)
-        user = getattr(instance, "_current_user", None)
+        
+        user = instance.request.user#getattr(instance, "_current_user", None)
         if not user:
             raise ValueError("No current user set on instance before saving!") 
         History.objects.create(
@@ -56,5 +74,50 @@ def log_model_changes(sender, instance, **kwargs):
             field=", ".join(changed_fields),
             old_value=", ".join(old_values),
             new_value=", ".join(new_values),
-            user=getattr(instance, "_current_user", None)  # Set in views if you want
+            user=user#getattr(instance, "_current_user", None)  # Set in views if you want
+        )
+@receiver(post_save)
+def log_model_creation(sender, created,instance, **kwargs):
+    """Track new objects (after save, when PK is available)."""
+    print(sender,instance)
+    allowed_models=[History,CustomUser,Job,category,JobItem,WarehouseItem,Company]
+    if sender not in allowed_models :
+        return
+    if not created:
+        return
+    try:
+        x=instance.request
+        x=instance.request.user
+    except:
+        return
+    
+    # try:
+    #     x=sender.objects.get(pk=instance.pk)
+    #     created=False
+    #     print('created2',created,x)
+    #     return
+    # except:
+    #     created=True
+    #     print('created',created)
+    try:
+        if instance.dont_save_history:
+            return
+    except:
+        pass
+    if sender==Company:
+        user=instance.owner
+    else :
+        user=instance.request.user
+    print('user',user)
+    if  instance.request :
+        print("PASSED")
+        History.objects.create(
+            content_type=ContentType.objects.get_for_model(instance),
+            object_id=instance.pk,  # now PK is available
+            company=getattr(instance, "company", instance),
+            field="",
+            old_value="",
+            new_value="",
+            user=user ,
+            created=True
         )

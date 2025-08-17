@@ -317,12 +317,13 @@ class JobItemForm(forms.ModelForm):
     class Meta:
         model=JobItem
         fields='__all__'
-        exclude=['job','from_warehouse','is_used','status','was_for_job','added_by','notes']
+        exclude=['job','from_warehouse','is_used','status','was_for_job','added_by','was_it_used','company']
         widgets={'reference':forms.Textarea(attrs={'rows':1}),}
     def __init__(self, *args,**kwargs):
         super().__init__(*args, **kwargs)
         self.fields['item'].widget=forms.HiddenInput()
         self.fields['job_quantity'].label='Required quantity'
+
         if self.instance.is_used or self.instance.job.status=='completed' :
             for field in self.fields.values():
                 field.widget.attrs['class'] = 'faded-input'

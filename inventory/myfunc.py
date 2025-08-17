@@ -45,14 +45,13 @@ def items_not_used(self):
 
 def job_reopened(self,):
     if self.pk:
-        old_status = None
         old_instance = type(self).objects.get(pk=self.pk)
         old_status = old_instance.status
         if self.status != "completed" and old_status == "completed" and self.status != "cancelled" :
                 for item in self.items.all():
                     if item.is_used:
-                        item.notes='Job was completed then reopened, double check if the item still exists.'
-                        item.save(update_fields=['notes'],no_recursion=True)
+                        item.was_it_used=True
+                        item.save(update_fields=['was_it_used'],no_recursion=True,request=None)
                 return True
         return False
 def item_arrived(self):
@@ -73,7 +72,7 @@ def job_completed(self,):
     if self.status=='completed':
         for item in self.items.all():
             item.is_used=True
-            item.save(update_fields=['is_used'],no_recursion=True)
+            item.save(update_fields=['is_used'],no_recursion=True,request=None)
         
         return True
     return False

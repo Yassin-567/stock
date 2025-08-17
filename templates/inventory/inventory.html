@@ -110,16 +110,16 @@
                   <span class="tag not-ordered">Not ordered</span>
                 {% endif %}
 
-                {% if jobitem.notes and job.status != 'completed' %}
-                  <small>{{ jobitem.notes }}</small>
+                {% if jobitem.was_it_used and job.status != 'completed' %}
+                  <small>The job was reopened, do you still have the part?</small>
                   <form action="{% url 'inventory' jobitem.id %}" method="POST" class="inline-form">
                     {% csrf_token %}
-                    <button name="reset_notes" type="submit" class="btn btn-danger">It's not used</button>
+                    <button name="reset_was_it_used" type="submit" class="btn btn-danger">It's not used</button>
                   </form>
                 {% endif %}
 
                 {% if jobitem.item.is_used %}
-                  <span class="tag used-info">Used</span> {{ item.notes }}
+                  <span class="tag used-info">Used</span> {% if jobitem.was_it_used %}{% endif %}
                 {% endif %}
               </li>
             {% empty %}

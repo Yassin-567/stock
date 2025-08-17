@@ -63,16 +63,18 @@
                                 <small class="text-muted">#{{ h.object_id }}</small>
                             </h5>
                             <h6 class="card-subtitle mb-2 text-muted">
-                                Changed by <strong>{{ h.user }}</strong>  
+                                {% if h.created %}
+                                Created by <strong>{{ h.user }}</strong>{% else %}Changed by <strong>{{ h.user }}</strong>  {% endif %}
                                 <br>
                                 <small>At: {{ h.changed_at|date:'Y-m-d H:i' }}</small>
-                            </h6>
+                            </h6>{% if not h.created %}
                             <p class="mb-1">
                                 <strong>Field:</strong> {{ h.field }}
                             </p>
+                            
                             <p class="text-danger mb-1"><strong>Old:</strong> {{ h.old_value|default:"(empty)" }}</p>
                             <p class="text-success mb-1"><strong>New:</strong> {{ h.new_value|default:"(empty)" }}</p>
-                        </div>
+                        {% endif %}</div>
                     </div>
                 </div>
             {% endfor %}

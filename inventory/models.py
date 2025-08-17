@@ -51,7 +51,10 @@ class Company(models.Model):
     company_email = models.EmailField(unique=True)
     address=models.TextField()
     phone=models.CharField(max_length=15)
-    
+    def save(self,*args,request=None,dont_save_history=False,**kwargs):
+        self.request=request
+        self.dont_save_history=dont_save_history
+        super().save()
     
     def __str__(self):
         return self.company_name +" ("+ str(self.id)+") "
@@ -91,7 +94,7 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = ['username',]
     USERNAME_FIELD = 'email'
     verbose_name='User'
-    def save(self,*args, **kwargs):
+    def save(self,*args,request=None,dont_save_history=False,**kwargs):
         if self.is_banned:
             self.is_admin=False
             self.is_employee=False
@@ -104,6 +107,8 @@ class CustomUser(AbstractUser):
         else:
             self.is_admin=False
             self.is_employee=True
+        self.request=request
+        self.dont_save_history=dont_save_history
         super().save()
     def __str__(self):
         return self.username +" ("+ str(self.id)+") "
@@ -151,7 +156,8 @@ class Job(models.Model):
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
-    def save(self,*args, **kwargs):
+    def save(self,*args, request,**kwargs):
+        self.request=request
         job_reopened(self,)
         if not job_completed(self,) and  self.status!='cancelled':
             print('ppoo')
@@ -204,7 +210,9 @@ class Item(models.Model):
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     ordered=models.BooleanField(default=False)
     category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="item_category", null=True,blank=True )
-    def save(self, *args, **kwargs):
+    def save(self, *args, request,dont_save_history=False,**kwargs):
+        self.request=request
+        self.dont_save_history=dont_save_history
         if not self.category and self.company.id:
             self.category, _ = category.objects.get_or_create(company=self.company, category='Others')
         super().save(*args, **kwargs)
@@ -223,18 +231,20 @@ class JobItem(models.Model):
     arrived=models.BooleanField(default=False)
     is_used=models.BooleanField(default=False)
     from_warehouse=models.BooleanField(default=False)
-    notes=models.TextField(null=True, blank=True)
+    was_it_used=models.BooleanField(default=False)
     was_for_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="moveditems")
     category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="jobitem_category", null=True, )
 
-    def save(self,*args, dont_move_used=False,no_recursion=False,**kwargs):
+    def save(self,*args, dont_move_used=False,no_recursion=False,request,**kwargs):
+        self.request=request
         item_arrived(self)
         if not self.category and self.job.id:
             self.category, _ = category.objects.get_or_create(company=self.job.company, category='Others')
-
+        
         super().save(*args, **kwargs)
         if not dont_move_used and not no_recursion:
-            self.job.save(update_fields=['status','items_arrived'],)
+            
+            self.job.save(update_fields=['status','items_arrived'],request=self.request)
             
     def __str__(self):
         return str(self.item.name)
@@ -249,7 +259,8 @@ class WarehouseItem(models.Model):
     is_used=models.BooleanField(default=False)
     is_moved_from_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="warehousemoveditems")
     category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="warehouse_category", null=True, )
-    def save(self, *args, **kwargs):
+    def save(self, *args,request, **kwargs):
+        self.request=request
         if not self.category and self.company.id:
             print("TTT")
             self.category, _ = category.objects.get_or_create(company=self.company, category='Others')
@@ -285,3 +296,4 @@ class History(models.Model):
     new_value = models.TextField(null=True, blank=True)
     changed_at = models.DateTimeField(auto_now_add=True)
     user=models.ForeignKey(CustomUser,on_delete=models.DO_NOTHING,related_name="user_history")
+    created=models.BooleanField(default=False)
