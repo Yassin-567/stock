@@ -16,7 +16,8 @@
         <label for="model" class="form-label">Filter by model:</label>
         <select name="model" onchange="this.form.submit()" class="form-select w-auto d-inline">
             <option value="all" {% if not model or model == 'all' %}selected{% endif %}>All</option>
-            <option value="job" {% if model == 'job' %}selected{% endif %}>Jobs</option>
+            {% for model_filter in models_filter  %}
+            <option value="{{model_filter}}" {% if model|stringformat:"s" == model_filter %}selected{% endif %}>{{model_filter}}</option>{% endfor %}
             {% comment %} {% for m in model_list %}
                 <option value="{{ m }}" {% if model == m %}selected{% endif %}>{{ m }}</option>
             {% endfor %} {% endcomment %}

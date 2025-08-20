@@ -1,5 +1,5 @@
 from django import forms
-from .models import CustomUser, Item, Company,Job,Comment,WarehouseItem,JobItem,Engineer,category,CompanySettings
+from .models import CustomUser, Item, Company,Job,Comment,WarehouseItem,JobItem,Engineer,Category,CompanySettings
 from django.contrib.auth.models import Group
 from django.forms import HiddenInput
 from django.db.models import Q
@@ -144,17 +144,20 @@ class registerworker(forms.ModelForm):
         return cleaned_data
     
         
-    def save(self, commit=True):
+    def save(self, request=None,commit=True):
+        self.request=request
         user = super().save(commit=False)
         
         # user.set_password(self.cleaned_data['password'])
         if commit:
-            user.save()
+            user.save(request=request)
         return user
-    def __init__(self,*args, enable_edit=False,updating=False,changing_password=False,**kwargs):
+    def __init__(self,*args,request=None, enable_edit=False,updating=False,changing_password=False,**kwargs):
         
         super().__init__(*args, **kwargs)
-        if not self.instance.is_owner or self.instance.is_admin:
+        if enable_edit and updating:
+            del self.fields['permission']
+        if not self.instance.is_owner or self.instance.is_admin or(request and self.instance==request.user):
             del self.fields['permission']
         if updating and not changing_password:
             del self.fields['password']
@@ -387,7 +390,7 @@ class EngineerForm(forms.ModelForm):
 
 class CategoriesForm(forms.ModelForm):
     class Meta:
-        model = category
+        model = Category
         fields = ['category']
         widgets = {
             'category': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Category Name'}),

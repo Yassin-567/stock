@@ -156,8 +156,9 @@ class Job(models.Model):
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
-    def save(self,*args, request,**kwargs):
+    def save(self,*args, request,dont_save_history=False,**kwargs):
         self.request=request
+        self.dont_save_history=dont_save_history
         job_reopened(self,)
         if not job_completed(self,) and  self.status!='cancelled':
             print('ppoo')
@@ -191,9 +192,12 @@ CHOICES=[
         (' ','')
         
     ]
-class category(models.Model):
+class Category(models.Model):
     category=models.CharField(max_length=40,unique=True)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="category_company")
+    def save(self,request,*args, **kwargs):
+        self.request=request
+        super().save()
     def __str__(self):
         return self.category
 class Item(models.Model):    
@@ -209,12 +213,12 @@ class Item(models.Model):
     required_quantity=models.PositiveSmallIntegerField(default=0)
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     ordered=models.BooleanField(default=False)
-    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="item_category", null=True,blank=True )
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="item_category", null=True,blank=True )
     def save(self, *args, request,dont_save_history=False,**kwargs):
         self.request=request
         self.dont_save_history=dont_save_history
         if not self.category and self.company.id:
-            self.category, _ = category.objects.get_or_create(company=self.company, category='Others')
+            self.category, _ = Category.objects.get_or_create(company=self.company, category='Others')
         super().save(*args, **kwargs)
     #notes=models.TextField(null=True, blank=True)
     def __str__(self):
@@ -233,18 +237,20 @@ class JobItem(models.Model):
     from_warehouse=models.BooleanField(default=False)
     was_it_used=models.BooleanField(default=False)
     was_for_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="moveditems")
-    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="jobitem_category", null=True, )
-
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="jobitem_category", null=True, )
+    def delete(self, request=None):
+        self._request = request  
+        return super().delete()
     def save(self,*args, dont_move_used=False,no_recursion=False,request,**kwargs):
         self.request=request
         item_arrived(self)
         if not self.category and self.job.id:
-            self.category, _ = category.objects.get_or_create(company=self.job.company, category='Others')
+            self.category, _ = Category.objects.get_or_create(company=self.job.company, category='Others')
         
         super().save(*args, **kwargs)
         if not dont_move_used and not no_recursion:
             
-            self.job.save(update_fields=['status','items_arrived'],request=self.request)
+            self.job.save(update_fields=['status','items_arrived'],request=self.request,dont_save_history=True)
             
     def __str__(self):
         return str(self.item.name)
@@ -258,15 +264,16 @@ class WarehouseItem(models.Model):
     reference=models.TextField(blank=True,null=True,max_length=40)
     is_used=models.BooleanField(default=False)
     is_moved_from_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="warehousemoveditems")
-    category = models.ForeignKey(category, on_delete=models.CASCADE, related_name="warehouse_category", null=True, )
-    def save(self, *args,request, **kwargs):
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="warehouse_category", null=True, )
+    def save(self, *args,request, dont_save_history=False,**kwargs):
         self.request=request
+        self.dont_save_history=dont_save_history
         if not self.category and self.company.id:
-            print("TTT")
-            self.category, _ = category.objects.get_or_create(company=self.company, category='Others')
+           
+            self.category, _ = Category.objects.get_or_create(company=self.company, category='Others')
         
         super().save(*args, **kwargs)
-        print(self.category)
+        
     def __str__(self):
         return str(self.item.name)
 
@@ -297,3 +304,4 @@ class History(models.Model):
     changed_at = models.DateTimeField(auto_now_add=True)
     user=models.ForeignKey(CustomUser,on_delete=models.DO_NOTHING,related_name="user_history")
     created=models.BooleanField(default=False)
+    

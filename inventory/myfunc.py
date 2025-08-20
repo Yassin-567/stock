@@ -77,8 +77,6 @@ def job_completed(self,):
         return True
     return False
 
-import random
-
 
 def generate_otp():
     import random

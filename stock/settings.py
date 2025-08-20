@@ -169,7 +169,7 @@ AUTH_USER_MODEL = 'inventory.CustomUser'
 # settings.py
 TIME_ZONE = 'Africa/Cairo'  # Set to your correct timezone
 USE_TZ = True  # Keep this enabled for consistent behavior
-import sys
+#import sys
 
 # If running migrate or makemigrations, don’t use any routers
 # if any(cmd in sys.argv for cmd in ['migrate', 'makemigrations', 'collectstatic', 'createsuperuser']):

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser , Company , Job,Item,Comment,JobItem,WarehouseItem,Engineer,category,CompanySettings,Email,History
+from .models import CustomUser , Company , Job,Item,Comment,JobItem,WarehouseItem,Engineer,Category,CompanySettings,Email,History
 # Register your model here.
 class ItemAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', )
@@ -12,7 +12,7 @@ class ItemAdmin(admin.ModelAdmin):
 # admin.site.register(Job, )
 admin.site.register(Item, ItemAdmin)
 admin.site.register(Engineer, )
-admin.site.register(category, )
+admin.site.register(Category, )
 admin.site.register(History, )
 # admin.site.register(JobItem, )
 # admin.site.register(CustomUser,CustomUserAdmin)

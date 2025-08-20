@@ -26,6 +26,7 @@
   <section class="form-section">
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
+
       {% if not editing %}
         <div class="form-group">
           <button type="submit" name="edit" class="btn-submit">Edit</button>
@@ -36,6 +37,9 @@
           <button type="submit" name="change_password" class="btn-submit">change password</button>
         </div>
       {% endif %}
+    </form>
+    <form action="" method="POST" enctype="multipart/form-data" class="form-container">
+      {% csrf_token %}
 
       <div class="form-group">{{ form.as_p }}</div>
 

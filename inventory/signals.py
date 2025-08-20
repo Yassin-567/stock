@@ -1,15 +1,16 @@
 # your_app/signals.py
 
-from django.db.models.signals import pre_save,post_save
+from django.db.models.signals import pre_save,post_save,post_delete
 from django.dispatch import receiver
 from django.contrib.contenttypes.models import ContentType
-from .models import History,Company,CustomUser,Job,category,JobItem,WarehouseItem
+from .models import History,Company,CustomUser,Job,Category,JobItem,WarehouseItem
 from django.contrib.sessions.models import Session
 @receiver(pre_save)
 def log_model_changes(sender, instance,**kwargs):
-
+    
     # Avoid logging History model changes to prevent recursion
     if sender == Session:
+        
         return
     if sender == History:
         return
@@ -22,7 +23,7 @@ def log_model_changes(sender, instance,**kwargs):
         pass
     if not hasattr(instance, "company") :
         return
-    
+    print("OPIII")
 
     # Only track existing objects (updates)
     try:
@@ -36,20 +37,19 @@ def log_model_changes(sender, instance,**kwargs):
 
     try:
         old_instance = sender.objects.get(pk=instance.pk)
-        
+        print('lll',old_instance)
     except sender.DoesNotExist:
         return  # Object doesn't exist yet, skip
 
     changed_fields = []
     old_values = []
     new_values = []
-
-    allowed_fields=['']
+    allowed_fields=['job_quantity','arrived_quantity','is_used','category','warehouse_quantity','reference','address','is_banned','is_employee','is_admin','is_owner','permission','username','phone','email','name','to_time','from_time','date','post_code','parent_account','engineer','quotation','status','reference','job']
     for field in instance._meta.fields:
         
         field_name = field.name
         
-        if field_name  :
+        if field_name and field_name in allowed_fields :
             
             old_value = getattr(old_instance, field_name)
             new_value = getattr(instance, field_name)
@@ -80,7 +80,7 @@ def log_model_changes(sender, instance,**kwargs):
 def log_model_creation(sender, created,instance, **kwargs):
     """Track new objects (after save, when PK is available)."""
     print(sender,instance)
-    allowed_models=[History,CustomUser,Job,category,JobItem,WarehouseItem,Company]
+    allowed_models=[History,CustomUser,Job,Category,JobItem,WarehouseItem,Company]
     if sender not in allowed_models :
         return
     if not created:
@@ -121,3 +121,31 @@ def log_model_creation(sender, created,instance, **kwargs):
             user=user ,
             created=True
         )
+@receiver(post_delete)
+def log_model_deletion(sender, instance, **kwargs):
+    allowed_models = [CustomUser, Job, Category, JobItem, WarehouseItem, Company]
+    if sender not in allowed_models:
+        return
+    
+    try:
+        user = instance.request.user
+    except Exception:
+        user = None
+    
+    if not user:
+        return
+    
+    History.objects.create(
+        content_type=ContentType.objects.get_for_model(instance),
+        object_id=instance.pk,
+        company=getattr(instance, "company", instance),
+        field="__deleted__",
+        old_value=str(instance),  # snapshot of what was deleted
+        new_value="",
+        user=user,
+        created=False
+    )
+
+
+
+
