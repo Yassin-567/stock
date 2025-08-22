@@ -43,30 +43,11 @@
               </li>
 
               <!-- Company Info -->
-              {% if request.user.company %}
-                {% if request.user|is_owner %}
-                  <li class="nav-item">
-                    <a class="nav-link fw-bold text-light" href="{% url 'update_company' %}">{{ request.user.company.company_name }}</a>
-                  </li>
-                {% else %}
-                  <li class="nav-item">
-                    <a class="nav-link fw-bold text-light" href="{% url 'update_company' %}">{{ request.user.company.company_name }}</a>
-                  </li>
-                {% endif %}
-              {% endif %}
-              <li class="nav-item">
-                <a class="nav-link fw-bold text-light" href="{% url 'create_job' %}">Add job</a>
-              </li>
 
               <li class="nav-item">
                 <a class="nav-link fw-bold text-light" href="{% url 'warehouse' %}">Warehouse</a>
               </li>
-              <li class="nav-item">
-                <a class="nav-link fw-bold text-light" href="{% url 'item_add' True %}">Add warehouse item</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link fw-bold text-light" href="{% url 'batch_entry' %}">Bulk Add (Warehouse)</a>
-              </li>
+
               <!-- Admin Panel -->
               {% if request.user|is_admin %}
                 <li class="nav-item">

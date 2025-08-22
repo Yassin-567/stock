@@ -44,6 +44,10 @@
       altFormat: 'F j, Y'
     })
   </script>
+
+                <a  class="btn btn-primary px-4 me-3" href="{% url 'create_job' %}">Add job</a>
+              
+
   {% if rjobs %}
     {% for job in rjobs %}
       <div class="card mb-4 shadow-sm">

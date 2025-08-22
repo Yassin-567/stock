@@ -3,7 +3,7 @@
 from django.db.models.signals import pre_save,post_save,post_delete
 from django.dispatch import receiver
 from django.contrib.contenttypes.models import ContentType
-from .models import History,Company,CustomUser,Job,Category,JobItem,WarehouseItem
+from .models import History,Company,CustomUser,Job,Category,JobItem,WarehouseItem,Engineer
 from django.contrib.sessions.models import Session
 @receiver(pre_save)
 def log_model_changes(sender, instance,**kwargs):
@@ -80,7 +80,7 @@ def log_model_changes(sender, instance,**kwargs):
 def log_model_creation(sender, created,instance, **kwargs):
     """Track new objects (after save, when PK is available)."""
     print(sender,instance)
-    allowed_models=[History,CustomUser,Job,Category,JobItem,WarehouseItem,Company]
+    allowed_models=[History,CustomUser,Job,Category,JobItem,Engineer,WarehouseItem,Company]
     if sender not in allowed_models :
         return
     if not created:
@@ -123,7 +123,8 @@ def log_model_creation(sender, created,instance, **kwargs):
         )
 @receiver(post_delete)
 def log_model_deletion(sender, instance, **kwargs):
-    allowed_models = [CustomUser, Job, Category, JobItem, WarehouseItem, Company]
+    
+    allowed_models = [CustomUser, Job, Category, JobItem, WarehouseItem,Engineer, Company]
     if sender not in allowed_models:
         return
     

@@ -1,7 +1,9 @@
 from django import template
-from inventory.models import JobItem
+from inventory.models import JobItem,Job,WarehouseItem,Category,CustomUser,Engineer,Company
+from django.urls import reverse
 from django.db.models import Q
 register = template.Library()
+from django.shortcuts import redirect
 
 @register.filter
 def is_admin(user):
@@ -71,3 +73,21 @@ def parent_path(value):
 def all_not_used(job):
     if job.items.exclude(is_used=True).exists():
         return True
+
+@register.filter
+def get_link(obj):
+    
+    if isinstance(obj, Job):
+        return reverse('update_job', args=[obj.job_id])
+    elif isinstance(obj, JobItem):
+        return reverse('update_item', args=[obj.id])
+    elif isinstance(obj, Company):
+        return reverse('update_company')
+   
+   
+    elif isinstance(obj, JobItem):
+        return reverse('update_item', args=[obj.id])
+    elif isinstance(obj, WarehouseItem):
+        return reverse('update_warehouse_item', args=[obj.id])  # adjust field name
+    else:
+        return ""  # fallback if unknown type

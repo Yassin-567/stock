@@ -9,6 +9,9 @@
         <div class="alert alert-{{ message.tags }}">{{ message }}</div>
       {% endfor %}
     {% endif %}
+    <a class="" href="{% url 'item_add' True %}">Add warehouse item</a>
+
+    <a class="" href="{% url 'batch_entry' %}">Bulk Add (Excel file)</a>
 
     <div class="accordion" id="warehouseAccordion">
       <!-- 1. Warehouse Items -->

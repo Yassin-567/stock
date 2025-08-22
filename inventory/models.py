@@ -127,6 +127,9 @@ class Engineer(models.Model):
     email=models.EmailField()
     phone=models.CharField(max_length=15)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="engineers_company",blank=False,null=False)
+    def save(self,request,*args, **kwargs):
+        self.request=request
+        super().save(*args, **kwargs)
     def __str__(self):
         return str( self.name)
 class Job(models.Model):
@@ -239,7 +242,7 @@ class JobItem(models.Model):
     was_for_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="moveditems")
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="jobitem_category", null=True, )
     def delete(self, request=None):
-        self._request = request  
+        self.request = request  
         return super().delete()
     def save(self,*args, dont_move_used=False,no_recursion=False,request,**kwargs):
         self.request=request

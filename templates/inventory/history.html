@@ -1,6 +1,6 @@
 {% extends 'inventory/base.html' %}
 {% load static %}
-
+{% load custom_tags %}
 {% block body %}
 <div class="container mt-4">
     <h1 class="mb-4">📜 Change History</h1>
@@ -61,7 +61,8 @@
                         <div class="card-body">
                             <h5 class="card-title">
                                 {{ h.content_type.model|capfirst }}  
-                                <small class="text-muted">#{{ h.object_id }}</small>
+                                <small class="text-muted"><a href="{{ h.content_object|get_link }}">{{h.content_object}}s</a>
+
                             </h5>
                             <h6 class="card-subtitle mb-2 text-muted">
                                 {% if h.created %}
