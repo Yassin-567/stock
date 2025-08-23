@@ -108,9 +108,7 @@ def log_model_creation(sender, created,instance, **kwargs):
         user=instance.owner
     else :
         user=instance.request.user
-    print('user',user)
     if  instance.request :
-        print("PASSED")
         History.objects.create(
             content_type=ContentType.objects.get_for_model(instance),
             object_id=instance.pk,  # now PK is available

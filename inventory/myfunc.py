@@ -123,7 +123,7 @@ def send_multiple_emails(jobs, request=None,single=False,):
             message_lines.append(f"Job {job.address}:\n{parts_text}\n")
 
         full_message = "\n".join(message_lines)
-        print("P")
+        
         send_mail(
             subject=f"Your Job Parts List for{job.date}",
             message=full_message,
@@ -142,38 +142,38 @@ def send_multiple_emails(jobs, request=None,single=False,):
 
         if request:
             messages.success(request, f'Email sent to {engineer.name}')
-def save_history(request,form=None, ):
-    from django.contrib.contenttypes.models import ContentType
-    from .models import History
-    if form:
+# def save_history(request,form=None, ):
+#     from django.contrib.contenttypes.models import ContentType
+#     from .models import History
+#     if form:
 
-        instance = form.instance
+#         instance = form.instance
 
-        if form.changed_data:
-            old_instance = instance.__class__.objects.get(pk=instance.pk)
+#         if form.changed_data:
+#             old_instance = instance.__class__.objects.get(pk=instance.pk)
 
-            changed_fields = []
-            old_values = []
-            new_values = []
+#             changed_fields = []
+#             old_values = []
+#             new_values = []
 
-            for field in form.changed_data:
-                old_value = getattr(old_instance, field)
-                new_value = form.cleaned_data[field]
-                changed_fields.append(field)
-                old_values.append(str(old_value))
-                new_values.append(str(new_value))
+#             for field in form.changed_data:
+#                 old_value = getattr(old_instance, field)
+#                 new_value = form.cleaned_data[field]
+#                 changed_fields.append(field)
+#                 old_values.append(str(old_value))
+#                 new_values.append(str(new_value))
             
-            History.objects.create(
-                content_type=ContentType.objects.get_for_model(instance),
-                object_id=instance.pk,
-                company=request.user.company,
-                field=", ".join(changed_fields),
-                old_value=", ".join(old_values),
-                new_value=", ".join(new_values),
-                user=request.user
-            )
-    else:
-        pass
+#             History.objects.create(
+#                 content_type=ContentType.objects.get_for_model(instance),
+#                 object_id=instance.pk,
+#                 company=request.user.company,
+#                 field=", ".join(changed_fields),
+#                 old_value=", ".join(old_values),
+#                 new_value=", ".join(new_values),
+#                 user=request.user
+#             )
+#     else:
+#         pass
 
-        # Save the updated object
+#         # Save the updated object
 

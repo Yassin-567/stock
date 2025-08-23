@@ -13,7 +13,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from .myfunc import generate_otp,send_otp_email,send_multiple_emails,save_history
+from .myfunc import generate_otp,send_otp_email,send_multiple_emails
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
@@ -227,9 +227,16 @@ def emails_history(request,):
     return render(request,'inventory/emails.html',{'emails':emails,'type':type})
 @login_required
 def job_create(request):
-    JobForm()
+    
     if request.method == 'POST':
         form = JobForm(request.POST)
+        id=request.POST.get('job_id')  
+        try:
+            messages.error(request,"This job already exists")
+            x=Job.objects.get(company=request.user.company,job_id=id)
+            return redirect('update_job',id)
+        except:
+            pass
         if form.is_valid():
             try:
                 Job.objects.get(job_id=form.cleaned_data['job_id'])
@@ -244,7 +251,8 @@ def job_create(request):
                 messages.success(request, 'Job created successfully')
             else:
                 messages.error(request,"This job already exists")
-            return redirect('inventory')
+                id=form.cleaned_data['job_id']
+                return redirect('update_job',id)
     else:
         form = JobForm(initial={'company':request.user.company})
     return render(request, 'inventory/job_create.html', {'form': form})
@@ -267,14 +275,12 @@ def update_job(request, pk, cancel=0):
             print(00000)
             li=[]
             li=[item for item in job.items.all() if (item.ordered or item.from_warehouse) and  item.arrived_quantity>0 and item.is_used==False ]
-            for i in li:
-                print('pp')
-                print(i,i.ordered,i.is_used)
+         
             if len(li)>0:
                 request.session['job_post_data'] = request.POST
                 return render(request,'inventory/confirm.html',{'items':li,'cancel_request':True,'job':job})
             job.status='cancelled'
-            job._current_user=request.user
+            
             job.save(update_fields=['status'],request=request)
             # save_history(request,form)
             messages.success(request,'Now this job is cancelled')
@@ -886,9 +892,9 @@ def update_company(request,):
     return render(request, 'inventory/update_company.html', context)
 
 
-@admins_only
+@owner_only
 def admin_panel(request): 
-        if request.user.groups.filter(name="Admin").exists() or request.user.company.owner==request.user:
+        if request.user.company.owner==request.user:
             
             context = {
                 
@@ -902,10 +908,7 @@ def admin_panel(request):
 def update_user(request, pk):
     worker=CustomUser.objects.get(Q(company=request.user.company) & Q(pk=pk))
     form=registerworker(instance=worker,enable_edit=False,updating=True)
-
-    print("OPOPOPOPoo",request.POST)
     if request.method=='POST' and 'change_password' in request.POST:
-        print("OPOPOPOPoo",request.POST)
         form=registerworker(instance=worker,request=request,enable_edit=True,updating=True,changing_password=True)
         return render(request, 'inventory/update_user.html',{'form':form,'editing':True,'changing_password':True})
     if request.method=='POST' and 'confirm_new_password' in request.POST:
@@ -919,19 +922,22 @@ def update_user(request, pk):
         return render(request, 'inventory/update_user.html',{'form':form,'editing':False,'changing_password':False})
     if request.method=='POST' and 'edit' in request.POST:
 
-        form=registerworker(instance=worker,enable_edit=True,updating=True,)
+        form=registerworker(instance=worker,request=request,enable_edit=True,updating=True,)
         return render(request, 'inventory/update_user.html',{'form':form,'editing':True})
+
     if request.method=='POST' and 'update' in request.POST:
-        form=registerworker(request.POST,instance=worker,enable_edit=True,updating=True,)
+        worker_email=worker.email
+        form=registerworker(request.POST,request=request,instance=worker,enable_edit=True,updating=True,)
         if form.is_valid():
 
-            
+            form.save(commit=False)
             email=form.cleaned_data['email']
-            if email!=request.user.email:
+            print(email,worker_email)
+            if email!=worker_email:
                 request.session['verifying']="updating_user"
                 request.session['username'] = form.cleaned_data['username']
                 request.session['register_email'] = email
-                
+                request.session['worker_id']=worker.id
                 otp=generate_otp()
                 
                 request.session['otp_generated_at']=time.time()
@@ -945,9 +951,9 @@ def update_user(request, pk):
             
             form=registerworker(instance=worker,enable_edit=False,updating=True,)
             return render(request, 'inventory/update_user.html',{'form':form})
-        return render(request, 'inventory/update_user.html',{'form':form,'editing':True})
+        return render(request, 'inventory/update_user.html',{'form':form,'editing':True,'worker':worker})
 
-    return render(request, 'inventory/update_user.html',{'form':form,'editing':False})
+    return render(request, 'inventory/update_user.html',{'form':form,'editing':False,'worker':worker})
 
 
 def register_company(request):
@@ -992,6 +998,7 @@ def verify_otp(request) :
     company_email=request.session.get('company_email')
     otp_generated_at = request.session.get('otp_generated_at')
     otp_expiry_seconds = 300 # 5 minutes
+    worker_id=request.session.get('worker_id')
     if request.method=='POST' and 'resend_otp' in request.POST:
         verifying=request.session.get('verifying')
         if verifying=='forgot_password':
@@ -1037,23 +1044,21 @@ def verify_otp(request) :
     if request.method == 'POST' and 'updating_user' in request.POST:
         input_user_otp=request.POST.get('email_otp')
         user_session_otp = request.session.get('user_updating_otp')
-        
-        print('ppp',user_session_otp,input_user_otp)
         if (
             input_user_otp == user_session_otp and
             otp_generated_at is not None and
             (time.time() - otp_generated_at <= otp_expiry_seconds)
         ):
             username = request.session.get('username')
-            user=CustomUser.objects.get(id=request.user.id)
+            user=CustomUser.objects.get(id=worker_id)
             user.email=email
             user.username=username
             
             user.save(update_fields=['username','email',],request=request)
-            for k in ['username','register_email','otp_generated_at']:
+            for k in ['username','register_email','otp_generated_at','worker_id']:
                 request.session.pop(k,None)
             messages.success(request,"User updated successfully")
-            return redirect('update_user',request.user.id)
+            return redirect('update_user',worker_id)
         else:
             messages.error(request,"Wrong OTP, Try agian.")
     if request.method == 'POST' and 'updating_company' in request.POST:

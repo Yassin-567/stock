@@ -50,7 +50,7 @@
           </div>
           <ul class="list-group list-group-flush">
             {% for user in users %}
-              {% if user.is_employee %}
+              {% if user.is_employee and not user.is_owner %}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                   <span>
                     <strong>{{ user.username }}</strong><br />
@@ -114,7 +114,9 @@
                     <td>{{ user.username }}</td>
                     <td>{{ user.email }}</td>
                     <td>
-                      {% if user.is_admin %}
+                      {% if user.is_owner %}
+                        <span class="badge bg-secondary" style="color: gold;">Owner</span>
+                      {% elif user.is_admin and not user.is_owner %}
                         <span class="badge bg-primary">Admin</span>
                       {% elif user.is_employee %}
                         <span class="badge bg-success">Employee</span>

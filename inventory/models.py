@@ -1,18 +1,13 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.utils import timezone
-from django.core.exceptions import ValidationError
 
 from django.contrib.auth.models import BaseUserManager
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.db import transaction
-from django.db.models import F
+
 from .myfunc import items_arrived,job_reopened,item_arrived,job_completed,items_not_used
 ##
 
-from datetime import datetime
-from time import strftime
 ############################---USER and COMPANY---############################
 class CustomUserManager(BaseUserManager):
     use_in_migrations = True
@@ -98,15 +93,16 @@ class CustomUser(AbstractUser):
         if self.is_banned:
             self.is_admin=False
             self.is_employee=False
-        elif self.permission=='admin':
-            self.is_admin=True
-            self.is_employee=False
-        elif self.permission=='employee':
-            self.is_admin=False
-            self.is_employee=True
         else:
-            self.is_admin=False
-            self.is_employee=True
+            if self.permission=='admin':
+                self.is_admin=True
+                self.is_employee=False
+            elif self.permission=='employee':
+                self.is_admin=False
+                self.is_employee=True
+            else:
+                self.is_admin=False
+                self.is_employee=True
         self.request=request
         self.dont_save_history=dont_save_history
         super().save()
@@ -208,7 +204,6 @@ class Item(models.Model):
     part_number=models.TextField(max_length=30)
     price=models.DecimalField(max_digits=10, decimal_places=2,)
     reference=models.TextField(blank=True,null=True,max_length=40)
-
     supplier=models.CharField(max_length=70)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company")
     added_date=models.DateTimeField(auto_now_add=True)

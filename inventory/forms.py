@@ -122,7 +122,7 @@ class registerworker(forms.ModelForm):
     
     class Meta:
         model = CustomUser
-        fields = ['username', 'email','permission',]
+        fields = ['username', 'email','permission','is_banned']
         
         widgets = {
             'username': forms.TextInput(attrs={
@@ -131,11 +131,11 @@ class registerworker(forms.ModelForm):
             }),
             'permission': forms.Select(attrs={
                 'class': 'form-control'
-            })
+            }),
+             'is_banned': forms.CheckboxInput(attrs={'class': 'toggle-red'}),
         }
     
     def clean(self):
-        print("999")
         cleaned_data = super().clean()
         password = cleaned_data.get('password')
         password2 = cleaned_data.get('password2')
@@ -155,22 +155,34 @@ class registerworker(forms.ModelForm):
     def __init__(self,*args,request=None, enable_edit=False,updating=False,changing_password=False,**kwargs):
         
         super().__init__(*args, **kwargs)
-        if enable_edit and updating:
-            del self.fields['permission']
-        if not self.instance.is_owner or self.instance.is_admin or(request and self.instance==request.user):
-            del self.fields['permission']
-        if updating and not changing_password:
-            del self.fields['password']
-            del self.fields['password2']
-        if changing_password:
-            del self.fields['username']
-            del self.fields['email']
-            del self.fields['permission']
-        if self.instance is not None and not enable_edit and updating:
-            for field in self.fields.values():
-                field.widget.attrs['class'] = 'faded-input'
-                field.widget.attrs['disabled'] = 'disabled'
-
+        if updating:
+            
+            if enable_edit:
+                
+                if  not request.user.is_owner  or request.user==self.instance:
+                    del self.fields['permission']
+                    del self.fields['is_banned']
+                if not changing_password:
+                    del self.fields['password']
+                    del self.fields['password2']
+                if changing_password:
+                    try:
+                        del self.fields['username']
+                        del self.fields['email']
+                        del self.fields['permission']
+                        del self.fields['is_banned']
+                    except:
+                        pass
+            elif self.instance is not None:
+                del self.fields['is_banned']
+                del self.fields['password']
+                del self.fields['password2']
+                for field in self.fields.values():
+                    
+                    field.widget.attrs['class'] = 'faded-input'
+                    field.widget.attrs['disabled'] = 'disabled'
+        else:
+            del self.fields['is_banned']
 
 class CompanySettingsForm(forms.ModelForm):
     class Meta:
@@ -239,11 +251,12 @@ class JobForm(forms.ModelForm):
         # from datetime import time
         # n=time(from_time)
         # print(n)
+        if from_time and to_time and from_time >= to_time and to_time  != " ":
+                self.add_error('to_time', 'End time must be after start time.')
+            
         if job.pk:
             #if self.fields['status']=='quoted': 
-            if from_time and to_time and from_time >= to_time and to_time  != " ":
-                self.add_error('to_time', 'End time must be after start time.')
-
+            
             if self.instance.quoted :
                 if not quote_accepted and not quote_declined:
                     raise forms.ValidationError("Was the quote accepted")
