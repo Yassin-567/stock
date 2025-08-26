@@ -99,7 +99,7 @@
           <ul class="job-items" style="display: none;">
             {% for jobitem in job.items.all %}
               <li>
-                <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.item.name }}</a> - Part Number: {{ jobitem.item.part_number }} - Price: ${{ jobitem.item.price }}
+                <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.name }}</a> - Part Number: {{ jobitem.part_number }} - Price: ${{ jobitem.price }}
                 {% if jobitem.arrived and not jobitem.is_used and not jobitem.from_warehouse %}
                   <span class="tag arrived">Arrived</span>
                 {% elif jobitem.ordered and not jobitem.from_warehouse and not jobitem.is_used %}

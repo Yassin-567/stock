@@ -23,7 +23,6 @@ def log_model_changes(sender, instance,**kwargs):
         pass
     if not hasattr(instance, "company") :
         return
-    print("OPIII")
 
     # Only track existing objects (updates)
     try:
@@ -37,20 +36,19 @@ def log_model_changes(sender, instance,**kwargs):
 
     try:
         old_instance = sender.objects.get(pk=instance.pk)
-        print('lll',old_instance)
+        
     except sender.DoesNotExist:
         return  # Object doesn't exist yet, skip
 
     changed_fields = []
     old_values = []
     new_values = []
-    allowed_fields=['job_quantity','arrived_quantity','is_used','category','warehouse_quantity','reference','address','is_banned','is_employee','is_admin','is_owner','permission','username','phone','email','name','to_time','from_time','date','post_code','parent_account','engineer','quotation','status','reference','job']
+    allowed_fields=['job_quantity','supplier','arrived_quantity','is_used','category','warehouse_quantity','reference','address','is_banned','is_employee','is_admin','is_owner','permission','username','phone','email','name','to_time','from_time','date','post_code','parent_account','engineer','quotation','status','job']
     for field in instance._meta.fields:
         
         field_name = field.name
-        
-        if field_name and field_name in allowed_fields :
-            
+     
+        if field_name and (field_name in allowed_fields) :
             old_value = getattr(old_instance, field_name)
             new_value = getattr(instance, field_name)
             if old_value != new_value:
@@ -66,7 +64,7 @@ def log_model_changes(sender, instance,**kwargs):
         
         user = instance.request.user#getattr(instance, "_current_user", None)
         if not user:
-            raise ValueError("No current user set on instance before saving!") 
+            raise ValueError("Failed to save history") 
         History.objects.create(
             content_type=ContentType.objects.get_for_model(instance),
             object_id=instance.pk,

@@ -281,9 +281,9 @@ class CommentForm(forms.ModelForm):
 
 class ItemForm(forms.ModelForm):
     class Meta:
-        model = Item
-        fields = '__all__' 
-        exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','is_moved_to_warehouse',]
+        model = JobItem
+        fields = ['part_number','name','price','supplier','job_quantity','arrived_quantity','reference','ordered','category'] 
+        # exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','is_moved_to_warehouse',]
         labels = {
             'name': 'Part Name',
         }
@@ -313,42 +313,67 @@ class ItemForm(forms.ModelForm):
                     field.widget.attrs['class'] = 'faded-input'
                     field.widget.attrs['disabled'] = 'disabled'
         elif job==None:
-            self.fields['required_quantity'].widget=forms.HiddenInput()
-            self.fields['ordered'].widget=forms.HiddenInput()
+            del self.fields['job']
+            del self.fields['job_quantity']
+            del self.fields['ordered']
+            del self.fields['arrived']
+            del self.fields['was_for_job']
+            del self.fields['was_it_used']
+            del self.fields['from_warehouse']
+
+            # del self.fields['category']
+
     def clean(self,*args, **kwargs):
 
         cleaned_data = super().clean()
-        job_quantity = cleaned_data.get('required_quantity')
+        job_quantity = cleaned_data.get('job_quantity')
         arrived_quantity = cleaned_data.get('arrived_quantity')
         ordered = cleaned_data.get('ordered')
         job=cleaned_data.get('job')
 
-        if job_quantity == arrived_quantity and not ordered and job:
+        if job and not ordered and job_quantity == arrived_quantity :
             raise forms.ValidationError("Items can't arrive without ordering")
-        elif job_quantity < arrived_quantity and job:
+        elif job  and job_quantity < arrived_quantity:
             raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
-
+    
         return cleaned_data
 class JobItemForm(forms.ModelForm):
     class Meta:
         model=JobItem
         fields='__all__'
-        exclude=['job','from_warehouse','is_used','status','was_for_job','added_by','was_it_used','company']
-        widgets={'reference':forms.Textarea(attrs={'rows':1}),}
-    def __init__(self, *args,**kwargs):
+        exclude=['job','from_warehouse','is_used','status','was_for_job','added_by','was_it_used','arrived','company']
+        widgets = {
+                    #'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+                    'status': forms.Select(attrs={'class': 'form-select','id':'status'}),
+                    'price': forms.NumberInput(attrs={'class': 'form-control'}),
+                    'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+                    #'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control','id':'arrived_quantity'}),
+                    'part_number':forms.TextInput(attrs={  # Override widget for job_id
+                        'type': 'text',  # Set input type to text
+                        'inputmode': 'numeric',  # Allow numeric input
+                        #'pattern': '[0-9]*',  # Numeric pattern
+                        'placeholder': 'Enter part number',
+                        'class': 'form-control',}),
+                    'reference':forms.Textarea(attrs={'rows':1}),
+                }        
+    def __init__(self, *args,updating=False,**kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['item'].widget=forms.HiddenInput()
         self.fields['job_quantity'].label='Required quantity'
-
-        if self.instance.is_used or self.instance.job.status=='completed' :
-            for field in self.fields.values():
-                field.widget.attrs['class'] = 'faded-input'
-                field.widget.attrs['disabled'] = 'disabled'
-
+        # if updating:
+            
+        #     self.fields['part_number'].widget=forms.HiddenInput()
+        if  getattr(self.instance, "job_id", None):
+            if  self.instance.is_used or self.instance.job.status=='completed' :
+                for field in self.fields.values():
+                    
+                    field.widget.attrs['class'] = 'faded-input'
+                    field.widget.attrs['disabled'] = 'disabled'
+            
         #self.fields['status'].choices=[  (value, label) for value, label in self.fields['status'].choices if value != 'arrived']
-        if self.instance.from_warehouse or (self.instance.was_for_job and self.instance.from_warehouse):
+        if self.instance.from_warehouse :#or (self.instance.was_for_job and self.instance.from_warehouse)
             self.fields['arrived_quantity'].widget=forms.HiddenInput()
             self.fields['ordered'].widget=forms.HiddenInput()
+            del self.fields['part_number']
            # self.fields['status'].widget=forms.HiddenInput()
         # if item.item.from_warehouse:
         #     self.fields['job_quantity'].widget=forms.HiddenInput()
@@ -357,7 +382,13 @@ class JobItemForm(forms.ModelForm):
         job_quantity = cleaned_data.get('job_quantity')
         arrived_quantity = cleaned_data.get('arrived_quantity')
         ordered = cleaned_data.get('ordered')
+        job=cleaned_data.get('job')
         
+        # if job and not ordered and job_quantity == arrived_quantity :
+        #     raise forms.ValidationError("Items can't arrive without ordering")
+        # elif job  and job_quantity < arrived_quantity:
+        #     raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
+
         if job_quantity == arrived_quantity and not ordered and not self.instance.from_warehouse:
             raise forms.ValidationError("Items can't arrive without ordering")
         elif job_quantity<arrived_quantity and not  self.instance.from_warehouse:
@@ -369,15 +400,15 @@ class WarehouseitemForm(forms.ModelForm):
     class Meta:
         model = WarehouseItem
         fields = '__all__' 
-        exclude = ['added_by','company','is_used','item','status','is_moved_from_job','was_for_job','is_moved_to_warehouse','is_move_to_warehouse',]
+        exclude = ['added_by','company','is_used','item','is_moved_from_job','was_for_job',]
         labels = {
             'name': 'Part Name',
         }
         widgets = {
             #'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-            'status': forms.Select(attrs={'class': 'form-select','id':'status'}),
+            # 'status': forms.Select(attrs={'class': 'form-select','id':'status'}),
             'price': forms.NumberInput(attrs={'class': 'form-control'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+            # 'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             #'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control','id':'arrived_quantity'}),
             'part_number':forms.TextInput(attrs={  # Override widget for job_id
                 'type': 'text',  # Set input type to text

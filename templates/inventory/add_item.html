@@ -44,7 +44,7 @@
           <ul>
             {% for item in warehouse_items %}
               <li>
-                <label><input type="radio" name="selected_item_id" value="{{ item.id }}" required />Part name:{{ item.item.name }} - Part number: {{ item.item.part_number }} - Supplier:{{ item.item.supplier }} - Qty: {{ item.warehouse_quantity }}</label>
+                <label><input type="radio" name="selected_item_id" value="{{ item.id }}" required />Part name:{{ item.name }} - Part number: {{ item.part_number }} - Supplier:{{ item.supplier }} - Qty: {{ item.warehouse_quantity }}</label>
               </li>
             {% endfor %}
           </ul>

@@ -205,30 +205,36 @@ class Item(models.Model):
     price=models.DecimalField(max_digits=10, decimal_places=2,)
     reference=models.TextField(blank=True,null=True,max_length=40)
     supplier=models.CharField(max_length=70)
-    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company")
+    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company+")
     added_date=models.DateTimeField(auto_now_add=True)
-    added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user")
+    added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user+")
     required_quantity=models.PositiveSmallIntegerField(default=0)
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     ordered=models.BooleanField(default=False)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="item_category", null=True,blank=True )
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="item_category+", null=True,blank=True )
     def save(self, *args, request,dont_save_history=False,**kwargs):
         self.request=request
         self.dont_save_history=dont_save_history
         if not self.category and self.company.id:
             self.category, _ = Category.objects.get_or_create(company=self.company, category='Others')
         super().save(*args, **kwargs)
-    #notes=models.TextField(null=True, blank=True)
     def __str__(self):
         return self.name
 class JobItem(models.Model):
-    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="jobitem_company")
+    name=models.CharField(max_length=70)
+    part_number=models.TextField(max_length=30)
+    price=models.DecimalField(max_digits=10, decimal_places=2,)
+    reference=models.TextField(blank=True,null=True,max_length=40)
+    supplier=models.CharField(max_length=70)
+    added_date=models.DateTimeField(auto_now_add=True)
+    added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, )
+
+    ###
+    company=models.ForeignKey(Company,on_delete=models.CASCADE,)
     job = models.ForeignKey(Job, on_delete=models.DO_NOTHING, related_name="items")
-    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="job_items")
     job_quantity = models.PositiveSmallIntegerField(default=0)  # How many needed for this job
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     reference=models.TextField(blank=True,null=True,max_length=40)
-    #status=models.CharField(max_length=20,choices=CHOICES,blank=True,null=True,default=None)
     ordered=models.BooleanField(default=False)
     arrived=models.BooleanField(default=False)
     is_used=models.BooleanField(default=False)
@@ -242,8 +248,14 @@ class JobItem(models.Model):
     def save(self,*args, dont_move_used=False,no_recursion=False,request,**kwargs):
         self.request=request
         item_arrived(self)
-        if not self.category and self.job.id:
-            self.category, _ = Category.objects.get_or_create(company=self.job.company, category='Others')
+        if not self.category and self.company.id:#self.job.id
+            try:
+                self.category=Category.objects.get(category='Others')
+            except Category.DoesNotExist:
+                cat=Category(company=self.company,category='Others')
+                cat.save(request=self.request)
+                self.category=Category.objects.get(category='Others')
+            # self.category, _ = Category.objects.get_or_create(company=self.job.company,request=self.request, category='Others')
         
         super().save(*args, **kwargs)
         if not dont_move_used and not no_recursion:
@@ -251,19 +263,26 @@ class JobItem(models.Model):
             self.job.save(update_fields=['status','items_arrived'],request=self.request,dont_save_history=True)
             
     def __str__(self):
-        return str(self.item.name)
+        return str(self.name)
 
 
 class WarehouseItem(models.Model):
-
-    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="warehouse_company_items")
-    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="warehouse_items")
+    name=models.CharField(max_length=70)
+    part_number=models.TextField(max_length=30)
+    price=models.DecimalField(max_digits=10, decimal_places=2,)
+    supplier=models.CharField(max_length=70)
+    company=models.ForeignKey(Company,on_delete=models.CASCADE,)
+    added_date=models.DateTimeField(auto_now_add=True)
+    added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, )
+    ###
+    company=models.ForeignKey(Company,on_delete=models.CASCADE,)
     warehouse_quantity = models.PositiveSmallIntegerField(default=0)  
     reference=models.TextField(blank=True,null=True,max_length=40)
     is_used=models.BooleanField(default=False)
     is_moved_from_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="warehousemoveditems")
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="warehouse_category", null=True, )
-    def save(self, *args,request, dont_save_history=False,**kwargs):
+    added_by_batch_entry=models.BooleanField(default=False)
+    def save(self, *args, dont_save_history=False,request=None,**kwargs):
         self.request=request
         self.dont_save_history=dont_save_history
         if not self.category and self.company.id:
@@ -273,7 +292,7 @@ class WarehouseItem(models.Model):
         super().save(*args, **kwargs)
         
     def __str__(self):
-        return str(self.item.name)
+        return str(self.name)
 
 from django.utils.translation import gettext_lazy as _
 

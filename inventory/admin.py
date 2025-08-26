@@ -20,9 +20,9 @@ admin.site.register(History, )
 # admin.site.site_title='Stock'
 class JobItemAdmin(admin.ModelAdmin):
 
-    list_display = ('id', 'item__part_number')
+    list_display = ('name','id', 'part_number')
 class WarehouseItemAdmin(admin.ModelAdmin):
-    list_display = ('item','id',  )
+    list_display = ('name','id',  )
 class JobAdmin(admin.ModelAdmin):
     list_display = ('address','id',  )
 admin.site.register(JobItem,JobItemAdmin)

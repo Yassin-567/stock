@@ -43,6 +43,8 @@ urlpatterns=[
     path('emails',views.emails_history,name='emails_history'),
     path('history',views.history,name='history'),
     path('additem/<str:no_job>', views.item_add, name='item_add'),
+    path('add_warehouseitem/', views.add_warehouseitem, name='add_warehouseitem'),
+
     path('additem/<int:pk>/', views.item_add, name='item_add'),
     path('register/',views.register_user,name='register'),
     path('adpanel/',views.admin_panel,name='admin_panel'),

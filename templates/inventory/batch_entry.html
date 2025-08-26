@@ -25,7 +25,7 @@
         <input type="hidden" name="reference" value="{{ item.reference }}" />
         <input type="hidden" name="price" value="{{ item.price }}" />
         <input type="hidden" name="supplier" value="{{ item.supplier }}" />
-        <input type="hidden" name="arrived_quantity" value="{{ item.arrived_quantity }}" />
+        <input type="hidden" name="warehouse_quantity" value="{{ item.warehouse_quantity }}" />
         <input type="hidden" name="category" value="{{ item.category }}" />
         <p>
           <strong>Name:</strong> {{ item.name }}
@@ -43,7 +43,7 @@
           <strong>Supplier:</strong> {{ item.supplier }}
         </p>
         <p>
-          <strong>Arrived Quantity:</strong> {{ item.arrived_quantity }}
+          <strong>Arrived Quantity:</strong> {{ item.warehouse_quantity }}
         </p>
         <p>
           <strong>Category:</strong> {{ item.category }}

@@ -9,7 +9,7 @@
         <div class="alert alert-{{ message.tags }}">{{ message }}</div>
       {% endfor %}
     {% endif %}
-    <a class="" href="{% url 'item_add' True %}">Add warehouse item</a>
+    <a class="" href="{% url 'add_warehouseitem' %}">Add warehouse item</a>
 
     <a class="" href="{% url 'batch_entry' %}">Bulk Add (Excel file)</a>
 
@@ -33,10 +33,10 @@
                   {% for item in warehouse_items %}
                     <tr>
                       <td>
-                        <a href="{% url 'update_warehouse_item' item.id %}">{{ item.item.name }}</a>
+                        <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a>
                       </td>
-                      <td>{{ item.item.part_number }}</td>
-                      <td>${{ item.item.price }}</td>
+                      <td>{{ item.part_number }}</td>
+                      <td>${{ item.price }}</td>
                       <td>{{ item.warehouse_quantity }}</td>
                     </tr>
                   {% endfor %}
@@ -72,9 +72,9 @@
                       <td>
                         <a href="{% url 'update_warehouse_item' item.id %}">{{ item.item.name }}</a>
                       </td>
-                      <td>{{ item.item.part_number }}</td>
-                      <td>${{ item.item.price }}</td>
-                      <td>{{ item.item.arrived_quantity }}</td>
+                      <td>{{ item.part_number }}</td>
+                      <td>${{ item.price }}</td>
+                      <td>{{ item.arrived_quantity }}</td>
                       <td>{{ item.warehouse_quantity }}</td>
                       <td>
                         <a href="{% url 'update_job' item.job.id %}">{{ item.job }}</a>
@@ -111,8 +111,8 @@
                       <td>
                         <a href="{% url 'update_warehouse_item' item.id %}">{{ item.item.name }}</a>
                       </td>
-                      <td>{{ item.item.part_number }}</td>
-                      <td>${{ item.item.price }}</td>
+                      <td>{{ item.part_number }}</td>
+                      <td>${{ item.price }}</td>
                       <td>{{ item.warehouse_quantity }}</td>
                     </tr>
                   {% endfor %}
@@ -147,8 +147,8 @@
                     <td>
                       <a href="{% url 'update_warehouse_item' item.id %}">{{ item.item.name }}</a>
                     </td>
-                    <td>{{ item.item.part_number }}</td>
-                    <td>${{ item.item.price }}</td>
+                    <td>{{ item.part_number }}</td>
+                    <td>${{ item.price }}</td>
                     <td>{{ item.quantity_moved }}</td>
                     <td>
                       <a href="{% url 'update_job' item.job.job_id %}">{{ item.job }}</a>
