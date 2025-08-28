@@ -1,10 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-
 from django.contrib.auth.models import BaseUserManager
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-
+from django.utils import timezone
+from datetime import timedelta
 from .myfunc import items_arrived,job_reopened,item_arrived,job_completed,items_not_used
 ##
 
@@ -46,7 +46,14 @@ class Company(models.Model):
     company_email = models.EmailField(unique=True)
     address=models.TextField()
     phone=models.CharField(max_length=15)
+    is_guest = models.BooleanField(default=False)
+    expiry_date = models.DateTimeField(null=True, blank=True)
+
+        
     def save(self,*args,request=None,dont_save_history=False,**kwargs):
+        if self.is_guest and not self.expiry_date:
+            self.expiry_date = timezone.now() + timedelta(days=7)
+        
         self.request=request
         self.dont_save_history=dont_save_history
         super().save()
@@ -85,7 +92,6 @@ class CustomUser(AbstractUser):
     is_admin=models.BooleanField(default=False,)
     is_employee=models.BooleanField(default=False,)
     is_banned=models.BooleanField(default=False,)
-    otp=models.CharField(null=True,blank=True)
     REQUIRED_FIELDS = ['username',]
     USERNAME_FIELD = 'email'
     verbose_name='User'
@@ -199,27 +205,27 @@ class Category(models.Model):
         super().save()
     def __str__(self):
         return self.category
-class Item(models.Model):    
-    name=models.CharField(max_length=70)
-    part_number=models.TextField(max_length=30)
-    price=models.DecimalField(max_digits=10, decimal_places=2,)
-    reference=models.TextField(blank=True,null=True,max_length=40)
-    supplier=models.CharField(max_length=70)
-    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company+")
-    added_date=models.DateTimeField(auto_now_add=True)
-    added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user+")
-    required_quantity=models.PositiveSmallIntegerField(default=0)
-    arrived_quantity=models.PositiveSmallIntegerField(default=0)
-    ordered=models.BooleanField(default=False)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="item_category+", null=True,blank=True )
-    def save(self, *args, request,dont_save_history=False,**kwargs):
-        self.request=request
-        self.dont_save_history=dont_save_history
-        if not self.category and self.company.id:
-            self.category, _ = Category.objects.get_or_create(company=self.company, category='Others')
-        super().save(*args, **kwargs)
-    def __str__(self):
-        return self.name
+# class Item(models.Model):    
+#     name=models.CharField(max_length=70)
+#     part_number=models.TextField(max_length=30)
+#     price=models.DecimalField(max_digits=10, decimal_places=2,)
+#     reference=models.TextField(blank=True,null=True,max_length=40)
+#     supplier=models.CharField(max_length=70)
+#     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="item_company+")
+#     added_date=models.DateTimeField(auto_now_add=True)
+#     added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="added_by_user+")
+#     required_quantity=models.PositiveSmallIntegerField(default=0)
+#     arrived_quantity=models.PositiveSmallIntegerField(default=0)
+#     ordered=models.BooleanField(default=False)
+#     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="item_category+", null=True,blank=True )
+#     def save(self, *args, request,dont_save_history=False,**kwargs):
+#         self.request=request
+#         self.dont_save_history=dont_save_history
+#         if not self.category and self.company.id:
+#             self.category, _ = Category.objects.get_or_create(company=self.company, category='Others')
+#         super().save(*args, **kwargs)
+#     def __str__(self):
+#         return self.name
 class JobItem(models.Model):
     name=models.CharField(max_length=70)
     part_number=models.TextField(max_length=30)

@@ -44,8 +44,8 @@ urlpatterns=[
     path('history',views.history,name='history'),
     path('additem/<str:no_job>', views.item_add, name='item_add'),
     path('add_warehouseitem/', views.add_warehouseitem, name='add_warehouseitem'),
-
     path('additem/<int:pk>/', views.item_add, name='item_add'),
+    path('create_guest',views.create_guest_request,name='create_guest'),
     path('register/',views.register_user,name='register'),
     path('adpanel/',views.admin_panel,name='admin_panel'),
     path('api/',views.fetch_api_data,name='api_data'),

@@ -1,5 +1,5 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
-from .models import CustomUser,Company,Job,Item,Comment,JobItem,WarehouseItem,Engineer,Category,CompanySettings,Email,History
+from .models import CustomUser,Company,Job,Comment,JobItem,WarehouseItem,Engineer,Category,CompanySettings,Email,History
 from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker,CategoriesForm,CompanySettingsForm,ForgotPasswordForm
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
@@ -18,6 +18,58 @@ from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
 from datetime import datetime
+from django.utils.crypto import get_random_string
+import random
+def create_guest_request(request):
+    print(timezone.now())
+    guest_id = request.COOKIES.get("guest_id")
+    if guest_id:
+        messages.error(request,'You already have a guest account!!!')
+        return redirect('login')
+    if request.method == "POST":
+        choice = request.POST.get("choice")
+
+        if choice=='yes':
+            return create_guest_account(request)
+        else:
+            return redirect('login')
+    return render(request,'auths/confirm.html')
+
+def create_guest_account(request):
+    # Create guest company
+    company = Company(
+        company_name="Guest-" + get_random_string(6),
+        company_email=f"guest{get_random_string(6)}@example.com",
+        address=get_random_string(6),
+        phone=random.randint(100000, 999999),
+        is_guest=True,
+    )
+    raw_password=get_random_string(12)
+    # Create guest user
+    user = CustomUser(
+        email=f"guest{get_random_string(8)}@example.com",
+        password=raw_password ,
+        username="guest_" + get_random_string(6),
+        company=company,
+        permission="owner"
+    )
+    user.set_password(user.password)
+
+    # Make user the owner (optional, depends on your business logic)
+    
+    
+    company.save(request=request,dont_save_history=True)
+    user.save(request=request,dont_save_history=True)
+    company.owner = user
+    
+    company.save(request=request,dont_save_history=True)
+    user.is_owner=True
+    user.save(request=request,dont_save_history=True)
+    # Login
+    messages.success(request,f'Your login details: email:{user.email}, Password{raw_password}')
+    response = redirect("inventory")
+    response.set_cookie("guest_id", company.id, max_age=7*24*60*60)
+    return response
 
 
 @login_required(login_url='login', redirect_field_name='inventory')
@@ -77,16 +129,17 @@ def login_user(request):
     form=loginForm()
     if request.user.is_authenticated:
         return redirect('inventory')
-    if request.method == 'POST':
+    
+    if request.method == 'POST' :
         form=loginForm(request.POST)
-        username=request.POST['email']
+        email=request.POST['email']
         password=request.POST['password']
-        user = authenticate(username=username, password=password)
-        
+        user = authenticate(email=email, password=password)
+        print(user)
         if user is not None and user.company is not None :
             login(request, user)
             return redirect('inventory')
-        else:
+        else:   
             messages.error(request, 'Invalid login credentials')
             return render(request, 'auths/login.html', {'form': form})
         
@@ -602,6 +655,7 @@ def update_item(request, pk):
                     category=job_item.category,
                     #is_used=job_item.is_used,
                     is_moved_from_job=job if job_item.was_for_job else None  ,   
+                    
                 )
                 x.save(request=request)
                     
@@ -1263,12 +1317,24 @@ def warehouse(request):
         .order_by('part_number')
     )
 
-    
-    warehouse_items=WarehouseItem.objects.filter(company=request.user.company,is_moved_from_job=None)
-    moved_items=WarehouseItem.objects.filter(is_moved_from_job__isnull=False ,company=request.user.company , warehouse_quantity__gt=0)
-    used_warehouse_items=JobItem.objects.filter(job__company=request.user.company,is_used=True,from_warehouse=True)
-    used_moved_items=JobItem.objects.filter(job__company=request.user.company,is_used=True,was_for_job__isnull=False)
-    return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items,'moved_items':moved_items,'used_warehouse_items':used_warehouse_items,'used_moved_items':used_moved_items})
+    if request.GET.get("entry_method")=='batch_entry':
+        warehouse_items=WarehouseItem.objects.filter(company=request.user.company,is_moved_from_job=None,added_by_batch_entry=True)
+        moved_items=WarehouseItem.objects.filter(is_moved_from_job__isnull=False ,company=request.user.company , warehouse_quantity__gt=0,added_by_batch_entry=True)
+        used_warehouse_items=None
+        used_moved_items=None
+    elif request.GET.get("entry_method")=='normal_entry':
+        warehouse_items=WarehouseItem.objects.filter(company=request.user.company,is_moved_from_job=None,added_by_batch_entry=False)
+        moved_items=WarehouseItem.objects.filter(is_moved_from_job__isnull=False ,company=request.user.company , warehouse_quantity__gt=0,added_by_batch_entry=False)
+        used_warehouse_items=None
+        used_moved_items=None
+    else:
+        warehouse_items=WarehouseItem.objects.filter(company=request.user.company,is_moved_from_job=None)
+        moved_items=WarehouseItem.objects.filter(is_moved_from_job__isnull=False ,company=request.user.company , warehouse_quantity__gt=0)
+        used_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=True,from_warehouse=True)
+        used_moved_items=JobItem.objects.filter(company=request.user.company,is_used=True,was_for_job__isnull=False)
+    entry_method=request.GET.get("entry_method")
+
+    return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items,'moved_items':moved_items,'used_warehouse_items':used_warehouse_items,'used_moved_items':used_moved_items,'entry_method':entry_method})
 
 def engineer(request):
     form=EngineerForm()

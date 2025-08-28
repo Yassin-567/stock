@@ -1,5 +1,5 @@
 from django import forms
-from .models import CustomUser, Item, Company,Job,Comment,WarehouseItem,JobItem,Engineer,Category,CompanySettings
+from .models import CustomUser, Company,Job,Comment,WarehouseItem,JobItem,Engineer,Category,CompanySettings
 from django.contrib.auth.models import Group
 from django.forms import HiddenInput
 from django.db.models import Q

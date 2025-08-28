@@ -63,7 +63,7 @@ MIDDLEWARE = [
     
     'django.contrib.messages.middleware.MessageMiddleware',
     # 'inventory.middleware.DynamicDBMiddleware',
-
+    "inventory.middleware.GuestCleanupMiddleware",
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
