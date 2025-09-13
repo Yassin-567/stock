@@ -91,3 +91,10 @@ def get_link(obj):
         return reverse('update_warehouse_item', args=[obj.id])  # adjust field name
     else:
         return ""  # fallback if unknown type
+    
+@register.filter
+def trim(value):
+    try:
+        return value.strip()
+    except Exception:
+        return value

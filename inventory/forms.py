@@ -383,7 +383,6 @@ class JobItemForm(forms.ModelForm):
         arrived_quantity = cleaned_data.get('arrived_quantity')
         ordered = cleaned_data.get('ordered')
         job=cleaned_data.get('job')
-        
         # if job and not ordered and job_quantity == arrived_quantity :
         #     raise forms.ValidationError("Items can't arrive without ordering")
         # elif job  and job_quantity < arrived_quantity:
@@ -391,16 +390,16 @@ class JobItemForm(forms.ModelForm):
 
         if job_quantity == arrived_quantity and not ordered and not self.instance.from_warehouse:
             raise forms.ValidationError("Items can't arrive without ordering")
-        elif job_quantity<arrived_quantity and not  self.instance.from_warehouse:
+        elif not  self.instance.from_warehouse and job_quantity<arrived_quantity  :
             raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
-        elif job_quantity<arrived_quantity and  self.instance.from_warehouse:
+        elif self.instance.from_warehouse and job_quantity<arrived_quantity   :
             raise forms.ValidationError("Required quantity can't be Zero, you can move instead")
         return cleaned_data
 class WarehouseitemForm(forms.ModelForm):
     class Meta:
         model = WarehouseItem
         fields = '__all__' 
-        exclude = ['added_by','company','is_used','item','is_moved_from_job','was_for_job',]
+        exclude = ['added_by','company','is_used','item','is_moved_from_job','was_for_job','added_by_batch_entry']
         labels = {
             'name': 'Part Name',
         }
@@ -450,3 +449,13 @@ class SearchForm(forms.Form):
     max_price_filter = forms.DecimalField(max_digits=10, decimal_places=2, required=False)#-
     min_quantity_filter = forms.IntegerField(required=False)#-
     max_quantity_filter = forms.IntegerField(required=False)#-
+
+class GuestEmail(forms.Form):
+    email=forms.EmailField(required=True, help_text="Your Email will be used only to send guest login credentials. Deleted in 7 days", widget=forms.TextInput(
+            attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter your email',
+              
+            }
+        ))
+   

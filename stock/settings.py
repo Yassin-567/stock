@@ -176,3 +176,9 @@ USE_TZ = True  # Keep this enabled for consistent behavior
 #     DATABASE_ROUTERS = []
 # else:
 #     DATABASE_ROUTERS = ['inventory.db_router.CompanyRouter']
+from django.contrib.messages import constants as messages
+
+MESSAGE_TAGS = {
+    messages.ERROR: "danger",
+    messages.DEBUG: "secondary",
+}

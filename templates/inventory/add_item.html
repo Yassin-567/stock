@@ -20,11 +20,12 @@
       <br />
     {% endif %}
     <br />
-    <form id="item-form-container" action="" method="POST" enctype="multipart/form-data" class="form-container">
-      {% csrf_token %}
+{% if job %}
+    <form id="item-form-container" action="{% url 'item_add' job.job_id %}" method="POST" enctype="multipart/form-data" class="form-container">
+    {% else %}     <form id="item-form-container" action="{% url 'add_warehouseitem'  %}" method="POST" enctype="multipart/form-data" class="form-container">
+ {% endif %}{% csrf_token %}
 
       <div class="form-group">{{ form.as_p }}</div>
-
       <div class="form-group">
         <button type="submit" name="adding_new" class="btn-submit">Add part</button>
       </div>

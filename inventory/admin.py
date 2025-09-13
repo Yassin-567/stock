@@ -24,6 +24,8 @@ class WarehouseItemAdmin(admin.ModelAdmin):
     list_display = ('name','id',  )
 class JobAdmin(admin.ModelAdmin):
     list_display = ('address','id',  )
+    
+
 admin.site.register(JobItem,JobItemAdmin)
 admin.site.register(WarehouseItem,WarehouseItemAdmin)
     

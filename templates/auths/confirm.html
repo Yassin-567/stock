@@ -1,31 +1,53 @@
 {% load static %}
 {% load custom_tags %}
-
-{% if messages %}
-  {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} text-center mt-3">{{ message }}</div>
-  {% endfor %}
-{% endif %}
-
 {% block body %}
   <style>
     body {
+      height: 100vh;
+      margin: 0;
       background: linear-gradient(135deg, #f8f9fa, #e9ecef);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
     .card-custom {
       border: none;
-      border-radius: 1.5rem;
+      border-radius: 2rem;
       background: #ffffff;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      padding: 3rem 3.5rem; /* ⬅️ More inner padding */
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
       transition: transform 0.2s ease-in-out;
     }
     .card-custom:hover {
-      transform: translateY(-4px);
+      transform: translateY(-6px);
     }
     .btn-lg {
       border-radius: 1rem;
-      font-weight: 600;
+      font-weight: 700;
+      font-size: 1.2rem; /* ⬅️ Bigger font */
+      padding: 0.6rem 2rem; /* ⬅️ Larger buttons */
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      transition: transform 0.2s, background 0.2s;
+    }
+    .btn-lg:hover {
+      transform: translateY(-2px);
+    }
+    .btn-success {
+      background-color: #198754;
+      border: none;
+      color: #ffffffff;
+    }
+    .btn-success:hover {
+      background-color: #157347;
+    }
+    .btn-outline-secondary {
+      color: #6c757d;
+      border: 2px solid #6c757d;
+    }
+    .btn-outline-secondary:hover {
+      background-color: #6c757d;
+      color: #fff;
     }
     h1 {
       color: #0d6efd;
@@ -35,23 +57,97 @@
       color: #198754;
     }
   </style>
+  <style>
+    .alert {
+      border-radius: 0.75rem;
+      font-weight: 500;
+      margin-bottom: 1.2rem;
+      padding: 0.9rem 1.2rem;
+      text-align: center;
+    }
+    
+    /* Colors for messages */
+    .alert-success {
+      background-color: #d1e7dd;
+      color: #0f5132;
+      border: 1px solid #badbcc;
+    }
+    
+    .alert-danger {
+      background-color: #f8d7da;
+      color: #842029;
+      border: 1px solid #f5c2c7;
+    }
+    
+    .alert-warning {
+      background-color: #fff3cd;
+      color: #664d03;
+      border: 1px solid #ffecb5;
+    }
+    
+    .alert-info {
+      background-color: #cff4fc;
+      color: #055160;
+      border: 1px solid #b6effb;
+    }
+  </style>
 
-  <div class="container d-flex flex-column align-items-center justify-content-center min-vh-100">
-    <div class="card card-custom p-5 text-center" style="max-width: 500px; width: 100%;">
-      <h1 class="mb-3">Welcome to <span class="text-primary">Stocky!</span></h1>
-      <h4 class="mb-4 text-muted">We’re glad to have you here 🎉</h4>
-      <p class="mb-4">
-        Would you like to create a <strong>guest account</strong> that will be automatically deleted in
-        <strong>7 days</strong>?
+  <div class="card card-custom text-center" style="max-width: 520px; width: 100%;">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message|safe }}</div>
+      {% endfor %}
+    {% endif %}
+    {% if form.errors %}
+      <div class="alert alert-danger">
+        {% for field, errors in form.errors.items %}
+          {{ field }}: {{ errors|join:', ' }}
+        {% endfor %}
+      </div>
+    {% endif %}
+    <h1 class="mb-3">Welcome to <span class="text-primary">Stocky!</span></h1>
+    <h4 class="mb-4 text-muted">We’re glad to have you here 🎉</h4>
+    <p class="mb-4">
+      Would you like to create a <strong>guest account</strong> that will be automatically deleted in
+      <strong>7 days</strong>?
+    </p>
+
+    <form method="post" id="guestForm">
+      {% csrf_token %}
+      {{ form.email.label_tag }}
+      {{ form.email }}
+      <p>
+        <small class="form-text text-muted">{{ form.email.help_text }}</small>
       </p>
-
-      <form method="post">
-        {% csrf_token %}
-        <div class="d-flex justify-content-center gap-3">
-          <button type="submit" name="choice" value="yes" class="btn btn-success btn-lg px-4 shadow-sm">Yes</button>
-          <button type="" class="btn btn-outline-secondary btn-lg px-4 shadow-sm"><a href="{% url 'login' %}">No</a></button>
-        </div>
-      </form>
-    </div>
+      <div class="d-flex justify-content-center gap-4 mt-4">
+        <button id="yesBtn" type="submit" name="choice" value="yes" class="btn btn-success btn-lg px-5">✅ Yes</button>
+        <a href="{% url 'login' %}" class="btn btn-outline-secondary btn-lg px-5">❌ No</a>
+      </div>
+    </form>
   </div>
+  <script>
+    const form = document.getElementById('guestForm')
+    const yesBtn = document.getElementById('yesBtn')
+    
+    form.addEventListener('submit', function () {
+      // Show spinner
+      yesBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Processing...`
+    
+      // Prevent resending "choice=yes" after first submit
+      setTimeout(() => {
+        yesBtn.removeAttribute('name')
+      }, 0)
+    
+      // Block left mouse clicks on the whole document
+      document.addEventListener('click', blockLeftClick, true)
+    })
+    
+    function blockLeftClick(e) {
+      if (e.button === 0) {
+        // 0 = left button
+        e.stopPropagation()
+        e.preventDefault()
+      }
+    }
+  </script>
 {% endblock %}

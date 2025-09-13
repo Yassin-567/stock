@@ -134,6 +134,7 @@ class Engineer(models.Model):
         super().save(*args, **kwargs)
     def __str__(self):
         return str( self.name)
+from django.contrib.contenttypes.fields import GenericRelation
 class Job(models.Model):
     status_chouces=[
         ('ready', 'Ready'),
@@ -158,15 +159,16 @@ class Job(models.Model):
     date=models.DateField( auto_now=False, auto_now_add=False,blank=True,null=True)
     from_time=models.TimeField(auto_now=False,auto_now_add=False,blank=True,null=True)
     to_time=models.TimeField(auto_now=False,auto_now_add=False,blank=True,null=True)
+    history = GenericRelation('History', related_query_name='job_history')
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
-    def save(self,*args, request,dont_save_history=False,**kwargs):
+    def save(self,*args, request=None,dont_save_history=False,**kwargs):
         self.request=request
         self.dont_save_history=dont_save_history
         job_reopened(self,)
         if not job_completed(self,) and  self.status!='cancelled':
-            print('ppoo')
+            
             self.status = 'ready' if items_arrived(self) and items_not_used(self) else 'paused'
             self.items_arrived=items_arrived(self) and items_not_used(self)
         super().save(*args, **kwargs)
@@ -327,4 +329,5 @@ class History(models.Model):
     changed_at = models.DateTimeField(auto_now_add=True)
     user=models.ForeignKey(CustomUser,on_delete=models.DO_NOTHING,related_name="user_history")
     created=models.BooleanField(default=False)
-    
+    class Meta:
+        ordering = ['-changed_at']

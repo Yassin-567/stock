@@ -131,7 +131,7 @@
         </section>
       </form>
     </form>
-    {% if not completed %}
+    {% if not completed and item.job.status != 'cancelled' %}
       <span>
         <form action="{% url 'update_item' item.id %}" method="POST" class="delete-form" style="display: inline;">
           {% csrf_token %}
@@ -147,12 +147,14 @@
           {% if not item.is_used and not item.job.status == 'completed' and not item.job.status == 'cancelled' %}
             <button name="move_item" type="submit" class="btn btn-submit">Move</button>
           {% endif %}
-          {% if item.is_used %}
-            <p>
-              Did you get the item back?<button name="move_used_item" type="submit" class="btn btn-danger">Add it to the warehouse</button>
-            </p>
-          {% endif %}
         </form>
+        {% if item.is_used %}
+          <small>The job was reopened, do you still have the part?</small>
+          <form action="{% url 'inventory' item.id %}" method="POST">
+            {% csrf_token %}
+            <small><input type="hidden" name="coming_from_job" value="coming_from_job" /><button name="reset_was_it_used" type="submit" class="btn btn-danger">It's not used</button></small>
+          </form>
+        {% endif %}
       </span>
     {% endif %}
   </section>

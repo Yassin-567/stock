@@ -39,7 +39,7 @@ def log_model_changes(sender, instance,**kwargs):
         
     except sender.DoesNotExist:
         return  # Object doesn't exist yet, skip
-
+    
     changed_fields = []
     old_values = []
     new_values = []
@@ -47,10 +47,11 @@ def log_model_changes(sender, instance,**kwargs):
     for field in instance._meta.fields:
         
         field_name = field.name
-     
+        
         if field_name and (field_name in allowed_fields) :
             old_value = getattr(old_instance, field_name)
             new_value = getattr(instance, field_name)
+            print('new',new_value,old_value)
             if old_value != new_value:
                 changed_fields.append(field_name)
                 old_values.append(str(old_value))
@@ -77,7 +78,6 @@ def log_model_changes(sender, instance,**kwargs):
 @receiver(post_save)
 def log_model_creation(sender, created,instance, **kwargs):
     """Track new objects (after save, when PK is available)."""
-    print(sender,instance)
     allowed_models=[History,CustomUser,Job,Category,JobItem,Engineer,WarehouseItem,Company]
     if sender not in allowed_models :
         return

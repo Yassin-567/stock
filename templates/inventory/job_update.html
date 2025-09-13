@@ -87,7 +87,7 @@
   <ol>
     {% for jobitem in job.items.all %}
       <li>
-        <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.item.name }}</a> - Part Number: {{ jobitem.item.part_number }} - Price: ${{ jobitem.item.price }}
+        <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.name }}</a> - Part Number: {{ jobitem.part_number }} - Price: ${{ jobitem.price }} - Qty: {{ jobitem.job_quantity }}
         {% if jobitem.arrived and not jobitem.is_used %}
           <span style="color: rgb(0, 0, 0);background-color: rgb(17, 255, 9);border: 1000px;border-radius: 25%;">Arrived</span>
         {% elif jobitem.ordered and not jobitem.from_warehouse and not jobitem.is_used %}
@@ -101,10 +101,10 @@
         {% else %}
           <span style="color: rgb(0, 0, 0);background-color: rgba(255, 98, 98, 0.99);border: 1000px;border-radius: 25%;">Not ordered</span>
         {% endif %}
-        {% if jobitem.notes and job.status != 'completed' %}
-          <small>{{ jobitem.notes }}</small> <form action="{% url 'inventory' jobitem.id %}" method="POST">
+        {% if jobitem.was_it_used and job.status != 'completed' and job.status != 'cancelled' %}
+          <small>The job was reopened, do you still have the part?</small> <form action="{% url 'inventory' jobitem.id %}" method="POST">
             {% csrf_token %}
-            <small><input type="hidden" name="coming_from_job" value="coming_from_job" /><button name="reset_notes" type="submit" class="btn btn-danger">It's not used</button></small>
+            <small><input type="hidden" name="coming_from_job" value="coming_from_job" /><button name="reset_was_it_used" type="submit" class="btn btn-danger">It's not used</button></small>
           </form>
         {% endif %}
 

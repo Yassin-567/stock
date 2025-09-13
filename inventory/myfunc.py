@@ -3,13 +3,12 @@ def items_arrived(self):
     from .models import Job, JobItem
     all_arrived=False
     if self.pk:
-        print('all',all_arrived)
         if isinstance(self,Job) and self.items.all().count()>0:
             all_arrived = all(
                     item.arrived or item.from_warehouse
                     for item in self.items.all()
                 )
-            print('all',all_arrived)
+            
             self.items_arrived=all_arrived 
         elif isinstance(self,Job) :
             all_arrived=True
@@ -47,7 +46,7 @@ def job_reopened(self,):
     if self.pk:
         old_instance = type(self).objects.get(pk=self.pk)
         old_status = old_instance.status
-        if self.status != "completed" and old_status == "completed" and self.status != "cancelled" :
+        if (self.status != "completed" and old_status == "completed" and self.status != "cancelled") or (self.status != "cancelled" and old_status == "cancelled" and self.status != "completed") :
                 for item in self.items.all():
                     if item.is_used:
                         item.was_it_used=True
@@ -96,14 +95,23 @@ def send_otp_email(email, otp):
         recipient_list=[email],
         fail_silently=False,
     )
-
+def send_guest_email(email, login_email,password):
+    from django.core.mail import send_mail
+    from django.conf import settings
+    send_mail(
+        subject='Stocky login credentials',
+        message=f'Welcome to Stock, \n Your login details \n Email: {login_email} \n Password: {password} ',
+        from_email=settings.EMAIL_HOST_USER,
+        recipient_list=[email],
+        fail_silently=False,
+    )
 from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib import messages
 from collections import defaultdict
 from django.utils import timezone
 def send_multiple_emails(jobs, request=None,single=False,):
-    print("OOOO")
+    
     # Group jobs by engineer
     engineer_jobs = defaultdict(list)
     for job in jobs:
