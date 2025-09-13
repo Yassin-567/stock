@@ -111,34 +111,12 @@
     <div class="row">
       
       <!-- Left Side: Job Info -->
-      <div class="col-md-8">
+      <div class="col-md-4">
         <h2>
           Job ID: 
           <a href="{% url 'update_job' job.job_id %}"  
              onclick="localStorage.setItem('lastJob',{{job.job_id}});">{{ job.job_id }}</a> -
           <span class="badge status-{{ job.status }}">{{ job.get_status_display }}</span>
-
-          {% if job.date %}
-            <span style="font-size: small;"> 
-              <a href="/?status=all&date={{ job.date|urlencode }}">{{ job.date }}</a>
-            </span>
-          {% endif %}
-
-          {% if job.status != 'ready' and job.items_arrived and job.status != 'completed' and job|all_not_used %}
-            <small class="job-hint green">Parts arrived, is this job ready?</small>
-            <form action="{% url 'inventory' job.job_id %}" method="POST" class="inline-form">
-              {% csrf_token %}
-              <button name="job_is_ready" type="submit" onclick="localStorage.setItem('lastJob',{{job.job_id}});" class="btn btn-submit">Yes</button>
-            </form>
-          {% elif job.items.count == 0 and not job.status == 'ready' and job.status != 'cancelled' and job.status != 'completed' %}
-            <small class="job-hint green">No parts needed, is this job ready?</small>
-            <form action="{% url 'inventory' job.job_id %}" method="POST" class="inline-form job-ready-form">
-              {% csrf_token %}
-              <button name="job_is_ready" type="submit" onclick="localStorage.setItem('lastJob',{{job.job_id}});" class="btn btn-submit">Yes</button>
-            </form>
-          {% elif job.status == 'ready' and not job.items_arrived and job|total_quantity > 0 %}
-            <small class="job-hint yellow">Required parts have not arrived but the job is marked as Ready</small>
-          {% endif %}
         </h2>
 
         <div class="job-info">
@@ -150,72 +128,104 @@
             <strong>Total required:</strong> {{ job|total_quantity }},
             <strong>Arrived:</strong> {{ job|total_arrived_quantity }}
           </p>
-          {% if job.status != 'cancelled' and job.status != 'completed' %}
-            <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>
-          {% endif %}
         </div>
 
-        <button class="btn btn-toggle" onclick="toggleItems(this)">Show Items</button>
-        <ul class="job-items" style="display: none;">
-          {% for jobitem in job.items.all %}
-            <li>
-              <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.name }}</a> 
-              - Part Number: {{ jobitem.part_number }} - Price: ${{ jobitem.price }}
-              <!-- tags and forms same as before -->
-            </li>
-          {% empty %}
-            <li>No items associated with this job.</li>
-          {% endfor %}
-        </ul>
+        <!-- Items Section -->
+        <div class="mt-3">
+          <button class="btn btn-toggle mb-2" onclick="toggleItems(this)">Show Items</button>
+          <ul class="job-items list-unstyled ms-3" style="display: none;">
+            {% for jobitem in job.items.all %}
+              <li>
+                <a onclick="localStorage.setItem('lastJob',{{jobitem.job.job_id}});" href="{% url 'update_item' jobitem.id %}">{{ jobitem.name }}</a> 
+                - Part Number: {{ jobitem.part_number }} 
+                - Price: ${{ jobitem.price }}
+
+                {% if jobitem.arrived and not jobitem.is_used and not jobitem.from_warehouse %}
+                  <span class="tag arrived">Arrived</span>
+                {% elif jobitem.ordered and not jobitem.from_warehouse and not jobitem.is_used %}
+                  <span class="tag ordered">Ordered</span>
+                {% elif jobitem.was_for_job and jobitem.from_warehouse and not jobitem.is_used %}
+                  <span class="tag was-for-job">was for job {{ jobitem.was_for_job }}</span>
+                {% elif jobitem.from_warehouse and not jobitem.is_used %}
+                  <span class="tag from-warehouse">From warehouse</span>
+                {% elif jobitem.is_used %}
+                  <span class="tag used">Used</span>
+                {% else %}
+                  <span class="tag not-ordered">Not ordered</span>
+                {% endif %}
+
+                {% if jobitem.was_it_used and job.status != 'completed' %}
+                  <small>The job was reopened, do you still have the part?</small>
+                  <form action="{% url 'inventory' jobitem.id %}" method="POST" class="inline-form">
+                    {% csrf_token %}
+                    <button name="reset_was_it_used" type="submit" class="btn btn-danger">It's not used</button>
+                  </form>
+                {% endif %}
+              </li>
+            {% empty %}
+              <li>No items associated with this job.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    
+      <!-- Middle Column: Comments -->
+      <div class="col-md-5 text-center">
+        <div class="p-2 border-start border-end" style="min-height:100%;">
+          <h5>Comments</h5>
+          <div class="history-container">
+            <div class="comments-container">
+              {{job.comments.count}}
+              {% for comment in job.comments.all %}
+                <div class="comment-card">
+                  <span>Added by {{ comment.added_by.username }}</span>
+                  <p style="color: rgba(117, 58, 255, 0.79);">{{ comment.comment }}</p>
+                  <span>{{ comment.added_date }}</span>
+                </div>
+              {% empty %}
+                <p>No comments available.</p>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Right Side: Empty Div for Future Content -->
-     <!-- Right Side: Empty Div for Future Content -->
-<div class="col-md-4 text-end">
-  <div class="p-2 border-start" style="min-height:100%;">
-
-    <h5>Job history</h5>
-
-    <div class="history-container">
-      {% if job.history %}
-        <div class="row g-3">
-          {% for h in job.history.all %}
-            <div class="col-12">
-              <div class="card shadow-sm h-100">
-                <div class="card-body">
-                  <h5 class="card-title">
-                    {{ h.content_type.model|capfirst }}
-                    <small class="text-muted">
-                      <a href="{{ h.content_object|get_link }}">{{h.content_object}}</a>
-                    </small>
-                  </h5>
-                  <h6 class="card-subtitle mb-2 text-muted">
-                    {% if h.created %}
-                      Created by <strong>{{ h.user }}</strong>
-                    {% else %}
-                      Changed by <strong>{{ h.user }}</strong>
-                    {% endif %}
-                    <br>
-                    <small>At: {{ h.changed_at|date:'Y-m-d H:i' }}</small>
-                  </h6>
-                  {% if not h.created %}
-                    <p class="mb-1"><strong>Field:</strong> {{ h.field }}</p>
-                    <p class="text-danger mb-1"><strong>Old:</strong> {{ h.old_value|default:"(empty)" }}</p>
-                    <p class="text-success mb-1"><strong>New:</strong> {{ h.new_value|default:"(empty)" }}</p>
-                  {% endif %}
-                </div>
+      <!-- Right Side: Job History -->
+      <div class="col-md-3 text-center">
+        <div class="p-2 border-start" style="min-height:100%;">
+          <h5>Job history</h5>
+          <div class="history-container">
+            {% if job.history %}
+              <div class="row g-3" style="max-height: 300px; overflow-y: auto;">
+                {% for h in job.history.all %}
+                  <div class="col-12">
+                    <div class="card shadow-sm h-100">
+                      <div class="card-body text-center">
+                        <h5 class="card-title">{{ h.content_type.model|capfirst }}</h5>
+                        <small class="text-muted">
+                          <a href="{{ h.content_object|get_link }}">{{h.content_object}}</a>
+                        </small>
+                        <h6 class="card-subtitle mb-2 text-muted">
+                          {% if h.created %}Created{% else %}Changed{% endif %}
+                          by <strong>{{ h.user }}</strong><br>
+                          <small>At: {{ h.changed_at|date:'Y-m-d H:i' }}</small>
+                        </h6>
+                        {% if not h.created %}
+                          <p class="mb-1"><strong>Field:</strong> {{ h.field }}</p>
+                          <p class="text-danger mb-1"><strong>Old:</strong> {{ h.old_value|default:"(empty)" }}</p>
+                          <p class="text-success mb-1"><strong>New:</strong> {{ h.new_value|default:"(empty)" }}</p>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
               </div>
-            </div>
-          {% endfor %}
+            {% else %}
+              <div class="alert alert-info">No changes found in history.</div>
+            {% endif %}
+          </div>
         </div>
-      {% else %}
-        <div class="alert alert-info">No changes found in history.</div>
-      {% endif %}
-    </div>
-
-  </div>
-</div>
-
+      </div>
 
     </div>
   </div>
@@ -300,6 +310,14 @@
   padding-right: 5px; /* prevent scrollbar overlap */
   
 }
+.job-info :hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-5px);
+  transition: all 0.1s ease;
+  background-color: #feffe0ff;
+
+}
+
 
   </style>
 

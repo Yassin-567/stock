@@ -177,7 +177,7 @@ def register_user(request):
 @login_required(login_url='login', redirect_field_name='inventory')
 @no_ban
 def inventory(request,pk=None):
-
+    
     rjobs=Job.objects.filter(company=request.user.company).order_by('job_id')
     refresh=True if request.GET.get("refresh") else False
     if refresh:
@@ -335,17 +335,18 @@ def job_create(request):
 @login_required
 def update_job(request, pk, cancel=0):
     
-    job=Job.objects.filter(company=request.user.company).get(job_id=pk)
+    job = Job.objects.get(job_id=pk, company=request.user.company)
+
     items=JobItem.objects.filter(job=job)
     items_count=job.items.all().count()
     form = JobForm(instance=job,updating=True,)
     job_status=job.status
     comments_form=CommentForm(initial={
         'content_type': ContentType.objects.get_for_model(Job),
-        'object_id': job.job_id,
+        'object_id': job.pk,
         'company': request.user.company,
         })
-    comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
+    comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.pk,company=request.user.company)
  
     if cancel==1 :
             
@@ -435,10 +436,10 @@ def update_job(request, pk, cancel=0):
             comment.added_by = request.user 
             comment.company = request.user.company
             comment.save()
-            comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
+            comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.pk,company=request.user.company)
             comments_form = CommentForm(initial={
             'content_type': ContentType.objects.get_for_model(Job),
-            'object_id': job.job_id,
+            'object_id': job.pk,
             'company': request.user.company,
             })
             form = JobForm(instance=job,updating=True)
