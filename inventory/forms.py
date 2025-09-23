@@ -195,7 +195,7 @@ class JobForm(forms.ModelForm):
     class Meta:
         model = Job
         fields = '__all__'
-        exclude = ['user','quotation']
+        exclude = ['user','quotation','quote_declined','quote_accepted']
         labels = {
             'name': 'Part Name',
         }
@@ -243,8 +243,6 @@ class JobForm(forms.ModelForm):
     def clean(self,*args, **kwargs):
         cleaned_data=super().clean()
         status=cleaned_data.get('status')
-        quote_accepted=cleaned_data.get('quote_accepted')
-        quote_declined=cleaned_data.get('quote_declined')
         from_time=cleaned_data.get('from_time')
         to_time=cleaned_data.get('to_time')
         job=self.instance
@@ -258,14 +256,17 @@ class JobForm(forms.ModelForm):
             #if self.fields['status']=='quoted': 
             
             if self.instance.quoted :
-                if not quote_accepted and not quote_declined:
-                    raise forms.ValidationError("Was the quote accepted")
+                
+                if not self.instance.quote_accepted and not self.instance.quote_declined and self.instance.status =='quoted':
+                    raise forms.ValidationError("Was the quote accepted or declined?")
             items_count=job.items.all().count()
             if status=='ready' and  not (items_arrived(job) and items_not_used(job)) and items_count>0 :
             
                 raise forms.ValidationError("Not all items arrived")
             elif status=='ready' and job.items.exclude(is_used=False).exists():
                 raise forms.ValidationError("There is a used item")
+            elif status=='ready' and not job.quote_accepted:
+                raise forms.ValidationError("Was the quote accpted")
             return cleaned_data
 class CommentForm(forms.ModelForm):
     class Meta:

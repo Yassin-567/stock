@@ -18,5 +18,8 @@ class GuestCleanupMiddleware:
                   
         #            i.delete()
         now = timezone.now()
-        Company.objects.filter(is_guest=True, expiry_date__lt=now).delete()
+        try :
+            Company.objects.filter(is_guest=True, expiry_date__lt=now).delete()
+        except:
+            pass
         return self.get_response(request)

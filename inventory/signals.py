@@ -43,7 +43,7 @@ def log_model_changes(sender, instance,**kwargs):
     changed_fields = []
     old_values = []
     new_values = []
-    allowed_fields=['job_quantity','supplier','arrived_quantity','is_used','category','warehouse_quantity','reference','address','is_banned','is_employee','is_admin','is_owner','permission','username','phone','email','name','to_time','from_time','date','post_code','parent_account','engineer','quotation','status','job']
+    allowed_fields=['job_quantity','supplier','arrived_quantity','is_used','category','warehouse_quantity','reference','address','is_banned','is_employee','is_admin','is_owner','permission','username','phone','email','name','to_time','from_time','date','post_code','parent_account','engineer','quotation','status','quote_declined','quote_accepted','job']
     for field in instance._meta.fields:
         
         field_name = field.name

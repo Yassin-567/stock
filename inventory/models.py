@@ -155,7 +155,7 @@ class Job(models.Model):
     post_code=models.CharField(max_length=10, null=True, blank=True)
     quoted=models.BooleanField(default=False)
     quote_accepted=models.BooleanField(default=False)
-    quoted_declined=models.BooleanField(default=False)
+    quote_declined=models.BooleanField(default=False)
     date=models.DateField( auto_now=False, auto_now_add=False,blank=True,null=True)
     from_time=models.TimeField(auto_now=False,auto_now_add=False,blank=True,null=True)
     to_time=models.TimeField(auto_now=False,auto_now_add=False,blank=True,null=True)
@@ -171,7 +171,7 @@ class Job(models.Model):
         job_reopened(self,)
         if not job_completed(self,) and  self.status!='cancelled':
             
-            self.status = 'ready' if items_arrived(self) and items_not_used(self) else 'paused'
+            self.status = 'ready' if items_arrived(self) and items_not_used(self) and self.quote_accepted else 'paused'
             self.items_arrived=items_arrived(self) and items_not_used(self)
         super().save(*args, **kwargs)
     def __str__(self):

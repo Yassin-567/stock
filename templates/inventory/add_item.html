@@ -24,11 +24,14 @@
     <form id="item-form-container" action="{% url 'item_add' job.job_id %}" method="POST" enctype="multipart/form-data" class="form-container">
     {% else %}     <form id="item-form-container" action="{% url 'add_warehouseitem'  %}" method="POST" enctype="multipart/form-data" class="form-container">
  {% endif %}{% csrf_token %}
+                  
 
       <div class="form-group">{{ form.as_p }}</div>
       <div class="form-group">
         <button type="submit" name="adding_new" class="btn-submit">Add part</button>
       </div>
+              <span>You can add new categories from here, <a href="{% url 'add_category' %}" class="btn btn-outline-primary px-4 me-3">Add category</a></span>
+
     </form>
     {% if job %}
       <div id="stock-items-form-container">

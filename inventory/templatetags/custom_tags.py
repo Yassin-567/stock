@@ -98,3 +98,27 @@ def trim(value):
         return value.strip()
     except Exception:
         return value
+    
+@register.filter
+def integerme(value):
+    try:
+        return int(value)
+    except Exception:
+        return value
+    
+from django.utils import timezone
+
+@register.filter
+def days(value):
+    """
+    Returns the number of days between today and the given date.
+    """
+    if not value:
+        return ""
+    
+    now = timezone.now().date()
+    if hasattr(value, 'date'):  # handle datetime
+        value = value.date()
+    
+    delta = now - value
+    return delta.days

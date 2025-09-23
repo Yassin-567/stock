@@ -279,7 +279,8 @@ def add_category(request):
             cat=form.save(commit=False)
             cat.company=request.user.company
             try:
-                exist_cat=Category.objects.get(category__icontains=cat.category)
+                                
+                exist_cat = Category.objects.get(Q(company=request.user.company), Q(category__icontains=cat.category))
                 messages.error(request,f'A similar category exists: <span class="cat-highlight" style="color: rgb(230, 15, 15);">{exist_cat}</span>')
             except:
                 cat.save(request=request)
@@ -288,6 +289,8 @@ def add_category(request):
                    
            
     return render(request,'inventory/add_cat.html',{"form":form})
+
+@login_required
 def emails_history(request,):
     if request.method=="GET":
         if 'type' in request.GET :
@@ -363,6 +366,36 @@ def update_job(request, pk, cancel=0):
             messages.success(request,'Now this job is cancelled')
             return redirect('update_job',pk=pk)
     if request.method=="POST":
+        
+        if  job.quoted :
+            try:
+                quote_status=request.POST.get('quote_status')
+            except:
+                quote_status=None
+            
+            if quote_status :
+                if quote_status== 'quote_accepted' and not job.quote_accepted:
+                    print("accepted")
+                    job.quote_declined=False
+                    job.quote_accepted=True
+                    job.quoted=True
+                    job.save(update_fields=['quote_declined','quote_accepted','quoted'],request=request)
+                    messages.success(request,'Quote accepted')
+                elif quote_status=='quote_declined' and not job.quote_declined:
+                    print("PPP")
+                    job.quote_declined=True
+                    job.quote_accepted=False
+                    job.quoted=True
+                    job.save(update_fields=['quote_declined','quote_accepted','quoted'],request=request)
+                    messages.success(request,'Quote declined')
+                elif quote_status=='quote_unknown':
+                    print(8980)
+                    job.quote_declined=False
+                    job.quote_accepted=False
+                    job.quoted=True
+                    job.save(update_fields=['quote_declined','quote_accepted','quoted'],request=request)
+
+                return redirect('update_job',pk=pk)
         if 'yes_complete' in request.POST:
             post_data = request.session.pop('job_post_data', None)
             
@@ -382,13 +415,12 @@ def update_job(request, pk, cancel=0):
         if post_data and request.method == 'POST' and 'no_return_back' in request.POST :#---
             return redirect(f'update_job',pk=pk)
         if 'save' in request.POST:
+            print("WW######@000")
             quotation = request.POST.get('quotation')
             if quotation:
                 try:
                     # Try to convert to float (or int if you want only integers)
                     quotation = float(quotation)
-                    
-                    
                     if quotation <= 0:
                         raise ValueError("Quotation must be positive")
                 except (TypeError, ValueError):
@@ -405,7 +437,9 @@ def update_job(request, pk, cancel=0):
             else:
                 quotation=job.quotation
             form = JobForm(request.POST, instance=job,updating=True)
+            
             if form.is_valid() :
+                print("WW######@111")
                 if form.cleaned_data['status']=='completed':
                     li=[]
                     li=[item for item in job.items.all() if item.job_quantity != item.arrived_quantity]
@@ -424,12 +458,17 @@ def update_job(request, pk, cancel=0):
                     job.quoted=True
                 except:
                     pass
+                print("WW######@222")
                 obj = form.save(commit=False)   # get the instance without saving
                 
                 obj.save(request=request)
                 form = JobForm(request.POST, instance=job,updating=True)
+                
                 messages.success(request, 'Job updated successfully')
                 items=JobItem.objects.filter(job=job)
+                
+                return redirect('update_job',job.job_id)
+            
         comments_form=CommentForm(request.POST)
         if comments_form.is_valid() and 'add_comment' in request.POST: 
             comment = comments_form.save(commit=False)
@@ -475,10 +514,12 @@ def update_job(request, pk, cancel=0):
                     comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
                     return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count,'job_status':job_status})       
     context={'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count,'job_status':job_status}
+
+    
     return render(request, 'inventory/job_update.html', context)       
 ###########################-ITEM-######################
 @login_required
-def item_add(request,pk=None,no_job=False):
+def item_add(request,pk=None,):
     try:
         job=Job.objects.filter(company=request.user.company).get(job_id=pk)
     except Job.DoesNotExist:
@@ -574,10 +615,6 @@ def item_add(request,pk=None,no_job=False):
                     with transaction.atomic():
                         
                         
-                        job_quantity=form.cleaned_data['job_quantity']
-                        arrived_quantity=form.cleaned_data['arrived_quantity']
-                        ordered=form.cleaned_data['ordered']
-                        reference=form.cleaned_data['reference']
                         # category=form.cleaned_data['category']
                         if pk is not None:
                             jobitem=form.save(commit=False)

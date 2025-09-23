@@ -7,53 +7,148 @@
       <div class="alert alert-{{ message.tags }}">{{ message }}</div>
     {% endfor %}
   {% endif %}
-  <h2 style="margin-bottom: 20px; font-size: 1.5rem; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+  <h2 class="job-header">
+    <!-- Job ID -->
     <span>
       Job ID:
-      <span style="
-        display: inline-block;
-        padding: 5px 10px;
-        margin-left: 10px;
-        font-size: 1.2rem;
-        font-weight: normal;
-        color: #333;
-        background-color: rgba(182, 182, 182, 0.79);
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      ">{{ job.job_id }}</span>
+      <span class="job-id">{{ job.job_id }}</span>
     </span>
-    <span style="
-        display: inline-block;
-        padding: 5px 10px;
-        font-size: 1.2rem;
-        font-weight: normal;
-        color: #333;
-        background-color: rgb(182, 182, 182);
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      ">Parts count: {{ items_count }}</span>
+
+    <!-- Parts count -->
+    <span class="parts-count">Parts count: {{ items_count }}</span>
+
+    <!-- Quotation -->
     {% if job.quoted %}
-      <span style="
-        display: inline-block;
-        padding: 5px 10px;
-        font-size: 1.2rem;
-        font-weight: normal;
-        color: #333;
-        background-color: rgb(0, 206, 69);
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      ">Quoted: $<span style="color: rgb(34, 41, 4);">{{ job.quotation }}</span></span>
+      <span class="quote-box">
+        Quoted: $<span class="quote-value">{{ job.quotation }}</span>
+
+        {% if job.quote_accepted %}
+          <span class="quote-status accepted">Quote accepted</span>
+        {% elif job.quote_declined %}
+          <span class="quote-status declined">Quote declined</span>
+        {% endif %}
+        {% if job.status != 'completed' and job.status != 'cancelled' %}
+        
+<form action="" method="post" class="quote-actions">
+        {% csrf_token %}
+        {% comment %} <label for="quote_status"  class="form-label mb-0 me-1">Quotation status:</label> {% endcomment %}
+        <select name="quote_status" onchange="this.form.submit()" id="">
+          <option value="quote_unknown" {% if job.quote and job.quote_accepted == false and  job.quote_declined == false%}selected{% endif %}>---</option>
+          <option value="quote_accepted" {% if job.quote_accepted %}selected{% endif %}>Quote accepted</option>
+          <option value="quote_declined" {% if job.quote_declined %}selected{% endif %}>Quote declined</option>
+        </select>
+      </form>{% endif %}
+        <!-- Action buttons -->
+      </span>
+      
     {% endif %}
   </h2>
+
+  <style>
+    .job-header {
+      margin-bottom: 20px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .job-id {
+      display: inline-block;
+      padding: 5px 10px;
+      margin-left: 10px;
+      font-size: 1.2rem;
+      font-weight: normal;
+      color: #333;
+      background-color: rgba(182, 182, 182, 0.79);
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .parts-count {
+      display: inline-block;
+      padding: 5px 10px;
+      font-size: 1.2rem;
+      font-weight: normal;
+      color: #333;
+      background-color: rgb(182, 182, 182);
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .quote-box {
+      display: inline-block;
+      padding: 5px 10px;
+      font-size: 1.2rem;
+      font-weight: normal;
+      color: #fff;
+      background-color: rgba(153, 165, 48, 1);
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .quote-value {
+      color: #fff;
+    }
+    
+    .quote-status {
+      display: inline-block;
+      padding: 1px 4px;
+      font-size: 1rem;
+      font-weight: normal;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-left: 8px;
+    }
+    
+    .quote-status.accepted {
+      color: #333;
+      background-color: rgba(6, 255, 89, 1);
+    }
+    
+    .quote-status.declined {
+      color: #fff;
+      background-color: rgba(173, 0, 58, 1);
+    }
+    
+    /* ✅ buttons in next row */
+    .quote-actions {
+      display: block; /* Forces new line */
+      margin-top: 10px; /* spacing from quotation */
+    }
+    
+    .quote-actions button {
+      margin-right: 5px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .quote-actions button[name='quote_accepted'] {
+      background-color: rgba(6, 255, 89, 1);
+      color: #333;
+    }
+    
+    .quote-actions button[name='quote_declined'] {
+      background-color: rgba(173, 0, 58, 1);
+      color: #fff;
+    }
+  </style>
   <h3>Unique items= {{ job.items.count }} Total required items={{ job|total_quantity }} Arrived={{ job|total_arrived_quantity }}</h3>
 
   {% if job.status == 'paused' or job.status == 'ready' %}
     <h4><a href="{% url 'item_add' job.job_id %}">Add item</a></h4>
   {% endif %}
   <section class="form-section">
+    
     <form action="" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
 
