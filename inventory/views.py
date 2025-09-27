@@ -1383,32 +1383,33 @@ def company_settings(request):
 
     return render(request, 'inventory/company_settings.html', {'form': form})
 def warehouse(request):
-    from django.db.models import Sum
-    parts_summary = (
-        WarehouseItem.objects
-        .filter(company=request.user.company)
-        .values('part_number', 'name', 'category__category')  # updated line
-        .annotate(total_quantity=Sum('warehouse_quantity'))
-        .order_by('part_number')
-    )
-
-    if request.GET.get("entry_method")=='batch_entry':
+    # from django.db.models import Sum
+    # parts_summary = (
+    #     WarehouseItem.objects
+    #     .filter(company=request.user.company)
+    #     .values('part_number', 'name', 'category__category')  # updated line
+    #     .annotate(total_quantity=Sum('warehouse_quantity'))
+    #     .order_by('part_number')
+    # )
+    items_status=request.GET.get('items_status') if request.GET.get('items_status') else 'available'
+    
+    if request.GET.get("entry_method")=='batch_entry' :
         warehouse_items=WarehouseItem.objects.filter(company=request.user.company,added_by_batch_entry=True)#,is_moved_from_job=None
-        used_warehouse_items=None
-        taken_warehouse_items=None    
+        used_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=True,from_warehouse=True,added_by_batch_entry=True)
+        taken_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=False,from_warehouse=True,added_by_batch_entry=True)    
     elif request.GET.get("entry_method")=='normal_entry':
         warehouse_items=WarehouseItem.objects.filter(company=request.user.company,added_by_batch_entry=False)#,is_moved_from_job=None
-        used_warehouse_items=None
-        taken_warehouse_items=None
+        used_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=True,from_warehouse=True,added_by_batch_entry=False)
+        taken_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=False,from_warehouse=True,added_by_batch_entry=False)    
     else:
         warehouse_items=WarehouseItem.objects.filter(company=request.user.company)#,is_moved_from_job=None
         used_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=True,from_warehouse=True)
         taken_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=False,from_warehouse=True,)
         # moved_items=WarehouseItem.objects.filter(is_moved_from_job__isnull=False ,company=request.user.company , warehouse_quantity__gt=0)
         # used_moved_items=JobItem.objects.filter(company=request.user.company,is_used=True,was_for_job__isnull=False)
-    
+
     entry_method=request.GET.get("entry_method")
-    return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items,'used_warehouse_items':used_warehouse_items,'taken_warehouse_items':taken_warehouse_items,'entry_method':entry_method})
+    return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items,'used_warehouse_items':used_warehouse_items,'taken_warehouse_items':taken_warehouse_items,'entry_method':entry_method,'items_status':items_status})
 
 def engineer(request):
     form=EngineerForm()

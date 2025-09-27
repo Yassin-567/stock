@@ -28,10 +28,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
-CSRF_TRUSTED_ORIGINS = [
-    "https://77d67b6612be.ngrok-free.app"
-]
-
+CSRF_TRUSTED_ORIGINS = []
 
 # Application definition
 
@@ -66,7 +63,7 @@ MIDDLEWARE = [
     "inventory.middleware.GuestCleanupMiddleware",
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
+MIDDLEWARE.remove("django.middleware.csrf.CsrfViewMiddleware")
 ROOT_URLCONF = 'stock.urls'
 
 TEMPLATES = [

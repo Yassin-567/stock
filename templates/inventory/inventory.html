@@ -126,11 +126,11 @@ altFormat: 'F j, Y'
   </h2>
 
   <div class="job-info">
-    {% if job.added_date|days|integerme < 7%}New{% endif %}
-    {% if job.added_date|days|integerme >= 7%}Old {% endif %}
+    {% if job.birthday|days|integerme < 7%}New{% endif %}
+    {% if job.birthday|days|integerme >= 7%}Old {% endif %}
 
     
-    <p>Job age: {{ job.added_date|timesince }} <br></p>
+    <p>Job age: {{ job.birthday|timesince }} <br></p>
     <p><strong>Address:</strong> {{ job.address }}</p>
     <p><strong>Parent Account:</strong> {{ job.parent_account }}</p>
     <p>

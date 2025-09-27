@@ -23,9 +23,8 @@ class JobItemAdmin(admin.ModelAdmin):
 class WarehouseItemAdmin(admin.ModelAdmin):
     list_display = ('name','id',  )
 class JobAdmin(admin.ModelAdmin):
-    list_display = ('address','id',  )
-    
-
+    list_display = ('address','id','birthday')
+   
 admin.site.register(JobItem,JobItemAdmin)
 admin.site.register(WarehouseItem,WarehouseItemAdmin)
     

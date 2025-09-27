@@ -161,7 +161,7 @@ class Job(models.Model):
     to_time=models.TimeField(auto_now=False,auto_now_add=False,blank=True,null=True)
     history = GenericRelation('History', related_query_name='job_history')
     comments = GenericRelation('Comment', related_query_name='job_comments')
-
+    birthday=models.DateTimeField(auto_now_add=True,)
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
@@ -249,6 +249,7 @@ class JobItem(models.Model):
     arrived=models.BooleanField(default=False)
     is_used=models.BooleanField(default=False)
     from_warehouse=models.BooleanField(default=False)
+    added_by_batch_entry=models.BooleanField(default=False)
     was_it_used=models.BooleanField(default=False)
     was_for_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="moveditems")
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="jobitem_category", null=True, )
