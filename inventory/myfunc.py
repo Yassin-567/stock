@@ -53,6 +53,14 @@ def job_reopened(self,):
                         item.save(update_fields=['was_it_used'],no_recursion=True,request=None)
                 return True
         return False
+def quote_accepted(self,):
+    if self.pk:
+        if self.quoted:
+            if self.quote_accepted:
+                return True
+            return False
+        return True
+    return False
 def item_arrived(self):
     if self.from_warehouse:
         

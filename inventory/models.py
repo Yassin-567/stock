@@ -5,7 +5,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from datetime import timedelta
-from .myfunc import items_arrived,job_reopened,item_arrived,job_completed,items_not_used
+from .myfunc import items_arrived,job_reopened,item_arrived,job_completed,items_not_used,quote_accepted
 ##
 
 ############################---USER and COMPANY---############################
@@ -161,7 +161,7 @@ class Job(models.Model):
     to_time=models.TimeField(auto_now=False,auto_now_add=False,blank=True,null=True)
     history = GenericRelation('History', related_query_name='job_history')
     comments = GenericRelation('Comment', related_query_name='job_comments')
-    birthday=models.DateTimeField(default=timezone.now,)
+    birthday=models.DateTimeField(auto_now_add=True)
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
@@ -171,7 +171,7 @@ class Job(models.Model):
         job_reopened(self,)
         if not job_completed(self,) and  self.status!='cancelled':
             
-            self.status = 'ready' if items_arrived(self) and items_not_used(self) and self.quote_accepted else 'paused'
+            self.status = 'ready' if items_arrived(self) and items_not_used(self) and quote_accepted(self) else 'paused'
             self.items_arrived=items_arrived(self) and items_not_used(self)
         super().save(*args, **kwargs)
     def __str__(self):

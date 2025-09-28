@@ -576,7 +576,7 @@ def item_add(request,pk=None,):
                             added_date=item.added_date,
                             added_by=item.added_by,
                             from_warehouse=True, #if item.is_moved_from_job==None else False,
-                            
+                            added_by_batch_entry=item.added_by_batch_entry,
                             company=request.user.company,
                             arrived=True,
                             job_quantity=+required_quantity,
@@ -803,7 +803,7 @@ def update_item(request, pk):
                     price=job_item.price,
                     supplier=job_item.supplier,
                     company=request.user.company,   
-                    
+                    added_by_batch_entry=job_item.added_by_batch_entry,
                     added_by=request.user,
                     warehouse_quantity=job_item.arrived_quantity,
                     reference=job_item.reference,
