@@ -123,11 +123,11 @@ altFormat: 'F j, Y'
   {% endif %}
   {% endif %}
   </span>
-  </h2>
+  </h2>{{ job.birthday|days_float }}
 
   <div class="job-info">
-    {% if job.birthday|days|integerme < 7%}New{% endif %}
-    {% if job.birthday|days|integerme >= 7%}Old {% endif %}
+    {% if job.birthday|days_float < 7 %}New{% endif %}
+    {% if job.birthday|days_float >= 7%}Old job⚠{% endif %}
 
     
     <p>Job age: {{ job.birthday|timesince }} <br></p>

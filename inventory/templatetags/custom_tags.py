@@ -122,3 +122,10 @@ def days(value):
     
     delta = now - value
     return delta.days
+@register.filter
+def days_float(value):
+    """Return age in days with fractions (e.g., 6.5 days)."""
+    if not value:
+        return None
+    delta = timezone.now() - value
+    return delta.total_seconds() / 86400  # 86400 seconds in a day
