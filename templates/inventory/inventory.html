@@ -123,14 +123,42 @@ altFormat: 'F j, Y'
   {% endif %}
   {% endif %}
   </span>
-  </h2>{{ job.birthday|days_float }}
+  </h2>
 
   <div class="job-info">
-    {% if job.birthday|days_float < 7 %}New{% endif %}
-    {% if job.birthday|days_float >= 7%}Old job⚠{% endif %}
+{% if job.birthday|days_float < 7 %}
+<span style="
+    display: inline-block;
+    color: #fff;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    margin-bottom: 5px;
+">
+    🆕 New Job • Age: {{ job.birthday|timesince }}
+</span>
+{% endif %}
+
+{% if job.birthday|days_float >= 7 %}
+<span style="
+    display: inline-block;
+    color: #ffe600;
+    background: #222;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+     margin-bottom: 5px;
+">
+    ⚠️ Old Job • Age: {{ job.birthday|timesince }}
+</span>
+{% endif %}
 
     
-    <p>Job age: {{ job.birthday|timesince }} <br></p>
     <p><strong>Address:</strong> {{ job.address }}</p>
     <p><strong>Parent Account:</strong> {{ job.parent_account }}</p>
     <p>
@@ -206,7 +234,7 @@ altFormat: 'F j, Y'
 <!-- Right Side: Job History -->
  <div class="col-md-3 text-center">
 <div class="p-2 border-start" style="min-height:100%;">
-<h5>Job history</h5><br>
+<h5>Job history</h5>
 <div class="history-container">
 {% if job.history %}
 <div class="row g-3">

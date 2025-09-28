@@ -180,18 +180,3 @@ MESSAGE_TAGS = {
     messages.DEBUG: "secondary",
 }
 
-# CELERY_BROKER_URL = "redis://localhost:6379/0"
-CELERY_BROKER_URL = "memory://"
-
-CELERY_RESULT_BACKEND = "cache+memory://"
-
-from celery.schedules import crontab
-from datetime import timedelta
-
-CELERY_BEAT_SCHEDULE = {
-    "clean-db-frequently": {
-        "task": "inventory.tasks.clean_old_jobs",
-        "schedule":2,
-    },
-}
-
