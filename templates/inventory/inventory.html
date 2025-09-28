@@ -26,7 +26,7 @@
 
   <!-- Date -->
   <div class="col-auto">
-    <label for="date" class="form-label mb-0 me-1">Date</label>
+    <label for="date" class="form-label mb-0 me-1">Visit date</label>
     <input type="text" id="date" name="date"
       class="form-control form-control-sm w-auto flatpickr_date"
       placeholder="Select date"
@@ -41,6 +41,22 @@
       placeholder="Search jobs"
       aria-label="Search"
       value="{{ request.GET.q }}" />
+  </div>
+  <div class="col-auto">
+    <label for="date-range" >Job added date</label>
+    <div name="date-range" class="d-flex align-items-center " style="border-style: ridge; padding:2px; border-radius: 10px;">
+    <label for="added_from_date" class="form-label mb-0 me-1">From</label>
+    <input type="text" id="added_from_date" name="added_from_date"
+      class="form-control form-control-sm w-auto flatpickr_date"
+      placeholder="Select date"
+      value="{{ request.GET.added_from_date }}" />
+
+          <label for="added_to_date" class="form-label mb-0 me-1">To</label>
+    <input type="text" id="added_to_date" name="added_to_date"
+      class="form-control form-control-sm w-auto flatpickr_date"
+      placeholder="Select date"
+      value="{{ request.GET.added_to_date }}" />
+</div>
   </div>
 
   <!-- Button -->
@@ -109,6 +125,7 @@ altFormat: 'F j, Y'
 <!-- Left Side: Job Info -->
 <div class="col-md-5">
 <h2>
+  {{job.birthday}}
     Job ID: 
     <a href="{% url 'update_job' job.job_id %}"  
       onclick="localStorage.setItem('lastJob',{{job.job_id}});">{{ job.job_id }}</a> -

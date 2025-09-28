@@ -191,6 +191,8 @@ def inventory(request,pk=None):
         status = status.strip() if status else None
         date = date.strip() if date else None
         q=q.strip() if q else None
+        added_to_date = request.GET.get('added_to_date')
+        added_from_date = request.GET.get('added_from_date')
         # if status is not None:
         #     request.session['status'] = status
         # elif request.session.get('status') is not None:
@@ -201,7 +203,7 @@ def inventory(request,pk=None):
         if date:
             rjobs = rjobs.filter(date=date)  
         if q:
-            print("PPP")
+           
             job_id_filter = Q()
             try:
                 # Try to convert q to int for job_id search
@@ -215,6 +217,22 @@ def inventory(request,pk=None):
                 Q(address__icontains=q) 
                 # Add more fields as needed
             )
+        
+        if added_to_date or added_from_date:
+            if added_from_date and added_to_date:
+                if added_from_date > added_to_date:
+                    messages.error(request, "The 'From' date cannot be later than the 'To' date.")
+                    return redirect('inventory')
+                # elif added_from_date == added_to_date:
+                #     rjobs = rjobs.filter(birthday=added_to_date_obj)
+
+            if added_from_date:
+                added_from_date_obj = datetime.strptime(added_from_date, '%Y-%m-%d').date()
+                rjobs = rjobs.filter(birthday__date__gte=added_from_date_obj)
+            if added_to_date:
+                added_to_date_obj = datetime.strptime(added_to_date, '%Y-%m-%d').date()
+                rjobs = rjobs.filter(birthday__date__lte=added_to_date_obj)
+
     paginator=Paginator(rjobs,4)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
