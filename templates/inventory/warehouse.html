@@ -26,8 +26,17 @@
             <option value="linked" {% if items_status == "linked" %}selected{% endif %}>Linked to a job</option>
     
         </select>
-
+<div class="col-auto  ">
+    <label for="search" class="form-label mb-0 me-1">Search</label>
+    <input type="search" name="q"
+      class="form-control form-control-sm w-auto"
+      placeholder="Search jobs"
+      aria-label="Search"
+      value="{{ request.GET.q }}" />
+  </div>
     </form>
+
+
    <a href="{% url 'add_warehouseitem' %}" 
    style="
       display: inline-block;
@@ -61,7 +70,7 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
       transition: all 0.2s ease;
    "
-   onmouseover="this.style.background='linear-gradient(135deg, #38f9d7, #43e97b)'; this.style.transform='scale(1.05)';"
+   onmouseover="this.style.background='linear-gradient(135deg, #38f9d7, #43e97b)'; this.style.transform='scale(1.05)'; "
    onmouseout="this.style.background='linear-gradient(135deg, #43e97b, #38f9d7)'; this.style.transform='scale(1)';">
    📂 Bulk Add (Excel File)
 </a>

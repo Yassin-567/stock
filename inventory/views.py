@@ -184,6 +184,7 @@ def inventory(request,pk=None):
         status = None
         date = None
         q=None
+        quotation_status=None
     else:
         status = request.GET.get('status')
         q=request.GET.get('q')
@@ -193,12 +194,16 @@ def inventory(request,pk=None):
         q=q.strip() if q else None
         added_to_date = request.GET.get('added_to_date')
         added_from_date = request.GET.get('added_from_date')
+        quotation_status = request.GET.get('quotation_status') 
         # if status is not None:
         #     request.session['status'] = status
         # elif request.session.get('status') is not None:
         #     status = request.session['status']
         if status and status != 'all':
-            rjobs = rjobs.filter(status=status)
+            if status == 'on_hold':
+                rjobs = rjobs.filter(on_hold=True).exclude(status__in=['completed','cancelled'])
+            else:
+                rjobs = rjobs.filter(status=status)
             
         if date:
             rjobs = rjobs.filter(date=date)  
@@ -225,15 +230,22 @@ def inventory(request,pk=None):
                     return redirect('inventory')
                 # elif added_from_date == added_to_date:
                 #     rjobs = rjobs.filter(birthday=added_to_date_obj)
-
             if added_from_date:
                 added_from_date_obj = datetime.strptime(added_from_date, '%Y-%m-%d').date()
                 rjobs = rjobs.filter(birthday__date__gte=added_from_date_obj)
             if added_to_date:
                 added_to_date_obj = datetime.strptime(added_to_date, '%Y-%m-%d').date()
                 rjobs = rjobs.filter(birthday__date__lte=added_to_date_obj)
-
-    paginator=Paginator(rjobs,4)
+        if quotation_status:
+            if quotation_status == 'accepted':
+                rjobs = rjobs.filter(quote_accepted=True)
+            elif quotation_status == 'declined':
+                rjobs = rjobs.filter(quote_declined=True)
+            elif quotation_status == 'waiting':
+                rjobs = rjobs.filter(quoted=True, quote_accepted=False, quote_declined=False)
+            else:
+                quotation_status = None
+    paginator=Paginator(rjobs,25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -247,7 +259,8 @@ def inventory(request,pk=None):
             'page_obj':page_obj,
             'status':status,
             'querystring':querystring,
-            'q':q
+            'q':q,
+            'quotation_status':quotation_status,
             }
     if request.method=='POST' and 'send_emails' in request.POST:
         date=request.POST.get("date")
@@ -357,18 +370,20 @@ def job_create(request):
 def update_job(request, pk, cancel=0):
     
     job = Job.objects.get(job_id=pk, company=request.user.company)
-
+    
     items=JobItem.objects.filter(job=job)
     items_count=job.items.all().count()
-    form = JobForm(instance=job,updating=True,)
-    job_status=job.status
-    comments_form=CommentForm(initial={
-        'content_type': ContentType.objects.get_for_model(Job),
-        'object_id': job.pk,
-        'company': request.user.company,
-        })
+    form = JobForm(instance=job,updating=True,initial={'from_time':str(job.from_time),'to_time':str(job.to_time)})
+    
+    # comments_form=CommentForm(initial={
+    #     'content_type': ContentType.objects.get_for_model(Job),
+    #     'object_id': job.pk,
+    #     'company': request.user.company,
+    #     })
+    
     comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.pk,company=request.user.company)
- 
+    job_status=job.status
+
     if cancel==1 :
             
             li=[]
@@ -384,7 +399,11 @@ def update_job(request, pk, cancel=0):
             messages.success(request,'Now this job is cancelled')
             return redirect('update_job',pk=pk)
     if request.method=="POST":
-        
+        if 'on_hold' in request.POST:
+            job.on_hold= not job.on_hold
+            job.save(update_fields=['on_hold','status'],request=request)
+            messages.success(request,'Job updated')
+            return redirect('update_job',pk=pk)
         if  job.quoted :
             try:
                 quote_status=request.POST.get('quote_status')
@@ -397,21 +416,21 @@ def update_job(request, pk, cancel=0):
                     job.quote_declined=False
                     job.quote_accepted=True
                     job.quoted=True
-                    job.save(update_fields=['quote_declined','quote_accepted','quoted'],request=request)
+                    job.save(update_fields=['quote_declined','quote_accepted','quoted','status'],request=request)
                     messages.success(request,'Quote accepted')
                 elif quote_status=='quote_declined' and not job.quote_declined:
                     print("PPP")
                     job.quote_declined=True
                     job.quote_accepted=False
                     job.quoted=True
-                    job.save(update_fields=['quote_declined','quote_accepted','quoted'],request=request)
+                    job.save(update_fields=['quote_declined','quote_accepted','quoted','status'],request=request)
                     messages.success(request,'Quote declined')
                 elif quote_status=='quote_unknown':
                     print(8980)
                     job.quote_declined=False
                     job.quote_accepted=False
                     job.quoted=True
-                    job.save(update_fields=['quote_declined','quote_accepted','quoted'],request=request)
+                    job.save(update_fields=['quote_declined','quote_accepted','quoted','status'],request=request)
 
                 return redirect('update_job',pk=pk)
         if 'yes_complete' in request.POST:
@@ -433,7 +452,6 @@ def update_job(request, pk, cancel=0):
         if post_data and request.method == 'POST' and 'no_return_back' in request.POST :#---
             return redirect(f'update_job',pk=pk)
         if 'save' in request.POST:
-            print("WW######@000")
             quotation = request.POST.get('quotation')
             if quotation:
                 try:
@@ -454,10 +472,10 @@ def update_job(request, pk, cancel=0):
                     })
             else:
                 quotation=job.quotation
-            form = JobForm(request.POST, instance=job,updating=True)
+            form = JobForm(request.POST, instance=job)
             
             if form.is_valid() :
-                print("WW######@111")
+            
                 if form.cleaned_data['status']=='completed':
                     li=[]
                     li=[item for item in job.items.all() if item.job_quantity != item.arrived_quantity]
@@ -476,16 +494,20 @@ def update_job(request, pk, cancel=0):
                     job.quoted=True
                 except:
                     pass
-                print("WW######@222")
-                obj = form.save(commit=False)   # get the instance without saving
                 
-                obj.save(request=request)
-                form = JobForm(request.POST, instance=job,updating=True)
+                if form.changed_data:
+                    obj = form.save(commit=False)  
+                    obj.save(request=request)
+                    form = JobForm(request.POST, instance=job,updating=True)
                 
-                messages.success(request, 'Job updated successfully')
-                items=JobItem.objects.filter(job=job)
+                    messages.success(request, 'Job updated successfully')
+                    items=JobItem.objects.filter(job=job)
                 
-                return redirect('update_job',job.job_id)
+                    return redirect('update_job',job.job_id)
+                else:
+                    messages.error(request, 'No change')
+                    return redirect('update_job',job.job_id)
+                
             
         comments_form=CommentForm(request.POST)
         if comments_form.is_valid() and 'add_comment' in request.POST: 
@@ -531,6 +553,12 @@ def update_job(request, pk, cancel=0):
                         })
                     comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.job_id,company=request.user.company)
                     return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count,'job_status':job_status})       
+    comments_form=CommentForm(initial={
+        'content_type': ContentType.objects.get_for_model(Job),
+        'object_id': job.pk,
+        'company': request.user.company,
+        })
+    
     context={'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count,'job_status':job_status}
 
     
@@ -1409,23 +1437,25 @@ def warehouse(request):
     #     .annotate(total_quantity=Sum('warehouse_quantity'))
     #     .order_by('part_number')
     # )
-    items_status=request.GET.get('items_status') if request.GET.get('items_status') else 'available'
-    
-    if request.GET.get("entry_method")=='batch_entry' :
-        warehouse_items=WarehouseItem.objects.filter(company=request.user.company,added_by_batch_entry=True)#,is_moved_from_job=None
-        used_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=True,from_warehouse=True,added_by_batch_entry=True)
-        taken_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=False,from_warehouse=True,added_by_batch_entry=True)    
-    elif request.GET.get("entry_method")=='normal_entry':
-        warehouse_items=WarehouseItem.objects.filter(company=request.user.company,added_by_batch_entry=False)#,is_moved_from_job=None
-        used_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=True,from_warehouse=True,added_by_batch_entry=False)
-        taken_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=False,from_warehouse=True,added_by_batch_entry=False)    
-    else:
-        warehouse_items=WarehouseItem.objects.filter(company=request.user.company)#,is_moved_from_job=None
-        used_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=True,from_warehouse=True)
-        taken_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=False,from_warehouse=True,)
-        # moved_items=WarehouseItem.objects.filter(is_moved_from_job__isnull=False ,company=request.user.company , warehouse_quantity__gt=0)
-        # used_moved_items=JobItem.objects.filter(company=request.user.company,is_used=True,was_for_job__isnull=False)
 
+
+    items_status=request.GET.get('items_status') if request.GET.get('items_status') else 'available'
+    q=request.GET.get("q") if request.GET.get("q") else ''
+    warehouse_items=WarehouseItem.objects.filter(company=request.user.company)
+    used_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=True,from_warehouse=True)
+    taken_warehouse_items=JobItem.objects.filter(company=request.user.company,is_used=False,from_warehouse=True)
+    if request.GET.get("entry_method")=='batch_entry' :
+        warehouse_items=warehouse_items.filter(added_by_batch_entry=True)#,is_moved_from_job=None
+        used_warehouse_items=JobItem.objects.filter(added_by_batch_entry=True)
+        taken_warehouse_items=JobItem.objects.filter(added_by_batch_entry=True)    
+    elif request.GET.get("entry_method")=='normal_entry':
+        warehouse_items=WarehouseItem.objects.filter(added_by_batch_entry=False)#,is_moved_from_job=None
+        used_warehouse_items=JobItem.objects.filter(added_by_batch_entry=False)
+        taken_warehouse_items=JobItem.objects.filter(added_by_batch_entry=False)    
+    if q:
+        warehouse_items=warehouse_items.filter(Q(name__icontains=q) | Q(part_number__icontains=q) | Q(reference__icontains=q) | Q(supplier__icontains=q) | Q(category__category__icontains=q))
+        used_warehouse_items=used_warehouse_items.filter(Q(name__icontains=q) | Q(part_number__icontains=q) | Q(reference__icontains=q) | Q(supplier__icontains=q) | Q(category__category__icontains=q))
+        taken_warehouse_items=taken_warehouse_items.filter(Q(name__icontains=q) | Q(part_number__icontains=q) | Q(reference__icontains=q) | Q(supplier__icontains=q) | Q(category__category__icontains=q))
     entry_method=request.GET.get("entry_method")
     return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items,'used_warehouse_items':used_warehouse_items,'taken_warehouse_items':taken_warehouse_items,'entry_method':entry_method,'items_status':items_status})
 

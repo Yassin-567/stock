@@ -21,6 +21,18 @@
       <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Cancelled</option>
       <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
       <option value="quoted" {% if status == 'quoted' %}selected{% endif %}>Quoted</option>
+      <option value="on_hold" {% if status == 'on_hold' %}selected{% endif %}>On hold</option>
+
+    </select>
+  </div>
+
+   <div class="col-auto">
+    <label for="quotation_status" class="form-label mb-0 me-1">Quotation</label>
+    <select name="quotation_status" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
+      <option value="all" {% if not quotation_status or quotation_status == 'all' %}selected{% endif %}>All</option>
+      <option value="accepted" {% if quotation_status == 'accepted' %}selected{% endif %}>Accepted</option>
+      <option value="declined" {% if quotation_status == 'declined' %}selected{% endif %}>Declined</option>
+      <option value="waiting" {% if quotation_status == 'waiting' %}selected{% endif %}>Waiting</option>
     </select>
   </div>
 
@@ -125,10 +137,10 @@ altFormat: 'F j, Y'
 <!-- Left Side: Job Info -->
 <div class="col-md-5">
 <h2>
-  {{job.birthday}}
+ 
     Job ID: 
     <a href="{% url 'update_job' job.job_id %}"  
-      onclick="localStorage.setItem('lastJob',{{job.job_id}});">{{ job.job_id }}</a> -
+      onclick="localStorage.setItem('lastJob',{{job.job_id}});">{{ job.job_id }}</a> -{% if job.on_hold %}✋{% endif %}
     <span class="badge status-{{ job.status }}">{{ job.get_status_display }}
       {% if job.quoted %}
 <span class="quote-box">Quoted: $<span class="quote-value">{{ job.quotation }}</span>
@@ -137,8 +149,11 @@ altFormat: 'F j, Y'
     <span class="quote-accepted">Quote accepted</span>
   {% elif job.quote_declined %}
     <span class="quote-declined">Quote declined</span>
+    {% else %}
+    <span class="quote-unknown">Waiting</span>
   {% endif %}
   {% endif %}
+  
   </span>
   </h2>
 
@@ -368,6 +383,7 @@ altFormat: 'F j, Y'
     
 .quote-accepted { background-color: #00a767ff; color: #ffffffff; padding: 4px 10px; font-size: 1rem; font-weight: 500; border-radius: 5px; text-transform: capitalize; margin-left: 10px; }
 .quote-declined { background-color: #6e003dff; color: #fcfcfcff; padding: 4px 10px; font-size: 1rem; font-weight: 500; border-radius: 5px; text-transform: capitalize; margin-left: 10px; }
+.quote-unknown { background-color: #fa8500ff; color: #ffffffff; padding: 4px 10px; font-size: 1rem; font-weight: 500; border-radius: 5px; text-transform: capitalize; margin-left: 10px; }
 
 .history-container {
 max-height: 350px;   /* limit the height */

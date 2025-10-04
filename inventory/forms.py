@@ -195,7 +195,7 @@ class JobForm(forms.ModelForm):
     class Meta:
         model = Job
         fields = '__all__'
-        exclude = ['user','quotation','quote_declined','quote_accepted']
+        exclude = ['user','quotation','quote_declined','quote_accepted','need_attention']
         labels = {
             'name': 'Part Name',
         }
@@ -233,6 +233,8 @@ class JobForm(forms.ModelForm):
         if self.instance.status=='cancelled' or self.instance.status=='completed' :
             for name,field in self.fields.items():
                 if name!='status':
+                    field.disabled = True
+                    field.widget.attrs['disabled'] = 'disabled'
                     field.widget.attrs['readonly'] = 'readonly'
                     field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' faded-input'
 
@@ -259,14 +261,19 @@ class JobForm(forms.ModelForm):
                 
                 if not self.instance.quote_accepted and not self.instance.quote_declined and self.instance.status =='quoted':
                     raise forms.ValidationError("Was the quote accepted or declined?")
+                elif (status!='quoted' and status!='paused') and not job.quote_accepted and not job.quote_declined:
+                    raise forms.ValidationError("Was the quote accpted?")
             items_count=job.items.all().count()
+            if status=='paused' and job.status=='ready':
+                raise forms.ValidationError("Can't pause, you can mark as Need attention instead")
+            if job.on_hold and status=='ready':
+                raise forms.ValidationError("Can't mark as ready, you can unmark need attention instead")
             if status=='ready' and  not (items_arrived(job) and items_not_used(job)) and items_count>0 :
             
                 raise forms.ValidationError("Not all items arrived")
             elif status=='ready' and job.items.exclude(is_used=False).exists():
                 raise forms.ValidationError("There is a used item")
-            elif status=='ready' and not job.quote_accepted:
-                raise forms.ValidationError("Was the quote accpted")
+            
             return cleaned_data
 class CommentForm(forms.ModelForm):
     class Meta:

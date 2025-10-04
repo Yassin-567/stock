@@ -162,6 +162,7 @@ class Job(models.Model):
     history = GenericRelation('History', related_query_name='job_history')
     comments = GenericRelation('Comment', related_query_name='job_comments')
     birthday=models.DateTimeField(auto_now_add=True)
+    on_hold=models.BooleanField(default=False)
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
@@ -170,8 +171,8 @@ class Job(models.Model):
         self.dont_save_history=dont_save_history
         job_reopened(self,)
         if not job_completed(self,) and  self.status!='cancelled':
-            
-            self.status = 'ready' if items_arrived(self) and items_not_used(self) and quote_accepted(self) else 'paused'
+
+            self.status = 'ready' if items_arrived(self) and items_not_used(self) and quote_accepted(self) and not self.on_hold else 'paused'
             self.items_arrived=items_arrived(self) and items_not_used(self)
         super().save(*args, **kwargs)
     def __str__(self):

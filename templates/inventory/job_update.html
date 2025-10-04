@@ -32,16 +32,42 @@
 <form action="" method="post" class="quote-actions">
         {% csrf_token %}
         {% comment %} <label for="quote_status"  class="form-label mb-0 me-1">Quotation status:</label> {% endcomment %}
-        <select name="quote_status" onchange="this.form.submit()" id="">
-          <option value="quote_unknown" {% if job.quote and job.quote_accepted == false and  job.quote_declined == false%}selected{% endif %}>---</option>
+        <select  name="quote_status" onchange="this.form.submit()" id="">
+          <option value="quote_unknown" {% if job.quote and job.quote_accepted == false and  job.quote_declined == false%}selected{% endif %}>Waiting</option>
           <option value="quote_accepted" {% if job.quote_accepted %}selected{% endif %}>Quote accepted</option>
           <option value="quote_declined" {% if job.quote_declined %}selected{% endif %}>Quote declined</option>
         </select>
-      </form>{% endif %}
+        
+      </form>
+      
+      {% endif %}
         <!-- Action buttons -->
       </span>
-      
+     
+
+
     {% endif %}
+
+     <form action="" method="post" >
+
+        {% csrf_token %}
+        
+              <input type="hidden" name="on_hold" value="true">
+              <div class="form-check form-switch">
+                  <input 
+                    class="form-check-input" 
+                    type="checkbox" 
+                    id="on_hold" 
+                    name="on_hold" 
+                    value="1"
+                    
+                    {% if job.on_hold %}checked{% endif %}
+                    onchange="this.form.submit()">
+                  <label class="form-check-label" for="on_hold">✋Put on hold</label>
+                </div>
+      </form>
+
+
   </h2>
 
   <style>
