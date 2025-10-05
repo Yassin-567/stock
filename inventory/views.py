@@ -178,13 +178,16 @@ def register_user(request):
 @no_ban
 def inventory(request,pk=None):
     now_time=timezone.now()
-    rjobs=Job.objects.filter(company=request.user.company).order_by('job_id')
+    rjobs=Job.objects.filter(company=request.user.company).order_by('retirement_date')
     refresh=True if request.GET.get("refresh") else False
     if refresh:
         status = None
         date = None
         q=None
         quotation_status=None
+        age=None
+        added_from_date=None
+        added_to_date=None
     else:
         status = request.GET.get('status')
         q=request.GET.get('q')
@@ -195,6 +198,8 @@ def inventory(request,pk=None):
         added_to_date = request.GET.get('added_to_date')
         added_from_date = request.GET.get('added_from_date')
         quotation_status = request.GET.get('quotation_status') 
+        age = request.GET.get('age') if request.GET.get('age') else None
+ 
         # if status is not None:
         #     request.session['status'] = status
         # elif request.session.get('status') is not None:
@@ -236,6 +241,11 @@ def inventory(request,pk=None):
             if added_to_date:
                 added_to_date_obj = datetime.strptime(added_to_date, '%Y-%m-%d').date()
                 rjobs = rjobs.filter(birthday__date__lte=added_to_date_obj)
+        if age:
+            if age == 'new':
+                rjobs = rjobs.filter(retirement_date__gte=now_time )
+            elif age == 'old':
+                rjobs = rjobs.filter(retirement_date__lt=now_time )
         if quotation_status:
             if quotation_status == 'accepted':
                 rjobs = rjobs.filter(quote_accepted=True)
@@ -249,7 +259,7 @@ def inventory(request,pk=None):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    print(page_obj.number)
+    
     params = request.GET.copy()
     params.pop('page', None)  # drop 'page' param
     querystring = '&' + urlencode({k: v.strip() for k, v in params.items() if v and v.strip()})
@@ -261,17 +271,33 @@ def inventory(request,pk=None):
             'querystring':querystring,
             'q':q,
             'quotation_status':quotation_status,
-            'now_time':now_time
+            'now_time':now_time,
+            'age':age,
             }
     if request.method=='POST' and 'send_emails' in request.POST:
         date=request.POST.get("date")
-        if date:
-            jobs=Job.objects.filter(company=request.user.company,date=date)
-            
+        jobs=Job.objects.filter(company=request.user.company,date=date,items__gt=0).distinct() 
+        print(jobs.count())
+        if 'confirm_sending' in request.POST:
+            job_ids = [int(i) for i in request.POST.getlist("job_ids")]
+            jobs = Job.objects.filter(company=request.user.company,job_id__in=job_ids)
+            print(jobs.count(),job_ids,jobs)
             send_multiple_emails(jobs,request)
             
+           
+            messages.success(request,f'Engineers have been emailed for jobs on {date}, total jobs: {jobs.count()}')
+        if  date:
+            return render(request,'inventory/send_emails.html',{"date":date,'jobs':jobs })
         else:
             messages.error(request, "Please select a date before sending emails.")
+
+        # if date:
+        #     jobs=Job.objects.filter(company=request.user.company,date=date)
+            
+        #     send_multiple_emails(jobs,request)
+            
+        # else:
+        #     messages.error(request, "Please select a date before sending emails.")
 
     if request.method=='POST' and "reset_was_it_used" in request.POST:
         jobitem=JobItem.objects.get(id=pk)

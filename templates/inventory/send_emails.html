@@ -1,0 +1,87 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+{% load custom_tags %}
+
+{% block title %}
+  Inventory - Stocky
+{% endblock %}
+
+{% block body %}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} mt-2">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="container mt-4">
+    <h2 class="mb-3">Send Emails</h2>
+    <h6 class="text-muted mb-4">You are about to notify engineers about the following jobs of date <strong><span style="font-size: large; color: darkmagenta;">{{ date }}</span></strong> and their required parts:</h6>
+
+    <table class="table table-bordered table-sm align-middle">
+      <thead class="table-light">
+        <tr>
+          <th style="width:10%">Job ID</th>
+          <th style="width:20%">Job address</th>
+          <th style="width:5%">Engineer</th>
+          <th>Parts Needed</th>
+          <th style="width:15%">Visit time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in jobs %}
+          {% if job.status == 'ready' and job.engineer %}
+            <div>
+              <tr>
+                <td style="background-color: green;color: white;">{{ job.job_id }}</td>
+                <td>{{ job.address }}</td>
+
+                <td>{{ job.engineer }}</td>
+                <td>
+                  {% for part in job.items.all %}
+                    {{ part.name }} (x{{ part.job_quantity }}){% if not forloop.last %}, {% endif %}
+                  {% empty %}
+                    <span class="text-muted">No parts</span>
+                  {% endfor %}
+                </td>
+                <td>From {{ job.from_time }} To {{ job.to_time }}</td>
+              </tr>
+            </div>
+          {% else %}
+            <div>
+              <tr>
+                <td style="background-color: brown;color: white;">{{ job.job_id }}</td>
+                <td>{{ job.address }}</td>
+
+                <td>{{ job.engineer }}</td>
+                <td>
+                  {% for part in job.items.all %}
+                    {{ part.name }} (x{{ part.job_quantity }}){% if not forloop.last %}, {% endif %}
+                  {% empty %}
+                    <span class="text-muted">No parts</span>
+                  {% endfor %}
+                </td>
+                <td>From {{ job.from_time }} To {{ job.to_time }}</td>
+              </tr>
+            </div>
+          {% endif %}
+        {% empty %}
+          <tr>
+            <td colspan="3" class="text-center text-muted">No jobs found to notify.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <form action="" method="post">
+      {% csrf_token %}
+      {% for job in jobs %}
+        {% if job.status == 'ready' and job.engineer %}
+          <input type="hidden" name="job_ids" value="{{ job.job_id }}" />
+        {% endif %}
+      {% endfor %}
+      <input type="hidden" name="send_emails" />
+
+      <input type="hidden" name="confirm_sending" />
+      <button type="submit" class="btn btn-primary">Send Emails</button>
+    </form>
+  </div>
+{% endblock %}

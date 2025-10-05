@@ -4,7 +4,7 @@
 
 {% block title %}Inventory - Stocky{% endblock %}
 {% block body %}
-<p>HAHAHA</p>
+
 {% if messages %}
 {% for message in messages %}
 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
@@ -34,6 +34,14 @@
       <option value="accepted" {% if quotation_status == 'accepted' %}selected{% endif %}>Accepted</option>
       <option value="declined" {% if quotation_status == 'declined' %}selected{% endif %}>Declined</option>
       <option value="waiting" {% if quotation_status == 'waiting' %}selected{% endif %}>Waiting</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <label for="age" class="form-label mb-0 me-1">Age</label>
+    <select name="age" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
+      <option value="all" {% if not age or age == 'all' %}selected{% endif %}>All</option>
+      <option value="new" {% if age == 'new' %}selected{% endif %}>New jobs</option>
+      <option value="old" {% if age == 'old' %}selected{% endif %}>Old jobs</option>
     </select>
   </div>
 
@@ -159,7 +167,10 @@ altFormat: 'F j, Y'
   </h2>
 
   <div class="job-info">
-{% if job.retirement_date > now_time %}
+
+{% if job.retirement_date >= now_time %}
+
+
 <span style="
     display: inline-block;
     color: #fff;
@@ -173,8 +184,10 @@ altFormat: 'F j, Y'
 ">
     🆕 New Job • Age: {{ job.birthday|timesince }}{{job.birthday}}
 </span>
-{% endif %}
-{% if job.retirement_date < now_time %}
+
+{% elif job.retirement_date < now_time %}
+
+
 <span style="
     display: inline-block;
     color: #ffe600;
@@ -188,6 +201,7 @@ altFormat: 'F j, Y'
 ">
     ⚠️ Old Job • Age: {{ job.birthday|timesince }} - {{job.birthday}}
 </span>
+
 {% endif %}
 
     
