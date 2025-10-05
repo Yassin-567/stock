@@ -4,7 +4,7 @@ from django.contrib.auth.models import BaseUserManager
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
-from datetime import timedelta
+from datetime import datetime, timedelta
 from .myfunc import items_arrived,job_reopened,item_arrived,job_completed,items_not_used,quote_accepted
 ##
 
@@ -162,11 +162,16 @@ class Job(models.Model):
     history = GenericRelation('History', related_query_name='job_history')
     comments = GenericRelation('Comment', related_query_name='job_comments')
     birthday=models.DateTimeField(auto_now_add=True)
+    retirement_date=models.DateTimeField(null=True,blank=True)
     on_hold=models.BooleanField(default=False)
+    
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
     def save(self,*args, request=None,dont_save_history=False,**kwargs):
+        if not self.pk:
+            super().save(*args, **kwargs) 
+            self.retirement_date=self.birthday+timedelta(days=7)
         self.request=request
         self.dont_save_history=dont_save_history
         job_reopened(self,)

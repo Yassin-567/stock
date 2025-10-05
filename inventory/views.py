@@ -177,7 +177,7 @@ def register_user(request):
 @login_required(login_url='login', redirect_field_name='inventory')
 @no_ban
 def inventory(request,pk=None):
-    
+    now_time=timezone.now()
     rjobs=Job.objects.filter(company=request.user.company).order_by('job_id')
     refresh=True if request.GET.get("refresh") else False
     if refresh:
@@ -261,6 +261,7 @@ def inventory(request,pk=None):
             'querystring':querystring,
             'q':q,
             'quotation_status':quotation_status,
+            'now_time':now_time
             }
     if request.method=='POST' and 'send_emails' in request.POST:
         date=request.POST.get("date")
@@ -286,6 +287,7 @@ def inventory(request,pk=None):
                 'rjobs': page_obj,
                 'page_obj':page_obj,
                 'status':'paused',
+                'now_time':now_time
                 })
     elif request.method=="POST" and 'job_is_ready' in request.POST:
         job=Job.objects.get(job_id=pk,company=request.user.company)
