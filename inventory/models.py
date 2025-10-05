@@ -173,7 +173,10 @@ class Job(models.Model):
         if not job_completed(self,) and  self.status!='cancelled':
 
             self.status = 'ready' if items_arrived(self) and items_not_used(self) and quote_accepted(self) and not self.on_hold else 'paused'
-            self.items_arrived=items_arrived(self) and items_not_used(self)
+            self.items_arrived=items_arrived(self) and items_not_used(self) 
+        elif self.status=='cancelled' and self.quoted and not self.quote_accepted and not self.quote_declined :
+            self.quote_declined=True
+
         super().save(*args, **kwargs)
     def __str__(self):
         return self.address +" ("+ str(self.parent_account)+") "

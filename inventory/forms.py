@@ -261,7 +261,7 @@ class JobForm(forms.ModelForm):
                 
                 if not self.instance.quote_accepted and not self.instance.quote_declined and self.instance.status =='quoted':
                     raise forms.ValidationError("Was the quote accepted or declined?")
-                elif (status!='quoted' and status!='paused') and not job.quote_accepted and not job.quote_declined:
+                elif (status!='quoted' and status!='paused' and status!='cancelled') and not job.quote_accepted and not job.quote_declined:
                     raise forms.ValidationError("Was the quote accpted?")
             items_count=job.items.all().count()
             if status=='paused' and job.status=='ready':
