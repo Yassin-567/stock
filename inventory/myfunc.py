@@ -131,7 +131,7 @@ def send_multiple_emails(jobs, request=None,single=False,):
         message_lines = [f"Hi {engineer.name}, please take the following parts for :\n"]
         
         for job in jobs_list:
-            parts = [str(part) for part in job.items.all()]
+            parts = [str(part)+str(("("+"x"+str(part.job_quantity)+")")) for part in job.items.all()]
             if parts:
                 parts_text = ", ".join(parts)
             else:
@@ -151,13 +151,13 @@ def send_multiple_emails(jobs, request=None,single=False,):
         user=request.user
         company=request.user.company
         if single:
-            Email.objects.create(type=Email.EmailType.SINGLE,company=company,user=user,to="yass",subject=f"Your Job Parts List for{job.date}",body=full_message,date=timezone.now(),)
+            Email.objects.create(type=Email.EmailType.SINGLE,company=company,user=user,to=engineer.name,subject=f"Your Job Parts List for{job.date}",body=full_message,date=timezone.now(),)
         else:
             
-            Email.objects.create(type=Email.EmailType.BATCH,company=company,user=user,to="yass",subject=f"Your Job Parts List for{job.date}",body=full_message,date=timezone.now(),)
+            Email.objects.create(type=Email.EmailType.BATCH,company=company,user=user,to=engineer.name,subject=f"Your Job Parts List for{job.date}",body=full_message,date=timezone.now(),)
 
-        if request:
-            messages.success(request, f'Email sent to {engineer.name}')
+        # if request:
+        #     messages.success(request, f'Email sent to {engineer.name}')
 # def save_history(request,form=None, ):
 #     from django.contrib.contenttypes.models import ContentType
 #     from .models import History

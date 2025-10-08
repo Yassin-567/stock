@@ -116,10 +116,10 @@
   {% endif %}
   <button class=" btn btn-secondary">Search</button>
 </form>{% endcomment %}
-<form method="post" class="row row-cols-lg-auto g-2 align-items-center mb-3"> 
-{% csrf_token %}
-<label for="date" class="form-label mb-0 ">Notify engineers:</label>
-<input type="text" id="date" name="date" class="form-control flatpickr_date w-auto d-inline " placeholder="Select date" value="{{ request.POST.date }}" />
+<form method="get" class="row row-cols-lg-auto g-2 align-items-center mb-3"> 
+
+<label for="send_emails_date" class="form-label mb-0 ">Notify engineers:</label>
+<input type="text" id="date" name="send_emails_date" class="form-control flatpickr_date w-auto d-inline " placeholder="Select date" value="{{ request.GET.send_emails_date }}" />
 <button type="submit" name="send_emails" class="btn btn-primary btn-sm col-auto">Send emails</button>
 </form>
 

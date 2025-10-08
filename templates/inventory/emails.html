@@ -23,11 +23,13 @@
     {% if emails %}
       <div class="row g-3">
         {% for e in emails %}
+       
           <div class="col-12 col-md-6">
             <div class="card shadow-sm h-100">
-              <div class="card-body">
+              <div class="card-body"> {{ forloop.revcounter  }}
                 <h5 class="card-title">{{ e.subject|default:'(No Subject)' }}</h5>
                 <h6 class="card-subtitle mb-2 text-muted">
+                  
                   Sent by <strong>{{ e.user }}</strong>
                   in <span class="badge bg-primary">{{ e.type }}</span> mode
                   <br />

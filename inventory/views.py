@@ -8,7 +8,6 @@ from django.utils import timezone
 from .decorators import admins_only,no_ban,owner_only
 from django.db.models import F
 from django.db.models import Count, Q
-
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
@@ -168,12 +167,14 @@ def register_user(request):
             user.save(request=request)  
             
             messages.success(request, 'You have successfully registered a new user')
-            return redirect('register')  
+            return redirect('register') 
+        else: 
             form = registerworker()
             messages.error(request, "Registration failed. Please check the form.")
     else:
         form = registerworker()
     return render(request, 'auths/register.html', {'form': form})
+
 @login_required(login_url='login', redirect_field_name='inventory')
 @no_ban
 def inventory(request,pk=None):
@@ -274,24 +275,26 @@ def inventory(request,pk=None):
             'now_time':now_time,
             'age':age,
             }
-    if request.method=='POST' and 'send_emails' in request.POST:
-        date=request.POST.get("date")
-        jobs=Job.objects.filter(company=request.user.company,date=date,items__gt=0).distinct() 
-        print(jobs.count())
-        if 'confirm_sending' in request.POST:
-            job_ids = [int(i) for i in request.POST.getlist("job_ids")]
-            jobs = Job.objects.filter(company=request.user.company,job_id__in=job_ids)
-            print(jobs.count(),job_ids,jobs)
-            send_multiple_emails(jobs,request)
-            
-           
-            messages.success(request,f'Engineers have been emailed for jobs on {date}, total jobs: {jobs.count()}')
+    if request.method=='GET' and 'send_emails' in request.GET:
+        date=request.GET.get("send_emails_date")
         if  date:
+            try:
+                jobs=Job.objects.filter(company=request.user.company,date=date,items__gt=0).distinct() 
+            except:
+                messages.error(request, "Please select a date before sending emails.")
+                return redirect('inventory')
             return render(request,'inventory/send_emails.html',{"date":date,'jobs':jobs })
         else:
             messages.error(request, "Please select a date before sending emails.")
-
-        # if date:
+    if 'confirm_sending' in request.POST:
+        date=request.POST.get("date")
+        job_ids = [int(i) for i in request.POST.getlist("job_ids")]
+        jobs = Job.objects.filter(company=request.user.company,job_id__in=job_ids)
+        send_multiple_emails(jobs,request)
+        request.session['sent_jobs'] = job_ids
+        request.session['sent_date'] = date
+        return redirect('show_sent_emails')        
+    # if date:
         #     jobs=Job.objects.filter(company=request.user.company,date=date)
             
         #     send_multiple_emails(jobs,request)
@@ -330,6 +333,21 @@ def inventory(request,pk=None):
     else:
         
         return render(request,'inventory/inventory.html',context)
+def show_sent_emails(request):
+    # ✅ Retrieve from session
+    job_ids = request.session.get('sent_jobs', [])
+    date = request.session.get('sent_date')
+    if not job_ids:
+        return redirect('inventory')
+    # Get updated jobs from DB
+    jobs = Job.objects.filter(company=request.user.company, job_id__in=job_ids)
+
+    # 🧹 Optional: clear after displaying once
+    request.session.pop('sent_jobs', None)
+    request.session.pop('sent_date', None)
+
+    return render(request, 'inventory/show_sent_emails.html', {"date": date, "jobs": jobs,"jobs_count":jobs.count()})
+
 def add_category(request):
     form=CategoriesForm()
     if request.method=='POST':
@@ -361,7 +379,7 @@ def emails_history(request,):
         else:
             type='all'
             emails=Email.objects.filter(company=request.user.company,)
-    return render(request,'inventory/emails.html',{'emails':emails,'type':type})
+    return render(request,'inventory/emails.html',{'emails':emails.order_by('-date'),'type':type})
 @login_required
 def job_create(request):
     
@@ -1598,9 +1616,56 @@ def fetch_api_data(request):
     return render(request, 'inventory/api_data.html',{'data':data})
 
 def fetch_jobs(request):
-    url = "https://8dea2507-abbb-44c8-8ca4-ac142d8f9edb.mock.pstmn.io/jobs"
+    url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs"
     data=response = requests.get(url)
     data = response.json()  
+    for d in data["items"]:
+
+        if int(d["id"]):
+                print(f'{d["visits"][0]["techs_assigned"][0]["first_name"],d["visits"][0]["techs_assigned"][0]["last_name"]}')
+                # try:
+                #     engineer=Engineer.objects.get(Q(company=request.user.company) & Q(name=d["assigned_to"]))
+                    
+                # except Engineer.DoesNotExist:
+                #     pass
+            try:
+                ex_job=Job.objects.get(Q(company=request.user.company) & Q(job_id=d["id"]))
+                ex_job.address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}"
+                ex_job.parent_account=d["parent_customer"]
+                ex_job.post_code=d["postal_code"]
+                ex_job.date=d["visits"][0]["start_date"]
+                ex_job.from_time=d["visits"][0]["time_frame_promised_start"]
+                ex_job.to_time=d["visits"][0]["time_frame_promised_start"]
+                ex_job.birthday=d["created_at"]
+                ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday'],request=request)
+
+            except:
+                synced_job=Job(
+                    company=request.user.company,
+                    job_id=int(d["id"]),
+                    address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
+                    status= d["status"],
+                    quotation=None,
+                    engineer=engineer,#Temporarily nnon
+                    parent_account=d["parent_customer"],
+                    added_date=timezone.now(),
+                    items_arrived=False,
+                    post_code=d["postal_code"],
+                    quoted=False,
+                    quote_accepted=False,
+                    quote_declined=False,
+                    date=d["visits"][0]["start_date"],
+                    from_time=d["visits"][0]["time_frame_promised_start"],
+                    to_time=d["visits"][0]["time_frame_promised_start"],
+                    # history =None ,
+                    # comments = None,
+                    birthday=d["created_at"],
+                    retirement_date=None,
+                    on_hold=False,
+    
+                )
+                synced_job.save(request=request)
+                messages.success(request,f"Job with id {d['id']} synced successfully")
     #data = data.get("items", [])# Convert to dict
     
     return render(request, 'inventory/sf.html', {'data': data})

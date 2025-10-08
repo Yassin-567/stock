@@ -15,73 +15,142 @@
 
   <div class="container mt-4">
     <h2 class="mb-3">Send Emails</h2>
-    <h6 class="text-muted mb-4">You are about to notify engineers about the following jobs of date <strong><span style="font-size: large; color: darkmagenta;">{{ date }}</span></strong> and their required parts:</h6>
+    <h6 class="text-muted mb-4">
+      You are about to notify engineers about the following jobs of date
+      <strong><span style="font-size: large; color: darkmagenta;">{{ date }}</span></strong>
+      and their required parts:
+    </h6>
+    <small style="background-color: black;">
+      <span style="color: yellow;">Warning:</span>
+      <span style="color: white;">Only <span style="color: #77da27ff;">green</span> jobs are valid to notify the engineers about</span>
+    </small>
 
-    <table class="table table-bordered table-sm align-middle">
-      <thead class="table-light">
-        <tr>
-          <th style="width:10%">Job ID</th>
-          <th style="width:20%">Job address</th>
-          <th style="width:5%">Engineer</th>
-          <th>Parts Needed</th>
-          <th style="width:15%">Visit time</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for job in jobs %}
-          {% if job.status == 'ready' and job.engineer %}
-            <div>
+    <!-- Main Row: Table on Left, Email Preview on Right -->
+    <div class="row mt-3">
+      <!-- Left: Jobs Table + Form -->
+      <div class="col-md-8">
+        <table class="table table-bordered table-sm align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Job ID</th>
+              <th>Job address</th>
+              <th>Engineer</th>
+              <th>Parts Needed</th>
+              <th>Visit time</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for job in jobs %}
+              {% if job.status == 'ready' and job.engineer %}
+                <tr>
+                  <td style="background-color: green;color: white;">{{ job.job_id }}</td>
+                  <td>
+                    <a href="{% url 'update_job' job.job_id %}">{{ job.address }}</a>
+                  </td>
+                  <td>{{ job.engineer }}</td>
+                  <td>
+                    {% for part in job.items.all %}
+                      {{ part.name }} (x{{ part.job_quantity }}){% if not forloop.last %}, {% endif %}
+                    {% empty %}
+                      <span class="text-muted">No parts</span>
+                    {% endfor %}
+                  </td>
+                  <td>From {{ job.from_time }} To {{ job.to_time }}</td>
+                  <td>{{ job.status }}</td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td style="background-color: brown;color: white;">{{ job.job_id }}</td>
+                  <td>{{ job.address }}</td>
+                  {% if job.engineer %}
+                    <td>{{ job.engineer }}</td>
+                  {% else %}
+                    <td style="background-color:brown;">No engineer</td>
+                  {% endif %}
+                  <td>
+                    {% for part in job.items.all %}
+                      {{ part.name }} (x{{ part.job_quantity }}){% if not forloop.last %}, {% endif %}
+                    {% empty %}
+                      <span class="text-muted">No parts</span>
+                    {% endfor %}
+                  </td>
+                  <td>From {{ job.from_time }} To {{ job.to_time }}</td>
+                  {% if job.status == 'ready' %}
+                    <td>{{ job.status }}</td>
+                  {% else %}
+                    <td style="background-color:brown;">{{ job.status }}</td>
+                  {% endif %}
+                </tr>
+              {% endif %}
+            {% empty %}
               <tr>
-                <td style="background-color: green;color: white;">{{ job.job_id }}</td>
-                <td>{{ job.address }}</td>
-
-                <td>{{ job.engineer }}</td>
-                <td>
-                  {% for part in job.items.all %}
-                    {{ part.name }} (x{{ part.job_quantity }}){% if not forloop.last %}, {% endif %}
-                  {% empty %}
-                    <span class="text-muted">No parts</span>
-                  {% endfor %}
-                </td>
-                <td>From {{ job.from_time }} To {{ job.to_time }}</td>
+                <td colspan="6" class="text-center text-muted">No jobs found to notify.</td>
               </tr>
-            </div>
-          {% else %}
-            <div>
-              <tr>
-                <td style="background-color: brown;color: white;">{{ job.job_id }}</td>
-                <td>{{ job.address }}</td>
+            {% endfor %}
+          </tbody>
+        </table>
 
-                <td>{{ job.engineer }}</td>
-                <td>
-                  {% for part in job.items.all %}
-                    {{ part.name }} (x{{ part.job_quantity }}){% if not forloop.last %}, {% endif %}
-                  {% empty %}
-                    <span class="text-muted">No parts</span>
-                  {% endfor %}
-                </td>
-                <td>From {{ job.from_time }} To {{ job.to_time }}</td>
-              </tr>
-            </div>
-          {% endif %}
-        {% empty %}
-          <tr>
-            <td colspan="3" class="text-center text-muted">No jobs found to notify.</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <form action="" method="post">
-      {% csrf_token %}
-      {% for job in jobs %}
-        {% if job.status == 'ready' and job.engineer %}
-          <input type="hidden" name="job_ids" value="{{ job.job_id }}" />
-        {% endif %}
-      {% endfor %}
-      <input type="hidden" name="send_emails" />
+        <!-- Send Emails Form -->
+        <form action="" id="sendForm" method="post">
+          {% csrf_token %}
+          {% for job in jobs %}
+            {% if job.status == 'ready' and job.engineer %}
+              <input type="hidden" name="job_ids" value="{{ job.job_id }}" />
+            {% endif %}
+          {% endfor %}
+          <input type="hidden" name="date" value="{{ date }}" />
+          <input type="hidden" name="confirm_sending" />
+          <button type="submit" id="yesBtn" name="send_emails" class="btn btn-primary">Send Emails</button>
+        </form>
+      </div>
 
-      <input type="hidden" name="confirm_sending" />
-      <button type="submit" class="btn btn-primary">Send Emails</button>
-    </form>
-  </div>
+      <!-- Right: Email Preview Card -->
+      <div class="col-md-4">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <h5 class="card-title">Email Preview</h5>
+            <p class="mb-1">
+              <strong>To:</strong> {Engineer’s email}
+            </p>
+            <hr />
+            <p class="card-text">
+              Hi {Engineer name}, please take the following parts for {date}: <br /><br />
+
+              <strong>{Address1}</strong><br />
+              part example1 (x2), Part example2 (x1)<br /><br />
+
+              <strong>{Address2}</strong><br />
+              part example3 (x2), part example4 (x1)
+            </p>
+          </div>
+        </div>
+      </div>
+    </div> <!-- end row -->
+  </div> <!-- end container -->
+
+  <!-- Spinner and Click Blocking Script -->
+  <script>
+    const form = document.getElementById('sendForm')
+    const yesBtn = document.getElementById('yesBtn')
+    
+    form.addEventListener('submit', function () {
+      yesBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Processing...`
+    
+      // Prevent double submission
+      setTimeout(() => {
+        yesBtn.removeAttribute('name')
+      }, 0)
+    
+      // Block clicks during processing
+      document.addEventListener('click', blockLeftClick, true)
+    })
+    
+    function blockLeftClick(e) {
+      if (e.button === 0) {
+        e.stopPropagation()
+        e.preventDefault()
+      }
+    }
+  </script>
 {% endblock %}

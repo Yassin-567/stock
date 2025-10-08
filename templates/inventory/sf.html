@@ -4,61 +4,62 @@
 
 {% block body %}
   <h1>Job List</h1>
-  {% for job in data.items %}
-    <div class="job-card">
-      <h2>Job #{{ job.id }}</h2>
-      <p>
-        <strong>Status:</strong> {{ job.status }} | {{ job.sub_status }}
-      </p>
-      <p>
-        <strong>Customer:</strong> {{ job.customer_name }}
-      </p>
-      <p>
-        <strong>Contact:</strong> {{ job.contact_first_name }} {{ job.contact_last_name }}
-      </p>
-      <p>
-        <strong>Location:</strong> {{ job.street_1 }}, {{ job.city }}, {{ job.state_prov }}, {{ job.postal_code }}
-      </p>
-      <p>
-        <strong>Description:</strong> {{ job.description }}
-      </p>
-      <p>
-        <strong>Start Date:</strong> {{ job.start_date }}
-      </p>
-      <p>
-        <strong>End Date:</strong> {{ job.end_date }}
-      </p>
-      <p>
-        <strong>Total:</strong> ${{ job.total }}
-      </p>
-      <p>
-        <strong>Due Total:</strong> ${{ job.due_total }}
-      </p>
-
-      {% if job.techs_assigned %}
+  {% if data %}
+    {% for job in data.items %}
+      <div class="job-card">
+        <h2>Job #{{ job.id }}</h2>
         <p>
-          <strong>Assigned Techs:</strong>
-          {% for tech in job.techs_assigned %}
-            {{ tech.first_name }} {{ tech.last_name }}{% if not forloop.last %}, {% endif %}
-          {% endfor %}
+          <strong>Status:</strong> {{ job.status }} | {{ job.sub_status }}
         </p>
-      {% endif %}
-
-      {% if job.notes %}
         <p>
-          <strong>Notes:</strong>
+          <strong>Customer:</strong> {{ job.customer_name }}
         </p>
-        <ul>
-          {% for note in job.notes %}
-            <li>{{ note.notes }} ({{ note.created_at }})</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
+        <p>
+          <strong>Contact:</strong> {{ job.contact_first_name }} {{ job.contact_last_name }}
+        </p>
+        <p>
+          <strong>Location:</strong> {{ job.street_1 }}, {{ job.city }}, {{ job.state_prov }}, {{ job.postal_code }}
+        </p>
+        <p>
+          <strong>Description:</strong> {{ job.description }}
+        </p>
+        <p>
+          <strong>Start Date:</strong> {{ job.start_date }}
+        </p>
+        <p>
+          <strong>End Date:</strong> {{ job.end_date }}
+        </p>
+        <p>
+          <strong>Total:</strong> ${{ job.total }}
+        </p>
+        <p>
+          <strong>Due Total:</strong> ${{ job.due_total }}
+        </p>
 
-      <hr />
-    </div>
-  {% endfor %}
+        {% if job.techs_assigned %}
+          <p>
+            <strong>Assigned Techs:</strong>
+            {% for tech in job.techs_assigned %}
+              {{ tech.first_name }} {{ tech.last_name }}{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+          </p>
+        {% endif %}
+
+        {% if job.notes %}
+          <p>
+            <strong>Notes:</strong>
+          </p>
+          <ul>
+            {% for note in job.notes %}
+              <li>{{ note.notes }} ({{ note.created_at }})</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+
+        <hr />
+      </div>
+    {% endfor %}
   {% else %}
-  <p>No jobs found.</p>
+    <p>No jobs found.</p>
   {% endif %}
 {% endblock %}
