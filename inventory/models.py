@@ -129,6 +129,7 @@ class Engineer(models.Model):
     email=models.EmailField()
     phone=models.CharField(max_length=15)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="engineers_company",blank=False,null=False)
+    sf_id=models.CharField(max_length=40,blank=True,null=True)
     def save(self,request,*args, **kwargs):
         self.request=request
         super().save(*args, **kwargs)

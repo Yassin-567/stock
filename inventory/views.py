@@ -1614,20 +1614,39 @@ def fetch_api_data(request):
     response = requests.get(url)
     data = response.json()  # Convert to dict
     return render(request, 'inventory/api_data.html',{'data':data})
-
+def sync_engineers(request):
+    url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/engs"
+    data=response = requests.get(url)
+    data = response.json()  
+    for eng in data:
+        email=eng["email"]
+        try:
+            ex_eng=Engineer.objects.get(Q(company=request.user.company) & Q(email=eng["email"]))
+            if ex_eng.sf_id != eng["id"]:
+                ex_eng.sf_id=eng["id"]
+                ex_eng.save(update_fields=['sf_id'],request=request)    
+        except Engineer.DoesNotExist:
+            eng = Engineer(
+                company=request.user.company,
+                email=email,
+                name=f'{eng["first_name"]} {eng["last_name"]}',
+                phone=eng["phone_1"],
+                sf_id=eng["id"]
+            )
+            eng.save(request=request)
 def fetch_jobs(request):
+    sync_engineers(request)
     url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs"
     data=response = requests.get(url)
     data = response.json()  
+    
     for d in data["items"]:
 
         if int(d["id"]):
-                print(f'{d["visits"][0]["techs_assigned"][0]["first_name"],d["visits"][0]["techs_assigned"][0]["last_name"]}')
-                # try:
-                #     engineer=Engineer.objects.get(Q(company=request.user.company) & Q(name=d["assigned_to"]))
-                    
-                # except Engineer.DoesNotExist:
-                #     pass
+            print()
+
+            engineer=Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"]))
+            print(f'2222222222222222{engineer}')
             try:
                 ex_job=Job.objects.get(Q(company=request.user.company) & Q(job_id=d["id"]))
                 ex_job.address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}"
@@ -1637,7 +1656,8 @@ def fetch_jobs(request):
                 ex_job.from_time=d["visits"][0]["time_frame_promised_start"]
                 ex_job.to_time=d["visits"][0]["time_frame_promised_start"]
                 ex_job.birthday=d["created_at"]
-                ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday'],request=request)
+                ex_job.engineer=engineer
+                ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday','engineer'],request=request)
 
             except:
                 synced_job=Job(
