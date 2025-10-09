@@ -1,4 +1,4 @@
-
+from django.db import models
 def items_arrived(self):
     from .models import Job, JobItem
     all_arrived=False
@@ -156,40 +156,63 @@ def send_multiple_emails(jobs, request=None,single=False,):
             
             Email.objects.create(type=Email.EmailType.BATCH,company=company,user=user,to=engineer.name,subject=f"Your Job Parts List for{job.date}",body=full_message,date=timezone.now(),)
 
-        # if request:
-        #     messages.success(request, f'Email sent to {engineer.name}')
-# def save_history(request,form=None, ):
-#     from django.contrib.contenttypes.models import ContentType
-#     from .models import History
-#     if form:
 
-#         instance = form.instance
 
-#         if form.changed_data:
-#             old_instance = instance.__class__.objects.get(pk=instance.pk)
+def update_if_changed(instance: models.Model, d: dict, field_map: dict, *,request=None, affected_by_sync=False, ignore_empty=False):
+    """
+    Update Django model instance only if one or more mapped fields differ from the new data.
+    
+    Args:
+        instance: The Django model instance to update.
+        data: Incoming data (from API, payload, etc.).
+        field_map: Dict mapping model fields → callable(data) returning new value.
+        request: Optional, passed to .save() if your model overrides save().
+        afected_by_sync: Optional flag for custom save logic.
+        ignore_empty: If True, ignores blank/None values from data.
+    
+    Returns:
+        list: Names of changed fields (empty if no change).
+    """
+    changed_fields = []
 
-#             changed_fields = []
-#             old_values = []
-#             new_values = []
+    for field, get_val in field_map.items():
+        try:
+            # if field=="date" or field=="birthday":
+            #     new_val = get_val(d).date()
+            # elif field=="from_time" or field=="to_time":
+            #     new_val = get_val(d).datetime()
+            # else:
+            new_val = get_val(d)
+        except Exception as e:
+            print(f"⚠️ Field '{field}' mapping failed: {e} --{new_val}")
+            continue
 
-#             for field in form.changed_data:
-#                 old_value = getattr(old_instance, field)
-#                 new_value = form.cleaned_data[field]
-#                 changed_fields.append(field)
-#                 old_values.append(str(old_value))
-#                 new_values.append(str(new_value))
-            
-#             History.objects.create(
-#                 content_type=ContentType.objects.get_for_model(instance),
-#                 object_id=instance.pk,
-#                 company=request.user.company,
-#                 field=", ".join(changed_fields),
-#                 old_value=", ".join(old_values),
-#                 new_value=", ".join(new_values),
-#                 user=request.user
-#             )
-#     else:
-#         pass
+        old_val = getattr(instance, field)
 
-#         # Save the updated object
+        # Optional cleanup for strings
+        if isinstance(new_val, str):
+            new_val = new_val.strip()
+        if isinstance(old_val, str):
+            old_val = old_val.strip()
 
+        # Optionally skip empty values
+        if ignore_empty and (new_val in ("", None)):
+            continue
+
+        # Compare & update
+        if old_val != new_val:
+            setattr(instance, field, new_val)
+            changed_fields.append(field)
+
+    # Save only if something actually changed
+    if changed_fields:
+        instance.save(
+            update_fields=changed_fields,
+            request=request,
+            affected_by_sync=affected_by_sync
+        )
+        print(f"✅ {instance.__class__.__name__} {getattr(instance, 'id', '')} updated — {changed_fields}")
+    else:
+        print(f"⏩ {instance.__class__.__name__} {getattr(instance, 'id', '')} skipped — no changes detected.")
+
+    return changed_fields

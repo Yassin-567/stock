@@ -12,7 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email
+from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
@@ -1639,27 +1639,37 @@ def fetch_jobs(request):
     url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs"
     data=response = requests.get(url)
     data = response.json()  
-    
+    field_map={
+        "address":lambda d:f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
+        "parent_account":lambda d:d["parent_customer"],
+        "post_code":lambda d:d["postal_code"],  
+        'date': lambda d: datetime.fromisoformat(d['date']).date() ,
+        'birthday': lambda d: datetime.fromisoformat(d['birthday']).date() ,
+        'from_time': lambda d: time.fromisoformat(d['from_time']),
+        'to_time': lambda d: time.fromisoformat(d['to_time']),
+        "engineer":lambda d:Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"])),
+                
+            }
     for d in data["items"]:
 
         if int(d["id"]):
-            print()
-
             engineer=Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"]))
-            print(f'2222222222222222{engineer}')
             try:
                 ex_job=Job.objects.get(Q(company=request.user.company) & Q(job_id=d["id"]))
+                update_if_changed(ex_job, d, field_map,request=request, affected_by_sync=True, )
+                print("no err",update_if_changed(ex_job, d, field_map,request=request, affected_by_sync=True, )
+)
                 ex_job.address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}"
                 ex_job.parent_account=d["parent_customer"]
                 ex_job.post_code=d["postal_code"]
                 ex_job.date=d["visits"][0]["start_date"]
                 ex_job.from_time=d["visits"][0]["time_frame_promised_start"]
-                ex_job.to_time=d["visits"][0]["time_frame_promised_start"]
+                ex_job.to_time=d["visits"][0]["time_frame_promised_end"]
                 ex_job.birthday=d["created_at"]
                 ex_job.engineer=engineer
-                ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday','engineer'],request=request,afected_by_sync=True)
+                # ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday','engineer'],request=request,affected_by_sync=True)
 
-            except:
+            except Job.DoesNotExist:
                 synced_job=Job(
                     company=request.user.company,
                     job_id=int(d["id"]),
@@ -1682,9 +1692,10 @@ def fetch_jobs(request):
                     birthday=d["created_at"],
                     retirement_date=None,
                     on_hold=False,
+                    added_by_sync=True,
     
                 )
-                synced_job.save(request=request,afected_by_sync=True)
+                synced_job.save(request=request,affected_by_sync=True)
                 messages.success(request,f"Job with id {d['id']} synced successfully")
     #data = data.get("items", [])# Convert to dict
     
