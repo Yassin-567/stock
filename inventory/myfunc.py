@@ -184,7 +184,6 @@ def update_if_changed(instance: models.Model, d: dict, field_map: dict, *,reques
             # else:
             new_val = get_val(d)
         except Exception as e:
-            print(f"⚠️ Field '{field}' mapping failed: {e} --{new_val}")
             continue
 
         old_val = getattr(instance, field)

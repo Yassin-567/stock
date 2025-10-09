@@ -1643,22 +1643,20 @@ def fetch_jobs(request):
         "address":lambda d:f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
         "parent_account":lambda d:d["parent_customer"],
         "post_code":lambda d:d["postal_code"],  
-        'date': lambda d: datetime.fromisoformat(d['date']).date() ,
-        'birthday': lambda d: datetime.fromisoformat(d['birthday']).date() ,
-        'from_time': lambda d: time.fromisoformat(d['from_time']),
-        'to_time': lambda d: time.fromisoformat(d['to_time']),
+        'date': lambda d: datetime.strptime(d["visits"][0]["start_date"], "%Y-%m-%d").date(),
+        'birthday': lambda d: datetime.fromisoformat(d["created_at"]),
+        'from_time': lambda d: datetime.strptime(d["visits"][0]["time_frame_promised_start"], "%H:%M").time(),
+        'to_time': lambda d: datetime.strptime(d["visits"][0]["time_frame_promised_end"], "%H:%M").time(),
         "engineer":lambda d:Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"])),
                 
             }
     for d in data["items"]:
-
+        print(d)
         if int(d["id"]):
             engineer=Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"]))
             try:
                 ex_job=Job.objects.get(Q(company=request.user.company) & Q(job_id=d["id"]))
                 update_if_changed(ex_job, d, field_map,request=request, affected_by_sync=True, )
-                print("no err",update_if_changed(ex_job, d, field_map,request=request, affected_by_sync=True, )
-)
                 ex_job.address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}"
                 ex_job.parent_account=d["parent_customer"]
                 ex_job.post_code=d["postal_code"]

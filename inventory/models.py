@@ -136,7 +136,7 @@ class Engineer(models.Model):
 
         super().save(*args, **kwargs)
     def __str__(self):
-        return str( self.name)
+        return str( self.name)+"🔄" if self.sf_id else str( self.name)
 from django.contrib.contenttypes.fields import GenericRelation
 class Job(models.Model):
     status_chouces=[
