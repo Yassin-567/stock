@@ -1633,7 +1633,7 @@ def sync_engineers(request):
                 phone=eng["phone_1"],
                 sf_id=eng["id"]
             )
-            eng.save(request=request)
+            eng.save(request=request,afected_by_sync=True)
 def fetch_jobs(request):
     sync_engineers(request)
     url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs"
@@ -1657,7 +1657,7 @@ def fetch_jobs(request):
                 ex_job.to_time=d["visits"][0]["time_frame_promised_start"]
                 ex_job.birthday=d["created_at"]
                 ex_job.engineer=engineer
-                ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday','engineer'],request=request)
+                ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday','engineer'],request=request,afected_by_sync=True)
 
             except:
                 synced_job=Job(
@@ -1684,7 +1684,7 @@ def fetch_jobs(request):
                     on_hold=False,
     
                 )
-                synced_job.save(request=request)
+                synced_job.save(request=request,afected_by_sync=True)
                 messages.success(request,f"Job with id {d['id']} synced successfully")
     #data = data.get("items", [])# Convert to dict
     

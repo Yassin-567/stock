@@ -14,7 +14,7 @@ def log_model_changes(sender, instance,**kwargs):
         return
     if sender == History:
         return
-    
+    print("ssss",instance.afected_by_sync)
     # Skip models without a company field (customize if needed)
     try:
         if instance.dont_save_history:
@@ -73,7 +73,8 @@ def log_model_changes(sender, instance,**kwargs):
             field=", ".join(changed_fields),
             old_value=", ".join(old_values),
             new_value=", ".join(new_values),
-            user=user#getattr(instance, "_current_user", None)  # Set in views if you want
+            user=user,#getattr(instance, "_current_user", None)  # Set in views if you want
+            updated_by_syncing=instance.afected_by_sync if sender==Job or sender==Engineer else False,
         )
 @receiver(post_save)
 def log_model_creation(sender, created,instance, **kwargs):
@@ -106,6 +107,7 @@ def log_model_creation(sender, created,instance, **kwargs):
         user=instance.owner
     else :
         user=instance.request.user
+
     if  instance.request :
         History.objects.create(
             content_type=ContentType.objects.get_for_model(instance),
@@ -115,7 +117,9 @@ def log_model_creation(sender, created,instance, **kwargs):
             old_value="",
             new_value="",
             user=user ,
-            created=True
+            created=True,
+            created_by_syncing=instance.afected_by_sync if sender==Job or sender==Engineer else False,
+
         )
 @receiver(post_delete)
 def log_model_deletion(sender, instance, **kwargs):

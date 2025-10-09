@@ -130,8 +130,10 @@ class Engineer(models.Model):
     phone=models.CharField(max_length=15)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="engineers_company",blank=False,null=False)
     sf_id=models.CharField(max_length=40,blank=True,null=True)
-    def save(self,request,*args, **kwargs):
+    def save(self,request,*args,afected_by_sync=False, **kwargs):
         self.request=request
+        self.afected_by_sync=afected_by_sync
+
         super().save(*args, **kwargs)
     def __str__(self):
         return str( self.name)
@@ -165,16 +167,19 @@ class Job(models.Model):
     birthday=models.DateTimeField(auto_now_add=True)
     retirement_date=models.DateTimeField(null=True,blank=True)
     on_hold=models.BooleanField(default=False)
-    
+    added_by_sync=models.BooleanField(default=False)
+    emailed=models.DateTimeField(null=True,blank=True)
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
-    def save(self,*args, request=None,dont_save_history=False,**kwargs):
+    def save(self,*args, request=None,dont_save_history=False,afected_by_sync=False,**kwargs):
         if not self.pk:
             super().save(*args, **kwargs) 
             self.retirement_date=self.birthday+timedelta(days=7)
         self.request=request
         self.dont_save_history=dont_save_history
+        self.afected_by_sync=afected_by_sync
+
         job_reopened(self,)
         if not job_completed(self,) and  self.status!='cancelled':
 
@@ -342,5 +347,8 @@ class History(models.Model):
     changed_at = models.DateTimeField(auto_now_add=True)
     user=models.ForeignKey(CustomUser,on_delete=models.DO_NOTHING,related_name="user_history")
     created=models.BooleanField(default=False)
+    created_by_syncing=models.BooleanField(default=False)
+    updated_by_syncing=models.BooleanField(default=False)
+
     class Meta:
         ordering = ['-changed_at']
