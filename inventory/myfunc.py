@@ -1,4 +1,7 @@
 from django.db import models
+import requests
+from django.db.models import Q
+
 def items_arrived(self):
     from .models import Job, JobItem
     all_arrived=False
@@ -156,7 +159,28 @@ def send_multiple_emails(jobs, request=None,single=False,):
             
             Email.objects.create(type=Email.EmailType.BATCH,company=company,user=user,to=engineer.name,subject=f"Your Job Parts List for{job.date}",body=full_message,date=timezone.now(),)
 
+def sync_engineers_func(request):
+    from .models import Engineer
 
+    url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/engs"
+    data=response = requests.get(url)
+    data = response.json()  
+    for eng in data:
+        email=eng["email"]
+        try:
+            ex_eng=Engineer.objects.get(Q(company=request.user.company) & Q(email=eng["email"]))
+            if ex_eng.sf_id != eng["id"]:
+                ex_eng.sf_id=eng["id"]
+                ex_eng.save(update_fields=['sf_id'],request=request)    
+        except Engineer.DoesNotExist:
+            eng = Engineer(
+                company=request.user.company,
+                email=email,
+                name=f'{eng["first_name"]} {eng["last_name"]}',
+                phone=eng["phone_1"],
+                sf_id=eng["id"]
+            )
+            eng.save(request=request,affected_by_sync=True)
 
 def update_if_changed(instance: models.Model, d: dict, field_map: dict, *,request=None, affected_by_sync=False, ignore_empty=False):
     """

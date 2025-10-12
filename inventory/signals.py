@@ -117,7 +117,7 @@ def log_model_creation(sender, created,instance, **kwargs):
             new_value="",
             user=user ,
             created=True,
-            created_by_syncing=instance.afected_by_sync if sender==Job or sender==Engineer else False,
+            created_by_syncing=instance.affected_by_sync if sender==Job or sender==Engineer else False,
 
         )
 @receiver(post_delete)

@@ -130,7 +130,7 @@ class Engineer(models.Model):
     phone=models.CharField(max_length=15)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="engineers_company",blank=False,null=False)
     sf_id=models.CharField(max_length=40,blank=True,null=True)
-    def save(self,request,*args,affected_by_sync=False, **kwargs):
+    def save(self,request=None,*args,affected_by_sync=False, **kwargs):
         self.request=request
         self.affected_by_sync=affected_by_sync
 

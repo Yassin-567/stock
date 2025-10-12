@@ -12,7 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed
+from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
@@ -20,6 +20,7 @@ from datetime import datetime
 from django.utils.crypto import get_random_string
 import random
 from urllib.parse import urlencode
+import requests
 def create_guest_request(request):
     form=GuestEmail()
     guest_id = request.COOKIES.get("guest_id")
@@ -1606,97 +1607,88 @@ def batch_entry(request):
 def clear_batch(request):
     request.session['batch_items'] =[]
     return redirect('batch_entry')
-import requests
-from django.shortcuts import render
+
 
 def fetch_api_data(request):
     url = "https://jsonplaceholder.typicode.com/posts"
     response = requests.get(url)
     data = response.json()  # Convert to dict
     return render(request, 'inventory/api_data.html',{'data':data})
-def sync_engineers(request):
-    url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/engs"
-    data=response = requests.get(url)
-    data = response.json()  
-    for eng in data:
-        email=eng["email"]
-        try:
-            ex_eng=Engineer.objects.get(Q(company=request.user.company) & Q(email=eng["email"]))
-            if ex_eng.sf_id != eng["id"]:
-                ex_eng.sf_id=eng["id"]
-                ex_eng.save(update_fields=['sf_id'],request=request)    
-        except Engineer.DoesNotExist:
-            eng = Engineer(
-                company=request.user.company,
-                email=email,
-                name=f'{eng["first_name"]} {eng["last_name"]}',
-                phone=eng["phone_1"],
-                sf_id=eng["id"]
-            )
-            eng.save(request=request,afected_by_sync=True)
+def sync_engineers_view(request):
+    try:
+        sync_engineers_func(request)
+    except:
+        messages.error(request,"Syncing failed.")
+    return redirect('admin_panel')
 def fetch_jobs(request):
-    sync_engineers(request)
-    url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs"
-    data=response = requests.get(url)
-    data = response.json()  
-    field_map={
-        "address":lambda d:f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
-        "parent_account":lambda d:d["parent_customer"],
-        "post_code":lambda d:d["postal_code"],  
-        'date': lambda d: datetime.strptime(d["visits"][0]["start_date"], "%Y-%m-%d").date(),
-        'birthday': lambda d: datetime.fromisoformat(d["created_at"]),
-        'from_time': lambda d: datetime.strptime(d["visits"][0]["time_frame_promised_start"], "%H:%M").time(),
-        'to_time': lambda d: datetime.strptime(d["visits"][0]["time_frame_promised_end"], "%H:%M").time(),
-        "engineer":lambda d:Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"])),
-                
-            }
-    for d in data["items"]:
-        print(d)
-        if int(d["id"]):
-            engineer=Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"]))
-            try:
-                ex_job=Job.objects.get(Q(company=request.user.company) & Q(job_id=d["id"]))
-                update_if_changed(ex_job, d, field_map,request=request, affected_by_sync=True, )
-                ex_job.address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}"
-                ex_job.parent_account=d["parent_customer"]
-                ex_job.post_code=d["postal_code"]
-                ex_job.date=d["visits"][0]["start_date"]
-                ex_job.from_time=d["visits"][0]["time_frame_promised_start"]
-                ex_job.to_time=d["visits"][0]["time_frame_promised_end"]
-                ex_job.birthday=d["created_at"]
-                ex_job.engineer=engineer
-                # ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday','engineer'],request=request,affected_by_sync=True)
+    try:
+        with transaction.atomic():
+            
+            sync_engineers_func(request)
+            url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs"
+            data=response = requests.get(url)
+            data = response.json()  
+            field_map={
+                "address":lambda d:f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
+                "parent_account":lambda d:d["parent_customer"],
+                "post_code":lambda d:d["postal_code"],  
+                'date': lambda d: datetime.strptime(d["visits"][0]["start_date"], "%Y-%m-%d").date(),
+                'birthday': lambda d: datetime.fromisoformat(d["created_at"]),
+                'from_time': lambda d: datetime.strptime(d["visits"][0]["time_frame_promised_start"], "%H:%M").time(),
+                'to_time': lambda d: datetime.strptime(d["visits"][0]["time_frame_promised_end"], "%H:%M").time(),
+                "engineer":lambda d:Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"])),
+                        
+                    }
+            for d in data["items"]:
+                print(d)
+                if int(d["id"]):
+                    engineer=Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"]))
+                    try:
+                        ex_job=Job.objects.get(Q(company=request.user.company) & Q(job_id=d["id"]))
+                        update_if_changed(ex_job, d, field_map,request=request, affected_by_sync=True, )
+                        ex_job.address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}"
+                        ex_job.parent_account=d["parent_customer"]
+                        ex_job.post_code=d["postal_code"]
+                        ex_job.date=d["visits"][0]["start_date"]
+                        ex_job.from_time=d["visits"][0]["time_frame_promised_start"]
+                        ex_job.to_time=d["visits"][0]["time_frame_promised_end"]
+                        ex_job.birthday=d["created_at"]
+                        ex_job.engineer=engineer
+                        # ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday','engineer'],request=request,affected_by_sync=True)
 
-            except Job.DoesNotExist:
-                synced_job=Job(
-                    company=request.user.company,
-                    job_id=int(d["id"]),
-                    address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
-                    status= d["status"],
-                    quotation=None,
-                    engineer=engineer,#Temporarily nnon
-                    parent_account=d["parent_customer"],
-                    added_date=timezone.now(),
-                    items_arrived=False,
-                    post_code=d["postal_code"],
-                    quoted=False,
-                    quote_accepted=False,
-                    quote_declined=False,
-                    date=d["visits"][0]["start_date"],
-                    from_time=d["visits"][0]["time_frame_promised_start"],
-                    to_time=d["visits"][0]["time_frame_promised_start"],
-                    # history =None ,
-                    # comments = None,
-                    birthday=d["created_at"],
-                    retirement_date=None,
-                    on_hold=False,
-                    added_by_sync=True,
-    
-                )
-                synced_job.save(request=request,affected_by_sync=True)
-                messages.success(request,f"Job with id {d['id']} synced successfully")
-    #data = data.get("items", [])# Convert to dict
-    
-    return render(request, 'inventory/sf.html', {'data': data})
+                    except Job.DoesNotExist:
+                        synced_job=Job(
+                            company=request.user.company,
+                            job_id=int(d["id"]),
+                            address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
+                            status= d["status"],
+                            quotation=None,
+                            engineer=engineer,#Temporarily nnon
+                            parent_account=d["parent_customer"],
+                            added_date=timezone.now(),
+                            items_arrived=False,
+                            post_code=d["postal_code"],
+                            quoted=False,
+                            quote_accepted=False,
+                            quote_declined=False,
+                            date=d["visits"][0]["start_date"],
+                            from_time=d["visits"][0]["time_frame_promised_start"],
+                            to_time=d["visits"][0]["time_frame_promised_start"],
+                            # history =None ,
+                            # comments = None,
+                            birthday=d["created_at"],
+                            retirement_date=None,
+                            on_hold=False,
+                            added_by_sync=True,
+            
+                        )
+                        synced_job.save(request=request,affected_by_sync=True)
+                        messages.success(request,f"Job with id {d['id']} synced successfully")
+            #data = data.get("items", [])# Convert to dict
+            messages.success(request,"Jobs synced successfully.")
+            return redirect("inventory")
+    except:
+        messages.error(request,"Synicng failed")
+        return redirect("inventory")
 
 #youssif_USF_SPY

@@ -397,6 +397,7 @@ class JobItemForm(forms.ModelForm):
         #     raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
 
         if job_quantity == arrived_quantity and not ordered and not self.instance.from_warehouse:
+            print("OLP")
             raise forms.ValidationError("Items can't arrive without ordering")
         elif not  self.instance.from_warehouse and job_quantity<arrived_quantity  :
             raise forms.ValidationError("Arrived quantity can't be more than the required quantity")

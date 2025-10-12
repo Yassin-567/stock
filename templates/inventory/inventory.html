@@ -4,13 +4,12 @@
 
 {% block title %}Inventory - Stocky{% endblock %}
 {% block body %}
-
 {% if messages %}
 {% for message in messages %}
 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
 {% endfor %}
 {% endif %}
-<br> 
+
 <form method="get" class="row row-cols-lg-auto g-2 align-items-center mb-3 ">
   <!-- Status -->
   <div class="col-auto">
@@ -64,7 +63,7 @@
       value="{{ request.GET.q }}" />
   </div>
   <div class="col-auto">
-    <label for="date-range" >Job added date</label>
+    <label for="date-range" >Job birthday</label>
     <div name="date-range" class="d-flex align-items-center " style="border-style: ridge; padding:2px; border-radius: 10px;">
     <label for="added_from_date" class="form-label mb-0 me-1">From</label>
     <input type="text" id="added_from_date" name="added_from_date"
@@ -87,7 +86,38 @@
       <i class="bi bi-funnel"></i> Apply
     </button>
   </div>
+  
+ <div class="d-flex justify-content-end align-items-center  " >
+  <a class="btn btn-success btn-sm px-3 py-1 fw-bold shadow-sm" id="sync" style="font-size:0.95rem; border-radius: 20px;margin-left: 119px;margin-top: 20px;" href="{% url 'get_jobs_from_sf' %}">
+    <i class="bi bi-arrow-repeat"></i> Sync jobs
+  </a>
+</div>
 </form>
+  <script>
+    const form = document.getElementById('sync')
+    const yesBtn = document.getElementById('sync')
+    
+    form.addEventListener('click', function () {
+      // Show spinner
+      yesBtn.innerHTML = `<span class="spinner-border spinner-border-sm " role="status" aria-hidden="true"></span> Syncing`
+    yesBtn.style= "margin-left: 70px;"
+      // Prevent resending "choice=yes" after first submit
+      setTimeout(() => {
+        yesBtn.removeAttribute('name')
+      }, 0)
+    
+      // Block left mouse clicks on the whole document
+      document.addEventListener('click', blockLeftClick, true)
+    })
+    
+    function blockLeftClick(e) {
+      if (e.button === 0) {
+        // 0 = left button
+        e.stopPropagation()
+        e.preventDefault()
+      }
+    }
+  </script>
 {% comment %} <form method="get" class="mb-3">{% if request.GET.q %}
         <input type="hidden" name="q" value="{{ request.GET.q }}" />
       {% endif %}
@@ -138,9 +168,9 @@ altFormat: 'F j, Y'
 <br><br>
 {% if rjobs %}
 {% for job in rjobs %}
-{% if job.affected_by_sync %}<span class="badge bg-warning">Synced.</span>{% endif %}
 <div id="{{ job.job_id }}" class="card mb-4 shadow-sm">
-<div class="card-body job-card">
+
+<div class="card-body job-card">{% if job.added_by_sync %}<span >🔄</span>{% endif %}
 <div  class="row">
 
 <!-- Left Side: Job Info -->
