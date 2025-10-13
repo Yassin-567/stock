@@ -149,8 +149,16 @@
 <form method="get" class="row row-cols-lg-auto g-2 align-items-center mb-3"> 
 
 <label for="send_emails_date" class="form-label mb-0 ">Notify engineers:</label>
-<input type="text" id="date" name="send_emails_date" class="form-control flatpickr_date w-auto d-inline " placeholder="Select date" value="{{ request.GET.send_emails_date }}" />
-<button type="submit" name="send_emails" class="btn btn-primary btn-sm col-auto">Send emails</button>
+<div style="padding:2px; background: linear-gradient(90deg, #2980B9, #6DD5FA, #ff5353ff); border-radius: 8px; display:inline-block;">
+  <input type="text" 
+         id="date" 
+         name="send_emails_date" 
+         class="form-control flatpickr_date w-auto d-inline" 
+         style="border: 1px solid transparent; border-radius:6px; outline:none; background:white;" 
+         placeholder="Select date" 
+         value="{{ request.GET.send_emails_date }}" />
+</div><p> </p>
+<button type="submit" name="send_emails" class="btn btn-primary btn-sm col-auto" style="background: linear-gradient( #2980B9, #000000ff, #265e72ff);">Send emails</button>
 </form>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />

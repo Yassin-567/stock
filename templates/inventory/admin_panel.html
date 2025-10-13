@@ -157,7 +157,7 @@
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th style="width: 100px;">Edit</th>
+                  <th style="width: 100px;"></th>
                 </tr>
               </thead>
               <tbody>
@@ -167,7 +167,7 @@
                       <strong>{{ eng }}</strong>
                     </td>
                     <td class="text-center">
-                      <a href="#" class="btn btn-sm btn-outline-dark">Edit ✏</a>
+                      <a href="{% url 'update_engineer' eng.pk %}" class="btn btn-sm btn-outline-dark">Edit ✏</a>
                     </td>
                   </tr>
                 {% empty %}

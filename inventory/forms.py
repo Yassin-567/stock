@@ -287,64 +287,64 @@ class CommentForm(forms.ModelForm):
         }
     
 
-class ItemForm(forms.ModelForm):
-    class Meta:
-        model = JobItem
-        fields = ['part_number','name','price','supplier','job_quantity','arrived_quantity','reference','ordered','category'] 
-        # exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','is_moved_to_warehouse',]
-        labels = {
-            'name': 'Part Name',
-        }
-        widgets = {
-            #'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-            'status': forms.Select(attrs={'class': 'form-select','id':'status'}),
-            'price': forms.NumberInput(attrs={'class': 'form-control'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
-            #'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control','id':'arrived_quantity'}),
-            'part_number':forms.TextInput(attrs={  # Override widget for job_id
-                'type': 'text',  # Set input type to text
-                'inputmode': 'numeric',  # Allow numeric input
-                #'pattern': '[0-9]*',  # Numeric pattern
-                'placeholder': 'Enter part number',
-                'class': 'form-control',}),
-            'reference':forms.Textarea(attrs={'rows':1}),
-        }
+# class ItemForm(forms.ModelForm):
+#     class Meta:
+#         model = JobItem
+#         fields = ['part_number','name','price','supplier','job_quantity','arrived_quantity','reference','ordered','category'] 
+#         # exclude = ['added_by','company','is_used','is_warehouse_item','warehouse_quantity','is_moved_to_warehouse',]
+#         labels = {
+#             'name': 'Part Name',
+#         }
+#         widgets = {
+#             #'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+#             'status': forms.Select(attrs={'class': 'form-select','id':'status'}),
+#             'price': forms.NumberInput(attrs={'class': 'form-control'}),
+#             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+#             #'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control','id':'arrived_quantity'}),
+#             'part_number':forms.TextInput(attrs={  # Override widget for job_id
+#                 'type': 'text',  # Set input type to text
+#                 'inputmode': 'numeric',  # Allow numeric input
+#                 #'pattern': '[0-9]*',  # Numeric pattern
+#                 'placeholder': 'Enter part number',
+#                 'class': 'form-control',}),
+#             'reference':forms.Textarea(attrs={'rows':1}),
+#         }
 
-    def __init__(self, *args, updating=False,completed=False,job=False, **kwargs):
-        super().__init__(*args, **kwargs)
-        #self.fields['job'].empty_label = None
-        if updating:
+#     def __init__(self, *args, updating=False,completed=False,job=False, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         #self.fields['job'].empty_label = None
+#         if updating:
             
-            self.fields['part_number'].widget=forms.HiddenInput()
-            if completed:
-                for field in self.fields.values():
-                    field.widget.attrs['class'] = 'faded-input'
-                    field.widget.attrs['disabled'] = 'disabled'
-        elif job==None:
-            del self.fields['job']
-            del self.fields['job_quantity']
-            del self.fields['ordered']
-            del self.fields['arrived']
-            del self.fields['was_for_job']
-            del self.fields['was_it_used']
-            del self.fields['from_warehouse']
+#             self.fields['part_number'].widget=forms.HiddenInput()
+#             if completed:
+#                 for field in self.fields.values():
+#                     field.widget.attrs['class'] = 'faded-input'
+#                     field.widget.attrs['disabled'] = 'disabled'
+#         elif job==None:
+#             del self.fields['job']
+#             del self.fields['job_quantity']
+#             del self.fields['ordered']
+#             del self.fields['arrived']
+#             del self.fields['was_for_job']
+#             del self.fields['was_it_used']
+#             del self.fields['from_warehouse']
 
-            # del self.fields['category']
+#             # del self.fields['category']
 
-    def clean(self,*args, **kwargs):
+#     def clean(self,*args, **kwargs):
 
-        cleaned_data = super().clean()
-        job_quantity = cleaned_data.get('job_quantity')
-        arrived_quantity = cleaned_data.get('arrived_quantity')
-        ordered = cleaned_data.get('ordered')
-        job=cleaned_data.get('job')
+#         cleaned_data = super().clean()
+#         job_quantity = cleaned_data.get('job_quantity')
+#         arrived_quantity = cleaned_data.get('arrived_quantity')
+#         ordered = cleaned_data.get('ordered')
+#         job=cleaned_data.get('job')
 
-        if job and not ordered and job_quantity == arrived_quantity :
-            raise forms.ValidationError("Items can't arrive without ordering")
-        elif job  and job_quantity < arrived_quantity:
-            raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
+#         if job and not ordered and job_quantity == arrived_quantity :
+#             raise forms.ValidationError("Items can't arrive without ordering")
+#         elif job  and job_quantity < arrived_quantity:
+#             raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
     
-        return cleaned_data
+#         return cleaned_data
 class JobItemForm(forms.ModelForm):
     class Meta:
         model=JobItem
@@ -435,10 +435,21 @@ class WarehouseitemForm(forms.ModelForm):
     #     #         widget=forms.NumberInput(attrs={'class': 'form-control'}))
        
 class EngineerForm(forms.ModelForm):
+   
     class Meta:
         model = Engineer
         fields = '__all__'
         exclude=['company']
+    def __init__(self, *args,updating=False,enable_editing=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if updating:
+            del self.fields['sf_id'] 
+        if not enable_editing:
+            for field in self.fields.values():
+                
+                field.widget.attrs['class'] = 'faded-input'
+                field.widget.attrs['disabled'] = 'disabled'
+
 
 class CategoriesForm(forms.ModelForm):
     class Meta:

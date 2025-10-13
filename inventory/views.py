@@ -1,6 +1,6 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
 from .models import CustomUser,Company,Job,Comment,JobItem,WarehouseItem,Engineer,Category,CompanySettings,Email,History
-from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker,CategoriesForm,CompanySettingsForm,ForgotPasswordForm,GuestEmail
+from .forms import SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker,CategoriesForm,CompanySettingsForm,ForgotPasswordForm,GuestEmail
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -266,7 +266,7 @@ def inventory(request,pk=None):
     params.pop('page', None)  # drop 'page' param
     querystring = '&' + urlencode({k: v.strip() for k, v in params.items() if v and v.strip()})
     context={
-            'jobs_count':rjobs,
+            'jobs_count':rjobs.count(),
             'rjobs': page_obj,
             'page_obj':page_obj,
             'status':status,
@@ -275,6 +275,7 @@ def inventory(request,pk=None):
             'quotation_status':quotation_status,
             'now_time':now_time,
             'age':age,
+
             }
     if request.method=='GET' and 'send_emails' in request.GET:
         date=request.GET.get("send_emails_date")
@@ -1526,6 +1527,32 @@ def engineer(request):
                 messages.error(request,"Engineer with the same name exists")
             return render(request,'inventory/eng.html',{'form':form})
     return render(request,'inventory/eng.html',{'form':form})
+def update_engineer(request,pk):
+    eng=Engineer.objects.get(Q(company=request.user.company) & Q(pk=pk))
+    form=EngineerForm(instance=eng,updating=True)
+    if request.method=='POST' and 'enable_editing' in request.POST:
+        form=EngineerForm(instance=eng,updating=True,enable_editing=True)
+        enable_editing=True
+    else:
+        enable_editing=False
+    if request.method=="POST" and "edit" in request.POST:
+       form=EngineerForm(request.POST,instance=eng,updating=True)
+       if form.is_valid:
+            eng=form.save(commit=False)
+            try:
+                Engineer.objects.get(Q(name=eng.name) & Q(company=request.user.company) & ~Q(pk=pk))
+                ex=True
+            except Engineer.DoesNotExist:
+                ex=False
+            if not ex:
+                eng.company=request.user.company
+              
+                eng.save(request=request)
+                messages.success(request,f"Engineer {eng.name} is updated")
+            else:
+                messages.error(request,"Engineer with the same name exists")
+            return render(request,'inventory/update_eng.html',{'form':form,'eng':eng,'enable_editing':enable_editing})
+    return render(request,'inventory/update_eng.html',{'form':form,'eng':eng,'enable_editing':enable_editing})
 def search_view(request):
     form=SearchForm()
     return render(request,'inventory/inventory.html',{'form':form})
@@ -1619,14 +1646,15 @@ def sync_engineers_view(request):
         sync_engineers_func(request)
     except:
         messages.error(request,"Syncing failed.")
+    messages.success(request,"Engineers synced.")
     return redirect('admin_panel')
 def fetch_jobs(request):
     try:
         with transaction.atomic():
-            
             sync_engineers_func(request)
             url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs"
             data=response = requests.get(url)
+            print(data)
             data = response.json()  
             field_map={
                 "address":lambda d:f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
@@ -1639,6 +1667,7 @@ def fetch_jobs(request):
                 "engineer":lambda d:Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"])),
                         
                     }
+            
             for d in data["items"]:
                 print(d)
                 if int(d["id"]):
@@ -1655,7 +1684,6 @@ def fetch_jobs(request):
                         ex_job.birthday=d["created_at"]
                         ex_job.engineer=engineer
                         # ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday','engineer'],request=request,affected_by_sync=True)
-
                     except Job.DoesNotExist:
                         synced_job=Job(
                             company=request.user.company,

@@ -133,8 +133,12 @@ class Engineer(models.Model):
     def save(self,request=None,*args,affected_by_sync=False, **kwargs):
         self.request=request
         self.affected_by_sync=affected_by_sync
-
         super().save(*args, **kwargs)
+        
+    class Meta:
+        unique_together = ('email', 'company')  # Enforce uniqueness at the company level
+
+        
     def __str__(self):
         return str( self.name)+"🔄" if self.sf_id else str( self.name)
 from django.contrib.contenttypes.fields import GenericRelation

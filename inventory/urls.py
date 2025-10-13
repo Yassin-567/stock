@@ -29,6 +29,9 @@ urlpatterns=[
     path('companysettings/',views.company_settings,name='company_settings'),
     path('adpanelc//',views.update_company,name='update_company'),
     path('adpaneleng/',views.engineer,name='add_eng'),
+    path('updateeng/<int:pk>',views.update_engineer,name='update_engineer'),
+
+
     path('add_cat/',views.add_category,name='add_category'),
     path('batch_entry',views.batch_entry,name='batch_entry'),
     path('clear_batch',views.clear_batch,name='clear_batch'),
