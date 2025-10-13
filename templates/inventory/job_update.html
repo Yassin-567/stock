@@ -33,11 +33,10 @@
         {% csrf_token %}
         {% comment %} <label for="quote_status"  class="form-label mb-0 me-1">Quotation status:</label> {% endcomment %}
         <select  name="quote_status" onchange="this.form.submit()" id="">
-          <option value="quote_unknown" {% if job.quote and job.quote_accepted == false and  job.quote_declined == false%}selected{% endif %}>Waiting</option>
+          <option value="quote_unknown" {% if job.quote and not job.quote_accepted and job.quote_declined == False %}selected{% endif %}>Waiting</option>
           <option value="quote_accepted" {% if job.quote_accepted %}selected{% endif %}>Quote accepted</option>
           <option value="quote_declined" {% if job.quote_declined %}selected{% endif %}>Quote declined</option>
-        </select>
-        
+        </select> 
       </form>
       
       {% endif %}
@@ -204,23 +203,34 @@
       </form>
     </form>
   </section>
+<style>
+  .tag { padding: 2px 8px; border-radius: 15px; font-size: 0.9rem; margin-left: 10px; display: inline-block; }
+.tag.arrived { background: #11ff09; color: #000; }
+.tag.ordered { background: #e4d833; color: #000; }
+.tag.was-for-job { background: #77a3c0; color: #000; }
+.tag.from-warehouse { background: #9d77c0; color: #000; }
+.tag.used { background: #360808; color: #fff; }
+.tag.not-ordered { background: #ff6262; color: #000; }
+.tag.used-info { background-color: rgba(182, 182, 182, 0.79); color: #333; }
 
+</style>
   <ol>
     {% for jobitem in job.items.all %}
       <li>
         <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.name }}</a> - Part Number: {{ jobitem.part_number }} - Price: ${{ jobitem.price }} - Qty: {{ jobitem.job_quantity }}
-        {% if jobitem.arrived and not jobitem.is_used %}
-          <span style="color: rgb(0, 0, 0);background-color: rgb(17, 255, 9);border: 1000px;border-radius: 25%;">Arrived</span>
-        {% elif jobitem.ordered and not jobitem.from_warehouse and not jobitem.is_used %}
-          <span style="color: rgb(0, 0, 0);background-color: rgba(228, 216, 51, 0.99);border: 1000px;border-radius: 25%;">Ordered</span>
-        {% elif jobitem.was_for_job and jobitem.from_warehouse and not jobitem.is_used %}
-          <span style="color: rgb(0, 0, 0);background-color: rgba(119, 163, 192, 0.79);border: 1000px;border-radius: 25%;">was for job {{ jobitem.was_for_job }}</span>
-        {% elif jobitem.from_warehouse and not jobitem.is_used %}
-          <span style="color: rgb(0, 0, 0);background-color: rgba(157, 119, 192, 0.79);border: 1000px;border-radius: 25%;">From warehouse</span>
-        {% elif jobitem.is_used %}
-          <span style="color: rgb(255, 255, 255);background-color: rgba(54, 8, 8, 0.79);border: 1000px;border-radius: 25%;">Used</span>
-        {% else %}
-          <span style="color: rgb(0, 0, 0);background-color: rgba(255, 98, 98, 0.99);border: 1000px;border-radius: 25%;">Not ordered</span>
+      {% if jobitem.arrived and not jobitem.is_used and not jobitem.from_warehouse %}
+        <span class="tag arrived">Arrived</span>
+{% elif jobitem.ordered and not jobitem.from_warehouse and not jobitem.is_used %}
+  <span class="tag ordered">Ordered</span>
+{% elif jobitem.was_for_job and jobitem.from_warehouse and not jobitem.is_used %}
+  <span class="tag was-for-job">was for job {{ jobitem.was_for_job }}</span>
+{% elif jobitem.from_warehouse and not jobitem.is_used %}
+  <span class="tag from-warehouse">From warehouse</span>
+{% elif jobitem.is_used %}
+  <span class="tag used">Used</span>
+{% else %}
+
+  <span class="tag not-ordered">Not ordered</span>
         {% endif %}
         {% if jobitem.was_it_used and job.status != 'completed' and job.status != 'cancelled' %}
           <small>The job was reopened, do you still have the part?</small> <form action="{% url 'inventory' jobitem.id %}" method="POST">

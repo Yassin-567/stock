@@ -50,7 +50,6 @@ def log_model_changes(sender, instance,**kwargs):
         if field_name and (field_name in allowed_fields) :
             old_value = getattr(old_instance, field_name)
             new_value = getattr(instance, field_name)
-            print('new',new_value,old_value)
             if old_value != new_value:
                 changed_fields.append(field_name)
                 old_values.append(str(old_value))
@@ -117,7 +116,7 @@ def log_model_creation(sender, created,instance, **kwargs):
             new_value="",
             user=user ,
             created=True,
-            created_by_syncing=instance.afected_by_sync if sender==Job or sender==Engineer else False,
+            created_by_syncing=instance.affected_by_sync if sender==Job or sender==Engineer else False,
 
         )
 @receiver(post_delete)

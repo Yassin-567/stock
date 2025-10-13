@@ -3,6 +3,11 @@
 {% load custom_tags %}
 
 {% block body %}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message|safe }}</div>
+    {% endfor %}
+  {% endif %}
   <div class="container mt-4">
     <h2 class="mb-4">Admin Panel</h2>
     <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4 rounded shadow-sm">
@@ -143,15 +148,16 @@
       <!-- Engineers -->
       <div class="col-md-6">
         <div class="card mb-4 shadow-sm">
-          <div class="card-header bg-info text-white">
+          <div class="card-header bg-info text-white d-flex justify-content-between">
             <h4 class="my-0">Engineers</h4>
+            <a class="btn btn-success btn-sm px-3 py-1 fw-bold shadow-sm" id="sync" style="font-size:0.8rem; border-radius: 20px;" href="{% url 'sync_engineers' %}">Sync Engineers</a>
           </div>
           <div class="table-responsive">
             <table class="table table-bordered mb-0">
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th style="width: 100px;">Edit</th>
+                  <th style="width: 100px;"></th>
                 </tr>
               </thead>
               <tbody>
@@ -161,7 +167,7 @@
                       <strong>{{ eng }}</strong>
                     </td>
                     <td class="text-center">
-                      <a href="#" class="btn btn-sm btn-outline-dark">Edit ✏</a>
+                      <a href="{% url 'update_engineer' eng.pk %}" class="btn btn-sm btn-outline-dark">Edit ✏</a>
                     </td>
                   </tr>
                 {% empty %}
@@ -176,4 +182,30 @@
       </div>
     </div>
   </div>
+
+  <script>
+    const form = document.getElementById('sync')
+    const yesBtn = document.getElementById('sync')
+    
+    form.addEventListener('click', function () {
+      // Show spinner
+      yesBtn.innerHTML = `<span class="spinner-border spinner-border-sm " role="status" aria-hidden="true"></span> Syncing`
+      yesBtn.style = 'margin-left: 70px;'
+      // Prevent resending "choice=yes" after first submit
+      setTimeout(() => {
+        yesBtn.removeAttribute('name')
+      }, 0)
+    
+      // Block left mouse clicks on the whole document
+      document.addEventListener('click', blockLeftClick, true)
+    })
+    
+    function blockLeftClick(e) {
+      if (e.button === 0) {
+        // 0 = left button
+        e.stopPropagation()
+        e.preventDefault()
+      }
+    }
+  </script>
 {% endblock %}

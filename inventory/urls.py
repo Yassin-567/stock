@@ -29,11 +29,18 @@ urlpatterns=[
     path('companysettings/',views.company_settings,name='company_settings'),
     path('adpanelc//',views.update_company,name='update_company'),
     path('adpaneleng/',views.engineer,name='add_eng'),
+    path('updateeng/<int:pk>',views.update_engineer,name='update_engineer'),
+    path('scheduler/',views.scheduler,name='scheduler'),
+
+    
+
+
     path('add_cat/',views.add_category,name='add_category'),
     path('batch_entry',views.batch_entry,name='batch_entry'),
     path('clear_batch',views.clear_batch,name='clear_batch'),
     path('create_batch_items/', views.create_batch_items, name='create_batch_items'),
     path('get_jobs_from_sf/', views.fetch_jobs, name='get_jobs_from_sf'),
+    path('sync_engineers/', views.sync_engineers_view, name='sync_engineers'),
     path('login/',views.login_user,name='login'),
     path('logout/',views.logout_user,name='logout'),
     path('registerc/',views.register_company,name='register_company'),

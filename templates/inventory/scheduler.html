@@ -1,0 +1,18 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+{% load custom_tags %}
+
+{% block body %}
+  {% for group in groups %}
+    <div class="card my-3 shadow-sm">
+      <div class="card-header bg-primary text-white">Group {{ forloop.counter }} — {{ group|length }} job{{ group|length|pluralize }}</div>
+      <ul class="list-group list-group-flush">
+        {% for job in group %}
+          <li class="list-group-item">{{ job.post_code }} — {{ job.customer_name }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% empty %}
+    <p>No ready jobs found.</p>
+  {% endfor %}
+{% endblock %}

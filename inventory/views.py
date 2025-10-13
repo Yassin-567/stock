@@ -1,6 +1,6 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
 from .models import CustomUser,Company,Job,Comment,JobItem,WarehouseItem,Engineer,Category,CompanySettings,Email,History
-from .forms import ItemForm,SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker,CategoriesForm,CompanySettingsForm,ForgotPasswordForm,GuestEmail
+from .forms import SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker,CategoriesForm,CompanySettingsForm,ForgotPasswordForm,GuestEmail
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -12,7 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed
+from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
@@ -20,6 +20,7 @@ from datetime import datetime
 from django.utils.crypto import get_random_string
 import random
 from urllib.parse import urlencode
+import requests
 def create_guest_request(request):
     form=GuestEmail()
     guest_id = request.COOKIES.get("guest_id")
@@ -265,7 +266,7 @@ def inventory(request,pk=None):
     params.pop('page', None)  # drop 'page' param
     querystring = '&' + urlencode({k: v.strip() for k, v in params.items() if v and v.strip()})
     context={
-            'jobs_count':rjobs,
+            'jobs_count':rjobs.count(),
             'rjobs': page_obj,
             'page_obj':page_obj,
             'status':status,
@@ -274,6 +275,7 @@ def inventory(request,pk=None):
             'quotation_status':quotation_status,
             'now_time':now_time,
             'age':age,
+
             }
     if request.method=='GET' and 'send_emails' in request.GET:
         date=request.GET.get("send_emails_date")
@@ -1525,6 +1527,32 @@ def engineer(request):
                 messages.error(request,"Engineer with the same name exists")
             return render(request,'inventory/eng.html',{'form':form})
     return render(request,'inventory/eng.html',{'form':form})
+def update_engineer(request,pk):
+    eng=Engineer.objects.get(Q(company=request.user.company) & Q(pk=pk))
+    form=EngineerForm(instance=eng,updating=True)
+    if request.method=='POST' and 'enable_editing' in request.POST:
+        form=EngineerForm(instance=eng,updating=True,enable_editing=True)
+        enable_editing=True
+    else:
+        enable_editing=False
+    if request.method=="POST" and "edit" in request.POST:
+       form=EngineerForm(request.POST,instance=eng,updating=True)
+       if form.is_valid:
+            eng=form.save(commit=False)
+            try:
+                Engineer.objects.get(Q(name=eng.name) & Q(company=request.user.company) & ~Q(pk=pk))
+                ex=True
+            except Engineer.DoesNotExist:
+                ex=False
+            if not ex:
+                eng.company=request.user.company
+              
+                eng.save(request=request)
+                messages.success(request,f"Engineer {eng.name} is updated")
+            else:
+                messages.error(request,"Engineer with the same name exists")
+            return render(request,'inventory/update_eng.html',{'form':form,'eng':eng,'enable_editing':enable_editing})
+    return render(request,'inventory/update_eng.html',{'form':form,'eng':eng,'enable_editing':enable_editing})
 def search_view(request):
     form=SearchForm()
     return render(request,'inventory/inventory.html',{'form':form})
@@ -1606,97 +1634,173 @@ def batch_entry(request):
 def clear_batch(request):
     request.session['batch_items'] =[]
     return redirect('batch_entry')
-import requests
-from django.shortcuts import render
+
 
 def fetch_api_data(request):
     url = "https://jsonplaceholder.typicode.com/posts"
     response = requests.get(url)
     data = response.json()  # Convert to dict
     return render(request, 'inventory/api_data.html',{'data':data})
-def sync_engineers(request):
-    url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/engs"
-    data=response = requests.get(url)
-    data = response.json()  
-    for eng in data:
-        email=eng["email"]
-        try:
-            ex_eng=Engineer.objects.get(Q(company=request.user.company) & Q(email=eng["email"]))
-            if ex_eng.sf_id != eng["id"]:
-                ex_eng.sf_id=eng["id"]
-                ex_eng.save(update_fields=['sf_id'],request=request)    
-        except Engineer.DoesNotExist:
-            eng = Engineer(
-                company=request.user.company,
-                email=email,
-                name=f'{eng["first_name"]} {eng["last_name"]}',
-                phone=eng["phone_1"],
-                sf_id=eng["id"]
-            )
-            eng.save(request=request,afected_by_sync=True)
+def sync_engineers_view(request):
+    try:
+        sync_engineers_func(request)
+    except:
+        messages.error(request,"Syncing failed.")
+    messages.success(request,"Engineers synced.")
+    return redirect('admin_panel')
 def fetch_jobs(request):
-    sync_engineers(request)
-    url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs"
-    data=response = requests.get(url)
-    data = response.json()  
-    field_map={
-        "address":lambda d:f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
-        "parent_account":lambda d:d["parent_customer"],
-        "post_code":lambda d:d["postal_code"],  
-        'date': lambda d: datetime.strptime(d["visits"][0]["start_date"], "%Y-%m-%d").date(),
-        'birthday': lambda d: datetime.fromisoformat(d["created_at"]),
-        'from_time': lambda d: datetime.strptime(d["visits"][0]["time_frame_promised_start"], "%H:%M").time(),
-        'to_time': lambda d: datetime.strptime(d["visits"][0]["time_frame_promised_end"], "%H:%M").time(),
-        "engineer":lambda d:Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"])),
-                
-            }
-    for d in data["items"]:
-        print(d)
-        if int(d["id"]):
-            engineer=Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"]))
-            try:
-                ex_job=Job.objects.get(Q(company=request.user.company) & Q(job_id=d["id"]))
-                update_if_changed(ex_job, d, field_map,request=request, affected_by_sync=True, )
-                ex_job.address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}"
-                ex_job.parent_account=d["parent_customer"]
-                ex_job.post_code=d["postal_code"]
-                ex_job.date=d["visits"][0]["start_date"]
-                ex_job.from_time=d["visits"][0]["time_frame_promised_start"]
-                ex_job.to_time=d["visits"][0]["time_frame_promised_end"]
-                ex_job.birthday=d["created_at"]
-                ex_job.engineer=engineer
-                # ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday','engineer'],request=request,affected_by_sync=True)
+    try:
+        with transaction.atomic():
+            sync_engineers_func(request)
+            url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs"
+            data=response = requests.get(url)
+            print(data)
+            data = response.json()  
+            field_map={
+                "address":lambda d:f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
+                "parent_account":lambda d:d["parent_customer"],
+                "post_code":lambda d:d["postal_code"],  
+                'date': lambda d: datetime.strptime(d["visits"][0]["start_date"], "%Y-%m-%d").date(),
+                'birthday': lambda d: datetime.fromisoformat(d["created_at"]),
+                'from_time': lambda d: datetime.strptime(d["visits"][0]["time_frame_promised_start"], "%H:%M").time(),
+                'to_time': lambda d: datetime.strptime(d["visits"][0]["time_frame_promised_end"], "%H:%M").time(),
+                "engineer":lambda d:Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"])),
+                        
+                    }
+            
+            for d in data["items"]:
+                print(d)
+                if int(d["id"]):
+                    engineer=Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"]))
+                    try:
+                        ex_job=Job.objects.get(Q(company=request.user.company) & Q(job_id=d["id"]))
+                        update_if_changed(ex_job, d, field_map,request=request, affected_by_sync=True, )
+                        ex_job.address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}"
+                        ex_job.parent_account=d["parent_customer"]
+                        ex_job.post_code=d["postal_code"]
+                        ex_job.date=d["visits"][0]["start_date"]
+                        ex_job.from_time=d["visits"][0]["time_frame_promised_start"]
+                        ex_job.to_time=d["visits"][0]["time_frame_promised_end"]
+                        ex_job.birthday=d["created_at"]
+                        ex_job.engineer=engineer
+                        # ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday','engineer'],request=request,affected_by_sync=True)
+                    except Job.DoesNotExist:
+                        synced_job=Job(
+                            company=request.user.company,
+                            job_id=int(d["id"]),
+                            address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
+                            status= d["status"],
+                            quotation=None,
+                            engineer=engineer,#Temporarily nnon
+                            parent_account=d["parent_customer"],
+                            added_date=timezone.now(),
+                            items_arrived=False,
+                            post_code=d["postal_code"],
+                            quoted=False,
+                            quote_accepted=False,
+                            quote_declined=False,
+                            date=d["visits"][0]["start_date"],
+                            from_time=d["visits"][0]["time_frame_promised_start"],
+                            to_time=d["visits"][0]["time_frame_promised_start"],
+                            # history =None ,
+                            # comments = None,
+                            birthday=d["created_at"],
+                            retirement_date=None,
+                            on_hold=False,
+                            added_by_sync=True,
+            
+                        )
+                        synced_job.save(request=request,affected_by_sync=True)
+                        messages.success(request,f"Job with id {d['id']} synced successfully")
+            #data = data.get("items", [])# Convert to dict
+            messages.success(request,"Jobs synced successfully.")
+            return redirect("inventory")
+    except:
+        messages.error(request,"Synicng failed")
+        return redirect("inventory")
+    
+    import requests
 
-            except Job.DoesNotExist:
-                synced_job=Job(
-                    company=request.user.company,
-                    job_id=int(d["id"]),
-                    address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
-                    status= d["status"],
-                    quotation=None,
-                    engineer=engineer,#Temporarily nnon
-                    parent_account=d["parent_customer"],
-                    added_date=timezone.now(),
-                    items_arrived=False,
-                    post_code=d["postal_code"],
-                    quoted=False,
-                    quote_accepted=False,
-                    quote_declined=False,
-                    date=d["visits"][0]["start_date"],
-                    from_time=d["visits"][0]["time_frame_promised_start"],
-                    to_time=d["visits"][0]["time_frame_promised_start"],
-                    # history =None ,
-                    # comments = None,
-                    birthday=d["created_at"],
-                    retirement_date=None,
-                    on_hold=False,
-                    added_by_sync=True,
-    
-                )
-                synced_job.save(request=request,affected_by_sync=True)
-                messages.success(request,f"Job with id {d['id']} synced successfully")
-    #data = data.get("items", [])# Convert to dict
-    
-    return render(request, 'inventory/sf.html', {'data': data})
+def get_postcode_coords(postcode):
+    response = requests.get(f"https://api.postcodes.io/postcodes/{postcode}")
+    if response.status_code == 200:
+        data = response.json()["result"]
+        return data["latitude"], data["longitude"]
+    return None, None
+import requests
+from math import radians, cos, sin, asin, sqrt
+from django.shortcuts import render
+from .models import Job
+from django.utils.crypto import get_random_string
+
+
+def scheduler(request):
+    # --- Helper: get coordinates from postcode ---
+    def get_coords(postcode):
+        """Fetch approximate coordinates from postcodes.io"""
+        try:
+            res = requests.get(f"https://api.postcodes.io/postcodes/{postcode}")
+            if res.status_code == 200:
+                data = res.json().get("result")
+                if data:
+                    return data["latitude"], data["longitude"]
+        except Exception:
+            pass
+        return None, None
+
+    # --- Helper: distance between two coordinates (in KM) ---
+    def haversine(lat1, lon1, lat2, lon2):
+        R = 6371
+        dlat = radians(lat2 - lat1)
+        dlon = radians(lon2 - lon1)
+        a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+        c = 2 * asin(sqrt(a))
+        return R * c
+
+    # --- Step 1: Fetch all ready jobs ---
+    ready_jobs = list(Job.objects.filter(status="ready"))
+    job_coords = {}
+
+    # --- Step 2: Cache postcode coordinates ---
+    for job in ready_jobs:
+        postcode = job.post_code.strip().upper()
+        if postcode not in job_coords:
+            job_coords[postcode] = get_coords(postcode)
+        job.latitude, job.longitude = job_coords[postcode]
+
+    # --- Step 3: Grouping Logic ---
+    groups = []
+    visited = set()
+
+    for job in ready_jobs:
+        if job.id in visited:
+            continue
+
+        group = [job]
+        visited.add(job.id)
+
+        if job.latitude and job.longitude:
+            for other in ready_jobs:
+                if other.id in visited or not other.latitude:
+                    continue
+
+                # Distance between current job and another
+                distance = haversine(job.latitude, job.longitude, other.latitude, other.longitude)
+
+                if distance <= 10 and len(group) < 8:
+                    group.append(other)
+                    visited.add(other.id)
+
+        # Even if no nearby jobs found, we still keep this job as a single group
+        groups.append(group)
+
+    # --- Optional: Save as Schedule objects (if you have that model) ---
+    # for g in groups:
+    #     schedule = Schedule.objects.create(group_code=get_random_string(6).upper())
+    #     schedule.jobs.set(g)
+    #     Job.objects.filter(id__in=[j.id for j in g]).update(status="scheduled")
+
+    return render(request, "inventory/scheduler.html", {"groups": groups})
+
 
 #youssif_USF_SPY

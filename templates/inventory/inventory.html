@@ -4,90 +4,147 @@
 
 {% block title %}Inventory - Stocky{% endblock %}
 {% block body %}
-
 {% if messages %}
 {% for message in messages %}
 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
 {% endfor %}
-{% endif %}
-<br> 
-<form method="get" class="row row-cols-lg-auto g-2 align-items-center mb-3 ">
-  <!-- Status -->
-  <div class="col-auto">
-    <label for="status" class="form-label mb-0 me-1">Status</label>
-    <select name="status" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
-      <option value="all" {% if not status or status == 'all' %}selected{% endif %}>All jobs</option>
-      <option value="ready" {% if status == 'ready' %}selected{% endif %}>Ready</option>
-      <option value="paused" {% if status == 'paused' %}selected{% endif %}>Paused</option>
-      <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Cancelled</option>
-      <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
-      <option value="quoted" {% if status == 'quoted' %}selected{% endif %}>Quoted</option>
-      <option value="on_hold" {% if status == 'on_hold' %}selected{% endif %}>On hold✋</option>
+{% endif %}<!-- Full Form Layout -->
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap">
 
-    </select>
-  </div>
+  <!-- Filtering Form -->
+  <form method="get"
+        class="row row-cols-lg-auto g-2 align-items-center mb-0"
+        style="
+          
+          width: fit-content;
+          padding: 1px 12px;
+          background: linear-gradient(90deg, #4f5c5bff, #343d3cff, #4f5c5bff);
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          gap: 1px;
+          flex-wrap: wrap;
+        
+        ">
 
-   <div class="col-auto">
-    <label for="quotation_status" class="form-label mb-0 me-1">Quotation</label>
-    <select name="quotation_status" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
-      <option value="all" {% if not quotation_status or quotation_status == 'all' %}selected{% endif %}>All</option>
-      <option value="accepted" {% if quotation_status == 'accepted' %}selected{% endif %}>Accepted</option>
-      <option value="declined" {% if quotation_status == 'declined' %}selected{% endif %}>Declined</option>
-      <option value="waiting" {% if quotation_status == 'waiting' %}selected{% endif %}>Waiting</option>
-    </select>
-  </div>
-  <div class="col-auto">
-    <label for="age" class="form-label mb-0 me-1">Age</label>
-    <select name="age" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
-      <option value="all" {% if not age or age == 'all' %}selected{% endif %}>All</option>
-      <option value="new" {% if age == 'new' %}selected{% endif %}>New jobs</option>
-      <option value="old" {% if age == 'old' %}selected{% endif %}>Old jobs</option>
-    </select>
-  </div>
+    <!-- Status -->
+    <div class="col-auto">
+      <label for="status" class="form-label mb-0 me-1 text-white">Status</label>
+      <select name="status" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
+        <option value="all" {% if not status or status == 'all' %}selected{% endif %}>All jobs</option>
+        <option value="ready" {% if status == 'ready' %}selected{% endif %}>Ready</option>
+        <option value="paused" {% if status == 'paused' %}selected{% endif %}>Paused</option>
+        <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+        <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
+        <option value="quoted" {% if status == 'quoted' %}selected{% endif %}>Quoted</option>
+        <option value="on_hold" {% if status == 'on_hold' %}selected{% endif %}>On hold✋</option>
+      </select>
+    </div>
 
-  <!-- Date -->
-  <div class="col-auto">
-    <label for="date" class="form-label mb-0 me-1">Visit date</label>
-    <input type="text" id="date" name="date"
-      class="form-control form-control-sm w-auto flatpickr_date"
-      placeholder="Select date"
-      value="{{ request.GET.date }}" />
-  </div>
+    <!-- Quotation -->
+    <div class="col-auto">
+      <label for="quotation_status" class="form-label mb-0 me-1 text-white">Quotation</label>
+      <select name="quotation_status" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
+        <option value="all" {% if not quotation_status or quotation_status == 'all' %}selected{% endif %}>All</option>
+        <option value="accepted" {% if quotation_status == 'accepted' %}selected{% endif %}>Accepted</option>
+        <option value="declined" {% if quotation_status == 'declined' %}selected{% endif %}>Declined</option>
+        <option value="waiting" {% if quotation_status == 'waiting' %}selected{% endif %}>Waiting</option>
+      </select>
+    </div>
 
-  <!-- Search -->
-  <div class="col-auto  ">
-    <label for="search" class="form-label mb-0 me-1">Search</label>
-    <input type="search" name="q"
-      class="form-control form-control-sm w-auto"
-      placeholder="Search jobs"
-      aria-label="Search"
-      value="{{ request.GET.q }}" />
-  </div>
-  <div class="col-auto">
-    <label for="date-range" >Job added date</label>
-    <div name="date-range" class="d-flex align-items-center " style="border-style: ridge; padding:2px; border-radius: 10px;">
-    <label for="added_from_date" class="form-label mb-0 me-1">From</label>
-    <input type="text" id="added_from_date" name="added_from_date"
-      class="form-control form-control-sm w-auto flatpickr_date"
-      placeholder="Select date"
-      value="{{ request.GET.added_from_date }}" />
+    <!-- Age -->
+    <div class="col-auto">
+      <label for="age" class="form-label mb-0 me-1 text-white">Age</label>
+      <select name="age" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
+        <option value="all" {% if not age or age == 'all' %}selected{% endif %}>All</option>
+        <option value="new" {% if age == 'new' %}selected{% endif %}>New jobs</option>
+        <option value="old" {% if age == 'old' %}selected{% endif %}>Old jobs</option>
+      </select>
+    </div>
 
-          <label for="added_to_date" class="form-label mb-0 me-1">To</label>
-    <input type="text" id="added_to_date" name="added_to_date"
-      class="form-control form-control-sm w-auto flatpickr_date"
-      placeholder="Select date"
-      value="{{ request.GET.added_to_date }}" />
+    <!-- Visit Date -->
+    <div class="col-auto">
+      <label for="date" class="form-label mb-0 me-1 text-white">Visit date</label>
+      <input type="text" id="date" name="date"
+             class="form-control form-control-sm w-auto flatpickr_date"
+             placeholder="Select date"
+             value="{{ request.GET.date }}" />
+    </div>
+
+    <!-- Search -->
+    <div class="col-auto">
+      <label for="search" class="form-label mb-0 me-1 text-white">Search</label>
+      <input type="search" name="q"
+             class="form-control form-control-sm w-auto"
+             placeholder="Search jobs"
+             aria-label="Search"
+             value="{{ request.GET.q }}" />
+    </div>
+
+    <!-- Job Birthday -->
+    <div class="col-auto">
+      <label for="date-range" class="form-label mb-0 text-white">Job birthday</label>
+      <div name="date-range"
+           class="d-flex align-items-center border border-light p-2 rounded-3"
+           style="gap: 6px;">
+        <label for="added_from_date" class="form-label mb-0 me-1 text-white">From</label>
+        <input type="text" id="added_from_date" name="added_from_date"
+               class="form-control form-control-sm w-auto flatpickr_date"
+               placeholder="Select date"
+               value="{{ request.GET.added_from_date }}" />
+
+        <label for="added_to_date" class="form-label mb-0 me-1 text-white">To</label>
+        <input type="text" id="added_to_date" name="added_to_date"
+               class="form-control form-control-sm w-auto flatpickr_date"
+               placeholder="Select date"
+               value="{{ request.GET.added_to_date }}" />
+      </div>
+    </div>
+
+    <!-- Apply Button -->
+    <div class="col-auto">
+      <button type="submit" class="btn btn-sm btn-primary mt-3">
+        <i class="bi bi-funnel"></i> Apply
+      </button>
+    </div>
+  </form>
+
+  <!-- Sync Jobs Button -->
+  <a class="btn btn-success btn-sm px-3 py-1 fw-bold shadow-sm mt-2 mt-lg-0"
+     style="font-size:0.95rem; border-radius:20px;"
+     id="sync"
+     href="{% url 'get_jobs_from_sf' %}">
+    <i class="bi bi-arrow-repeat"></i> Sync jobs
+  </a>
 </div>
-  </div>
 
-  <!-- Button -->
-  <div class="col-auto  ">
-    <label class="form-label mb-0 me-1"></label><br>
-    <button type="submit" class="btn btn-sm btn-primary">
-      <i class="bi bi-funnel"></i> Apply
-    </button>
-  </div>
-</form>
+
+
+  <script>
+    const form = document.getElementById('sync')
+    const yesBtn = document.getElementById('sync')
+    
+    form.addEventListener('click', function () {
+      // Show spinner
+      yesBtn.innerHTML = `<span class="spinner-border spinner-border-sm " role="status" aria-hidden="true"></span> Syncing`
+    yesBtn.style= "margin-left: 70px;"
+      // Prevent resending "choice=yes" after first submit
+      setTimeout(() => {
+        yesBtn.removeAttribute('name')
+      }, 0)
+    
+      // Block left mouse clicks on the whole document
+      document.addEventListener('click', blockLeftClick, true)
+    })
+    
+    function blockLeftClick(e) {
+      if (e.button === 0) {
+        // 0 = left button
+        e.stopPropagation()
+        e.preventDefault()
+      }
+    }
+  </script>
 {% comment %} <form method="get" class="mb-3">{% if request.GET.q %}
         <input type="hidden" name="q" value="{{ request.GET.q }}" />
       {% endif %}
@@ -119,9 +176,17 @@
 <form method="get" class="row row-cols-lg-auto g-2 align-items-center mb-3"> 
 
 <label for="send_emails_date" class="form-label mb-0 ">Notify engineers:</label>
-<input type="text" id="date" name="send_emails_date" class="form-control flatpickr_date w-auto d-inline " placeholder="Select date" value="{{ request.GET.send_emails_date }}" />
-<button type="submit" name="send_emails" class="btn btn-primary btn-sm col-auto">Send emails</button>
-</form>
+<div style="padding:2px; background: linear-gradient(90deg, #2980B9, #6DD5FA, #ff5353ff); border-radius: 8px; display:inline-block; width: fit-content;">
+  <input type="text" 
+         id="date" 
+         name="send_emails_date" 
+         class="form-control flatpickr_date w-auto d-inline" 
+         style="border: 1px solid transparent; border-radius:6px; outline:none; background:white;" 
+         placeholder="Select date" 
+         value="{{ request.GET.send_emails_date }}" />
+
+<button type="submit" name="send_emails" class="btn btn-primary btn-sm col-auto" style="background: linear-gradient( #5363f5ff , #00dbde);">Send emails</button>
+</div></form>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -138,9 +203,9 @@ altFormat: 'F j, Y'
 <br><br>
 {% if rjobs %}
 {% for job in rjobs %}
-{% if job.affected_by_sync %}<span class="badge bg-warning">Synced.</span>{% endif %}
 <div id="{{ job.job_id }}" class="card mb-4 shadow-sm">
-<div class="card-body job-card">
+
+<div class="card-body job-card">{% if job.added_by_sync %}<span >🔄</span>{% endif %}
 <div  class="row">
 
 <!-- Left Side: Job Info -->
@@ -150,7 +215,7 @@ altFormat: 'F j, Y'
     Job ID: 
     <a href="{% url 'update_job' job.job_id %}"  
       onclick="localStorage.setItem('lastJob',{{job.job_id}});">{{ job.job_id }}</a> -{% if job.on_hold %}✋{% endif %}
-    <span class="badge status-{{ job.status }}">{{ job.get_status_display }}
+    <span class="badge status-{{ job.status }}" >{{ job.get_status_display }}
       {% if job.quoted %}
 <span class="quote-box">Quoted: $<span class="quote-value">{{ job.quotation }}</span>
 

@@ -1,7 +1,7 @@
 /* General Styles */
 body {
     font-family: Arial, sans-serif;
-    background: #f4f4f4;
+    background: #e4e4e4;
     margin: 0;
     padding: 0;
     color: #333;
@@ -50,6 +50,7 @@ h4 {
     border-radius: 4px;
     margin-bottom: 10px;
     list-style: none;
+    width: fit-content;
 }
 
 .btn-submit:hover {
