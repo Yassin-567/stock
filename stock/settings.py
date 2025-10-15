@@ -36,7 +36,7 @@ INSTALLED_APPS = [
     #'grappelli', #admin site customization
     
     #'inventory.apps.SuitConfig', #admin site customization
-    
+    'whitenoise.runserver_nostatic',
     'django_extensions',
     'django.contrib.admin',
     'django.contrib.auth',
