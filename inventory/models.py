@@ -363,5 +363,4 @@ class SchedulerGroup(models.Model):
     job_ids = models.TextField()  # Comma-separated job IDs
     map_url = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        unique_together = ('company', 'user')  # Ensure uniqueness per company, user, and timestamp
+    

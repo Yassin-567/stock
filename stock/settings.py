@@ -88,23 +88,21 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 #Database
 #https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-if os.getenv('DJANGO_DEVELOPMENT'):
+if config('DJANGO_DEVELOPMENT', default='False') == "True":
     DEBUG = True
     DATABASES = {
-   'default': {
-      'ENGINE': 'django.db.backends.sqlite3',
-       'NAME': BASE_DIR / 'db.sqlite3',
-   }
-}
-
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 else:
-    DEBUG = True
+    DEBUG = False  # change to True only if testing production locally
     import dj_database_url
     DATABASES = {
-        'default': dj_database_url.config(
-            default='postgresql://neondb_owner:npg_wtPYI5pEHNF3@ep-snowy-pine-ad4zidtj-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
-        )
+        'default': dj_database_url.parse(config('DATABASE_URL'))
     }
+
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
