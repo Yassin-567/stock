@@ -1724,14 +1724,14 @@ import requests
 from math import radians, cos, sin, asin, sqrt
 from django.shortcuts import render
 from .models import Job
-from django.utils.crypto import get_random_string
 
 
 def scheduler(request):
     
     ex_sg=SchedulerGroup.objects.filter(company=request.user.company,user=request.user)
     
-    if not ex_sg.exists():
+    if not ex_sg.exists() or ( request.POST and "regenerate" in request.POST):
+        ex_sg.delete()
     # --- Helper: get coordinates from postcode ---
         def get_coords(postcode):
             """Fetch approximate coordinates from postcodes.io"""
@@ -1809,8 +1809,6 @@ def scheduler(request):
             sg=SchedulerGroup(company=request.user.company,user=request.user,job_ids=job_ids, map_url=g["map_url"])
             sg.save()
     else:
-        print("existsi")
-        sg=ex_sg
         groups_with_maps = []
         for group in ex_sg:
             job_ids = [int(id_) for id_ in group.job_ids.split(",") if id_]
@@ -1824,7 +1822,7 @@ def scheduler(request):
         groups_with_maps=sorted(groups_with_maps, key=lambda g: len(g["jobs"]), reverse=True)
     except:
         pass
-    return render(request, "inventory/scheduler.html", {"groups":  groups_with_maps })
+    return render(request, "inventory/scheduler.html", {"groups":  groups_with_maps,'ex_sg':ex_sg[0] })
 
 
 #youssif_USF_SPY

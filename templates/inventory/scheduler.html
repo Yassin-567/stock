@@ -1,7 +1,23 @@
 {% extends 'inventory/base.html' %}
 {% load static %}
-
+{% block title %}Scheduler - Stocky{% endblock %}
 {% block body %}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Scheduler</h1>
+    <p>The following groups were generated at: {{ex_sg.created_at}}</p>
+    
+  </div>
+  <form action="" method="post">
+    {% csrf_token %}
+    <button name="regenerate" type="submit">
+          <input type="hidden" name="confirm_sending" />
+
+      Regenerate
+
+    </button>
+
+
+  </form>
   {% for group in groups %}
     <div class="card my-3 shadow-sm border-0">
       <!-- Card Header -->

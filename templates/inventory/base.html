@@ -9,7 +9,7 @@
 
     <title>
       {% block title %}
-        Stocky
+        
       {% endblock %}
     </title>
 
@@ -31,6 +31,35 @@
               <!-- Replace <search></search> with this: -->
               <!-- User Info -->
               <li class="nav-item">
+<a class="nav-link fw-bold text-light" href="{% url 'scheduler' %}" target="_blank">
+  <span
+    style="
+      background: linear-gradient(90deg, #0d82f7, #eee3d8ff, #0d82f7);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 8px rgba(13,130,247,0.6), 0 0 20px rgba(123, 206, 231, 0.61)
+      font-weight: 700;
+      animation: shine 6s both infinite;
+    "
+    
+  >
+    Auto scheduler
+  </span>
+</a>
+
+<style>
+@keyframes shine {
+  0% { background-position: 0% center; }
+  100% { background-position: 500% center; }
+}
+</style>
+
+
+              </li>
+
+              <li class="nav-item">
+
                 <a class="nav-link fw-bold text-light" href="{% url 'update_user' request.user.id %}">
                   {% if request.user|is_owner %}
                     Hi, {{ request.user.username }} ✨

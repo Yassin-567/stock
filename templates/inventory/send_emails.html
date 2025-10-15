@@ -46,7 +46,7 @@
                 <tr>
                   <td style="background-color: green;color: white;">{{ job.job_id }}</td>
                   <td>
-                    <a href="{% url 'update_job' job.job_id %}">{{ job.address }}</a>
+                    <a href="{% url 'update_job' job.job_id %}" target="_blank">{{ job.address }}</a>
                   </td>
                   <td>{{ job.engineer }}</td>
                   <td>
@@ -62,7 +62,8 @@
               {% else %}
                 <tr>
                   <td style="background-color: brown;color: white;">{{ job.job_id }}</td>
-                  <td>{{ job.address }}</td>
+                  <td>                    <a href="{% url 'update_job' job.job_id %}" target="_blank">{{ job.address }}</a>
+</td>
                   {% if job.engineer %}
                     <td>{{ job.engineer }}</td>
                   {% else %}
