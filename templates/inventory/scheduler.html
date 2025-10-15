@@ -1,18 +1,30 @@
 {% extends 'inventory/base.html' %}
 {% load static %}
-{% load custom_tags %}
 
 {% block body %}
   {% for group in groups %}
-    <div class="card my-3 shadow-sm">
-      <div class="card-header bg-primary text-white">Group {{ forloop.counter }} — {{ group|length }} job{{ group|length|pluralize }}</div>
+    <div class="card my-3 shadow-sm border-0">
+      <!-- Card Header -->
+      <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center">
+        <span>Group {{ forloop.counter }} — {{ group.jobs|length }} job{{ group.jobs|length|pluralize }}</span>
+        {% if group.map_url %}
+          <a href="{{ group.map_url }}" target="_blank" class="btn btn-light btn-sm fw-bold px-3 py-1 shadow-sm" style="border-radius: 20px;"><i class="bi bi-geo-alt-fill me-1"></i> View on maps</a>
+        {% endif %}
+      </div>
+
+      <!-- Job List -->
       <ul class="list-group list-group-flush">
-        {% for job in group %}
-          <li class="list-group-item">{{ job.post_code }} — {{ job.customer_name }}</li>
+        {% for job in group.jobs %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <a href="{% url 'update_job' job.job_id %}" class="fw-bold text-decoration-none text-primary">{{ job.job_id }}</a>
+              <span class="text-muted">— {{ job.address }}-{{ job.post_code }}</span>
+            </div>
+          </li>
         {% endfor %}
       </ul>
     </div>
   {% empty %}
-    <p>No ready jobs found.</p>
+    <div class="alert alert-warning text-center shadow-sm mt-4">No ready jobs found.</div>
   {% endfor %}
 {% endblock %}

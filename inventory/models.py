@@ -356,3 +356,12 @@ class History(models.Model):
 
     class Meta:
         ordering = ['-changed_at']
+
+class SchedulerGroup(models.Model):
+    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="scheduler_groups")
+    user=models.ForeignKey(CustomUser,on_delete=models.CASCADE,related_name="user_scheduler_groups")
+    job_ids = models.TextField()  # Comma-separated job IDs
+    map_url = models.URLField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        unique_together = ('company', 'user')  # Ensure uniqueness per company, user, and timestamp

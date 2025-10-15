@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser , Company , Job,Comment,JobItem,WarehouseItem,Engineer,Category,CompanySettings,Email,History
+from .models import CustomUser , Company , Job,Comment,JobItem,WarehouseItem,Engineer,Category,CompanySettings,Email,History,SchedulerGroup
 # Register your model here.
 class ItemAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', )
@@ -13,6 +13,8 @@ class ItemAdmin(admin.ModelAdmin):
 admin.site.register(Engineer, )
 admin.site.register(Category, )
 admin.site.register(History, )
+admin.site.register(SchedulerGroup, )
+
 # admin.site.register(JobItem, )
 # admin.site.register(CustomUser,CustomUserAdmin)
 # admin.site.site_header='Stock'
