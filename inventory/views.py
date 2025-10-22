@@ -1754,7 +1754,7 @@ def scheduler(request):
                         continue                    
                     distance = haversine(job.latitude, job.longitude, other.latitude, other.longitude)
                     
-                    if (distance <= 14 and len(jobs_list) < 9 ) or ( job.post_code.strip() == other.post_code.strip()) :
+                    if (distance <= 15 and len(jobs_list) < 9 ) or ( job.post_code.strip() == other.post_code.strip()) :
                         
                         
                         jobs_list.append(other)
@@ -1825,7 +1825,7 @@ def scheduler(request):
         return redirect('scheduler')
     else:
         try:
-            if request.method=="POST" and ("move_up" or "move_down" in request.post):
+            if request.method == "POST" and ("move_up" in request.POST or "move_down" in request.POST or "move_to_group" in request.POST):           
                 order,group=move(request,ex_sg)
                 group.job_order =order
                 postcodes = [job.post_code.strip() for job in group.ordered_jobs() if job.post_code]

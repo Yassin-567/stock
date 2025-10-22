@@ -2,6 +2,7 @@ from django.db import models
 import requests
 from django.db.models import Q
 
+
 def items_arrived(self):
     from .models import Job, JobItem
     all_arrived=False
@@ -547,6 +548,8 @@ def _greedy_fallback(jobs):
 #MOVE UP AND DOWN
 
 def move (request,ex_sg,) :
+    from .models import Job
+    from django.db import transaction
     if request.method == "POST" :
         
         if "move_down" in request.POST:    
@@ -585,5 +588,32 @@ def move (request,ex_sg,) :
                     return order,group
             except ValueError:
                 pass  # job_id not found in order list
-        
+            
+        elif "move_to_group" in request.POST:
+            print("Moving job between groups...")
 
+            old_group_id = int(request.POST.get("old_group"))
+            new_group_id = int(request.POST.get("new_group"))
+            job_id = int(request.POST.get("move_to_group"))
+
+            old_group = ex_sg.get(id=old_group_id)
+            new_group = ex_sg.get(id=new_group_id)
+            job = Job.objects.get(company=request.user.company, id=job_id)
+
+            with transaction.atomic():
+                # Remove from old group
+                old_group.jobs.remove(job)
+                if job.id in old_group.job_order:
+                    old_group.job_order.remove(job.id)
+                old_group.save(update_fields=["job_order"])
+
+                # Add to new group
+                new_group.jobs.add(job)
+                if job.id not in new_group.job_order:
+                    new_group.job_order.append(job.id)
+                new_group.save(update_fields=["job_order"])
+
+            # Return groups to allow view to rebuild map URLs for both
+            return old_group, new_group
+
+        return None, None
