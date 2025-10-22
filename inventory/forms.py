@@ -195,7 +195,7 @@ class JobForm(forms.ModelForm):
     class Meta:
         model = Job
         fields = '__all__'
-        exclude = ['user','quotation','quote_declined','quote_accepted','need_attention']
+        exclude = ['user','quotation','quote_declined','quote_accepted','on_hold','retirement_date','added_by_sync','emailed']
         labels = {
             'name': 'Part Name',
         }

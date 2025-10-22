@@ -89,6 +89,8 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 #Database
 #https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 if config('DJANGO_DEVELOPMENT', default='False') == "True":
+
+    
     DEBUG = True
     DATABASES = {
         'default': {

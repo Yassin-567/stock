@@ -118,7 +118,7 @@ def send_guest_email(email, login_email,password):
     )
 from django.core.mail import send_mail
 from django.conf import settings
-from django.contrib import messages
+
 from collections import defaultdict
 from django.utils import timezone
 def send_multiple_emails(jobs, request=None,single=False,):
@@ -152,7 +152,7 @@ def send_multiple_emails(jobs, request=None,single=False,):
         )
         from .models import Email
         user=request.user
-        company=request.user.company
+        company=request.user.company    
         if single:
             Email.objects.create(type=Email.EmailType.SINGLE,company=company,user=user,to=engineer.name,subject=f"Your Job Parts List for{job.date}",body=full_message,date=timezone.now(),)
         else:
@@ -240,3 +240,350 @@ def update_if_changed(instance: models.Model, d: dict, field_map: dict, *,reques
         print(f"⏩ {instance.__class__.__name__} {getattr(instance, 'id', '')} skipped — no changes detected.")
 
     return changed_fields
+import requests
+import random
+import time
+from math import radians, cos, sin, asin, sqrt,atan2
+from functools import lru_cache
+from decouple import config
+
+# --- API Key ---
+API_KEY = config("ORS_API_KEY", default="your_api_key_here")
+
+# --- Get coordinates from postcode ---
+def get_coords(postcode):
+    """Fetch approximate coordinates from postcodes.io"""
+    try:
+        res = requests.get(f"https://api.postcodes.io/postcodes/{postcode}")
+        if res.status_code == 200:
+            data = res.json().get("result")
+            if data:
+                return data["latitude"], data["longitude"]
+    except Exception:
+        pass
+    return None, None
+
+
+# --- Haversine fallback (km) ---
+from math import radians, sin, cos, asin, sqrt
+
+def haversine(lat1, lon1, lat2, lon2):
+    """Calculate the great-circle distance (in km) between two GPS points."""
+    R = 6371  # Earth's radius in kilometers
+    dlat = radians(lat2 - lat1)
+    dlon = radians(lon2 - lon1)
+    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+    c = 2 * asin(sqrt(a))
+    return R * c
+
+
+
+# --- Cache of drive times ---
+drive_cache = {}
+
+@lru_cache(maxsize=512)
+def get_drive_time_ors(origin_lat, origin_lon, dest_lat, dest_lon):
+    """Returns driving duration in minutes using OpenRouteService with fallback."""
+    origin_lat, origin_lon = round(origin_lat, 5), round(origin_lon, 5)
+    dest_lat, dest_lon = round(dest_lat, 5), round(dest_lon, 5)
+    key = (origin_lat, origin_lon, dest_lat, dest_lon)
+    if key in drive_cache:
+        return drive_cache[key]
+
+    url = "https://api.openrouteservice.org/v2/directions/driving-car"
+    headers = {"Authorization": API_KEY}
+    params = {"start": f"{origin_lon},{origin_lat}", "end": f"{dest_lon},{dest_lat}"}
+
+    try:
+        r = requests.get(url, headers=headers, params=params, timeout=6)
+        r.raise_for_status()
+        data = r.json()
+        duration_sec = data["features"][0]["properties"]["summary"]["duration"]
+        minutes = duration_sec / 60
+        drive_cache[key] = minutes
+        return minutes
+    except Exception:
+        # fallback if API fails
+        km = haversine(origin_lat, origin_lon, dest_lat, dest_lon)
+        est_time = (km / 40) * 60
+        drive_cache[key] = est_time
+        return est_time
+
+
+# --- Helper: route total time ---
+def route_total_time(route):
+    total = 0
+    for i in range(len(route) - 1):
+        total += get_drive_time_ors(
+            route[i].latitude, route[i].longitude,
+            route[i + 1].latitude, route[i + 1].longitude
+        )
+    return total
+
+
+# --- 2-opt Improvement ---
+def two_opt(route):
+    improved = True
+    while improved:
+        improved = False
+        for i in range(1, len(route) - 2):  
+            for j in range(i + 1, len(route)):
+                if j - i == 1:
+                    continue
+                new_route = route[:]
+                new_route[i:j] = route[j - 1:i - 1:-1]
+                if route_total_time(new_route) < route_total_time(route):
+                    route = new_route
+                    improved = True
+        time.sleep(0.01)
+    return route
+
+
+# --- Genetic Algorithm Optimization ---
+
+def optimize_group_order(jobs):
+    """Optimize job order by travel time using ORS, fallback to greedy method."""
+    if not jobs or len(jobs) == 1:
+        return list(jobs)
+
+    # ✅ Use first job as start & end point
+    start_job = jobs[0]
+
+    # 🧠 Prepare job data for ORS
+    jobs_data = []
+    for i, job in enumerate(jobs):
+        if job.latitude is None or job.longitude is None:
+            continue
+        jobs_data.append({
+            "id": i + 1,
+            "location": [float(job.longitude), float(job.latitude)],
+            "service": 300  # 5 minutes per stop (optional)
+        })
+
+    if not jobs_data:
+        return list(jobs)
+
+    # 🧠 Vehicle definition
+    vehicles = [{
+        "id": 1,
+        "profile": "driving-car",  # ✅ FIXED (was 'car')
+        "start": [float(start_job.longitude), float(start_job.latitude)],
+        "end": [float(start_job.longitude), float(start_job.latitude)],
+    }]
+
+    # 📦 API request body
+    body = {"jobs": jobs_data, "vehicles": vehicles}
+
+    try:
+        response = requests.post(
+            "https://api.openrouteservice.org/optimization",
+            json=body,
+            headers={"Authorization": API_KEY, "Content-Type": "application/json"},
+            timeout=30,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        # ✅ Parse optimized order
+        steps = data["routes"][0]["steps"]
+        optimized_indices = [step["job"] - 1 for step in steps if "job" in step]
+        optimized = [jobs[i] for i in optimized_indices if i < len(jobs)]
+
+        print("✅ ORS Optimization successful! Order:", [j.id for j in optimized])
+        return optimized
+
+    except Exception as e:
+        print(f"❌ ORS Optimization API failed: {e}")
+        try:
+            err = response.json()
+            print(f"🧠 ORS says: {err}")
+        except:
+            pass
+        print("⚠️ Fallback to local greedy optimization.\n")
+
+        # -------------------------------
+        # 🚗 Greedy Fallback Optimizer
+        # -------------------------------
+        optimized = [jobs[0]]
+        remaining = list(jobs[1:])
+        while remaining:
+            last = optimized[-1]
+            best_job = min(
+                remaining,
+                key=lambda j: haversine(
+                    last.latitude, last.longitude, j.latitude, j.longitude
+                ),
+            )
+            optimized.append(best_job)
+            remaining.remove(best_job)
+
+        print("✅ Local Greedy Fallback Order:", [j.id for j in optimized])
+        return optimized
+    
+
+from itertools import groupby
+import requests
+
+def optimize_group_order2(jobs):
+    
+    """Optimize job order using LocationIQ Optimize API, grouping same-postcode jobs together and slightly offsetting coordinates."""
+    if not jobs or len(jobs) == 1:
+        return list(jobs)
+    
+
+    # ✅ Step 1: Group jobs by postcode (keeping their internal order)
+    jobs.sort(key=lambda j: (j.post_code or "").strip().upper())
+    grouped = [list(g) for _, g in groupby(jobs, key=lambda j: (j.post_code or "").strip().upper())]
+    print(f"📦 Grouped into {len(grouped)} postcode clusters")
+
+    # ✅ Step 2: Prepare representative coordinates for each group, with tiny offset
+    coords, group_reps = [], []
+    for idx, group in enumerate(grouped):
+        rep = next((j for j in group if j.latitude is not None and j.longitude is not None), None)
+        if rep:
+            # Apply unique micro-offset to avoid identical coordinates
+            lon_offset = float(f"0.000{idx+1}")
+            lat_offset = float(f"0.000{idx+2}")
+            adj_lon = rep.longitude + lon_offset
+            adj_lat = rep.latitude + lat_offset
+
+            coords.append(f"{adj_lon},{adj_lat}")
+            group_reps.append(group)
+
+    if not coords:
+        print("⚠️ No valid coordinates found, skipping optimization.")
+        return list(jobs)
+
+    # ⚠️ Limit due to free-tier restriction
+    if len(coords) > 10:
+        print(f"⚠️ Too many postcode clusters ({len(coords)}). Using greedy fallback.")
+        return _greedy_fallback(jobs)
+
+    try:
+        coord_str = ";".join(coords)
+        print("🧭 Coordinates (with tiny offsets):", coord_str)
+        url = f"https://us1.locationiq.com/v1/optimize/driving/{coord_str}"
+        params = {
+            "key": "pk.9f0369e994b0fcf9da50cf62c971aa40oo",
+            "roundtrip": "false"
+        }
+
+        res = requests.get(url, params=params, timeout=30)
+        res.raise_for_status()
+        data = res.json()
+        print("📦 LocationIQ Response:", data)
+
+        # ✅ Validate response
+        if not data.get("trips") or not data.get("waypoints"):
+            raise ValueError("Invalid response structure (missing 'trips' or 'waypoints').")
+
+        trip = data["trips"][0]
+
+        # ✅ Extract optimized order indexes
+        order_indexes = trip.get("waypoint_order")
+        if not order_indexes:
+            order_indexes = [wp["waypoint_index"] for wp in data["waypoints"]]
+
+        print("📍 Optimized postcode group order indexes:", order_indexes)
+
+        # ✅ Map back to grouped jobs
+        optimized_jobs = []
+        for i in order_indexes:
+            if i < len(group_reps):
+                optimized_jobs.extend(group_reps[i])  # keep grouped jobs together
+
+        if not optimized_jobs or len(optimized_jobs) != len(jobs):
+            print("⚠️ Job count mismatch; using fallback.")
+            return _greedy_fallback(jobs)
+
+        print("✅ Optimized job order (grouped + offset):", [j.id for j in optimized_jobs])
+        return optimized_jobs
+
+    except Exception as e:
+        print(f"❌ LocationIQ Optimization failed: {e}")
+        if "res" in locals():
+            try:
+                print("🧠 Response JSON:", res.json())
+            except Exception:
+                print("⚠️ Could not parse error response.")
+        return _greedy_fallback(jobs)
+
+def _greedy_fallback(jobs):
+    print("⚠️ Executing Greedy Fallback Optimizer...")
+
+    # Split jobs into valid and invalid based on coordinates
+    valid_jobs = [j for j in jobs if j.latitude is not None and j.longitude is not None]
+    invalid_jobs = [j for j in jobs if j.latitude is None or j.longitude is None]
+
+    if not valid_jobs:
+        # All jobs invalid → return as is
+        return jobs
+
+    if len(valid_jobs) == 1:
+        optimized = valid_jobs
+    else:
+        optimized = [valid_jobs[0]]
+        remaining = list(valid_jobs[1:])
+
+        while remaining:
+            last = optimized[-1]
+            valid_remaining = [j for j in remaining if j.latitude is not None and j.longitude is not None]
+            if not valid_remaining:
+                break
+
+            best_job = min(
+                valid_remaining,
+                key=lambda j: haversine(last.latitude, last.longitude, j.latitude, j.longitude),
+            )
+            optimized.append(best_job)
+            remaining.remove(best_job)
+
+    # Append invalid jobs (unoptimized) at the end
+    optimized.extend(invalid_jobs)
+    print("✅ Greedy Fallback Order:", optimized)
+    return optimized
+
+
+#MOVE UP AND DOWN
+
+def move (request,ex_sg,) :
+    if request.method == "POST" :
+        
+        if "move_down" in request.POST:    
+            job_id = int(request.POST.get("move_down"))
+            group_id = int(request.POST.get("group_id"))
+            group = ex_sg.get(id=group_id)
+        
+            # Convert stored job_order into a list of ints
+            if isinstance(group.job_order, str):
+                order = [int(x) for x in group.job_order.split(",") if x]
+            else:
+                order = list(group.job_order)
+            try:
+                index = order.index(job_id)
+                # Swap with the next job if possible
+                if index < len(order) - 1:
+                    order[index], order[index + 1] = order[index + 1], order[index]
+                    return order,group
+            except ValueError:
+                pass  # job_id not found in order list
+        elif "move_up" in request.POST:
+            job_id = int(request.POST.get("move_up"))
+            group_id = int(request.POST.get("group_id"))
+            group = ex_sg.get(id=group_id)
+
+            # Convert stored job_order into a list of ints
+            if isinstance(group.job_order, str):
+                order = [int(x) for x in group.job_order.split(",") if x]
+            else:
+                order = list(group.job_order)
+            try:
+                index = order.index(job_id)
+                # Swap with the previous job if possible
+                if index > 0:
+                    order[index], order[index - 1] = order[index - 1], order[index]
+                    return order,group
+            except ValueError:
+                pass  # job_id not found in order list
+        
+

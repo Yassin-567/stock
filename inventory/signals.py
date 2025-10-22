@@ -3,7 +3,7 @@
 from django.db.models.signals import pre_save,post_save,post_delete
 from django.dispatch import receiver
 from django.contrib.contenttypes.models import ContentType
-from .models import History,Company,CustomUser,Job,Category,JobItem,WarehouseItem,Engineer
+from .models import History,Company,CustomUser,Job,Category,JobItem,WarehouseItem,Engineer,SchedulerGroup
 from django.contrib.sessions.models import Session
 @receiver(pre_save)
 def log_model_changes(sender, instance,**kwargs):
@@ -13,6 +13,10 @@ def log_model_changes(sender, instance,**kwargs):
         
         return
     if sender == History:
+
+        return
+    if sender==SchedulerGroup:
+
         return
     # Skip models without a company field (customize if needed)
     try:

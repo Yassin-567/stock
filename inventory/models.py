@@ -5,7 +5,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from datetime import datetime, timedelta
-from .myfunc import items_arrived,job_reopened,item_arrived,job_completed,items_not_used,quote_accepted
+from .myfunc import items_arrived,job_reopened,item_arrived,job_completed,items_not_used,quote_accepted,get_coords
 ##
 
 ############################---USER and COMPANY---############################
@@ -180,6 +180,7 @@ class Job(models.Model):
         if not self.pk:
             super().save(*args, **kwargs) 
             self.retirement_date=self.birthday+timedelta(days=7)
+            
         self.request=request
         self.dont_save_history=dont_save_history
         self.affected_by_sync=affected_by_sync
@@ -194,7 +195,8 @@ class Job(models.Model):
 
         super().save(*args, **kwargs)
     def __str__(self):
-        return self.address +" ("+ str(self.parent_account)+") "
+        #return self.address +" ("+ str(self.parent_account)+") "
+        return str(self.id)
     
 class Comment(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)  # Reference to the model (Job or Item)
@@ -357,10 +359,42 @@ class History(models.Model):
     class Meta:
         ordering = ['-changed_at']
 
+# class SchedulerGroup2(models.Model):
+#     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="scheduler_groups")
+#     user=models.ForeignKey(CustomUser,on_delete=models.CASCADE,related_name="user_scheduler_groups")
+#     job_ids = models.TextField()  # Comma-separated job IDs
+#     map_url = models.URLField(blank=True, null=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     optimized_at = models.DateTimeField(blank=True, null=True)
+
+
 class SchedulerGroup(models.Model):
-    company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="scheduler_groups")
-    user=models.ForeignKey(CustomUser,on_delete=models.CASCADE,related_name="user_scheduler_groups")
-    job_ids = models.TextField()  # Comma-separated job IDs
+    company = models.ForeignKey(
+        "Company",
+        on_delete=models.CASCADE,
+        related_name="scheduler_groups"
+    )
+    user = models.ForeignKey(
+        "CustomUser",
+        on_delete=models.CASCADE,
+        related_name="user_scheduler_groups"
+    )
+    jobs = models.ManyToManyField(
+        "Job",
+        related_name="job_groups"
+    )
     map_url = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    optimized_at = models.DateTimeField(blank=True, null=True)
+    wrong_postcodes=models.BooleanField(default=False)
+    job_order = models.JSONField(default=list, blank=True)
+
     
+
+    def ordered_jobs(self):
+        if not self.job_order:
+            return self.jobs.all()
+        job_dict = {job.id: job for job in self.jobs.all()}
+        ordered = [job_dict[jid] for jid in self.job_order if jid in job_dict]
+        return ordered
+

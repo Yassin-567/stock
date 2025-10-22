@@ -12,7 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func
+from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func,haversine,get_coords,get_drive_time_ors,optimize_group_order,optimize_group_order2,_greedy_fallback,move
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
@@ -1719,110 +1719,120 @@ def fetch_jobs(request):
         messages.error(request,"Synicng failed")
         return redirect("inventory")
     
-    
-import requests
-from math import radians, cos, sin, asin, sqrt
-from django.shortcuts import render
-from .models import Job
 
 
 def scheduler(request):
     
-    ex_sg=SchedulerGroup.objects.filter(company=request.user.company,user=request.user)
-    
+    ex_sg=SchedulerGroup.objects.filter(company=request.user.company,user=request.user,wrong_postcodes=False).annotate(job_count=Count("jobs")).order_by("-job_count")
     if not ex_sg.exists() or ( request.POST and "regenerate" in request.POST):
         ex_sg.delete()
     # --- Helper: get coordinates from postcode ---
-        def get_coords(postcode):
-            """Fetch approximate coordinates from postcodes.io"""
-            try:
-                res = requests.get(f"https://api.postcodes.io/postcodes/{postcode}")
-                if res.status_code == 200:
-                    data = res.json().get("result")
-                    if data:
-                        return data["latitude"], data["longitude"]
-            except Exception:
-                pass
-            return None, None
-
-        # --- Helper: distance between two coordinates (in KM) ---
-        def haversine(lat1, lon1, lat2, lon2):
-            R = 6371
-            dlat = radians(lat2 - lat1)
-            dlon = radians(lon2 - lon1)
-            a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
-            c = 2 * asin(sqrt(a))
-            return R * c
-
         # --- Step 1: Fetch all ready jobs ---
-        ready_jobs = list(Job.objects.filter(status="ready"))
-        job_coords = {}
-
+        ready_jobs = list(Job.objects.filter(company=request.user.company,status="ready"))
         # --- Step 2: Cache postcode coordinates ---
         for job in ready_jobs:
             postcode = job.post_code.strip().upper()
-            if postcode not in job_coords:
-                job_coords[postcode] = get_coords(postcode)
-            job.latitude, job.longitude = job_coords[postcode]
-        # --- Step 3: Grouping Logic ---
-        groups = []
+            job.latitude, job.longitude = get_coords(postcode)
+            # --- Step 3: Grouping Logic ---
         visited = set()
-
+        wrong_list=[]
         for job in ready_jobs:
             if job.id in visited:
                 continue
-
-            group = [job]
-            visited.add(job.id)
-
+            
             if job.latitude and job.longitude:
+                print("KKKK",job.id, job.latitude ,job.longitude,)
+                jobs_list=[]
+                jobs_list.append(job)
+                visited.add(job.id)
                 for other in ready_jobs:
                     if other.id in visited or not other.latitude:
-                        continue
-
-                    # Distance between current job and another
+                        continue                    
                     distance = haversine(job.latitude, job.longitude, other.latitude, other.longitude)
-
-                    if distance <= 14 and len(group) < 8:
-                        group.append(other)
+                    
+                    if (distance <= 14 and len(jobs_list) < 9 ) or ( job.post_code.strip() == other.post_code.strip()) :
+                        
+                        
+                        jobs_list.append(other)
                         visited.add(other.id)
+                postcodes = [j.post_code.strip() for j in jobs_list if j.post_code]
+                map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)
+                group_obj = SchedulerGroup.objects.create(
+                company=request.user.company,
+                user=request.user,
+                map_url=map_url,
 
-            # Even if no nearby jobs found, we still keep this job as a single group
-            groups.append(group)
-
-        # --- Optional: Save as Schedule objects (if you have that model) ---
-        # for g in groups:
-        #     schedule = Schedule.objects.create(group_code=get_random_string(6).upper())
-        #     schedule.jobs.set(g)
-        #     Job.objects.filter(id__in=[j.id for j in g]).update(status="scheduled")
-        groups_with_maps = []
-
-        for group in groups:
-            postcodes = [j.post_code.strip() for j in group if j.post_code]
-            map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)
-            groups_with_maps.append({
-                "jobs": group,
-                "map_url": map_url
-            })
-        for g in groups_with_maps:
-            job_ids = ",".join(str(job.id) for job in g["jobs"])
-            sg=SchedulerGroup(company=request.user.company,user=request.user,job_ids=job_ids, map_url=g["map_url"])
-            sg.save()
-    else:
-        groups_with_maps = []
+                
+                )
+                group_obj.jobs.set(jobs_list)
+                group_obj.job_order=[job.id for job in jobs_list] 
+                group_obj.save()
+                print("corr",group_obj.id)
+            else:
+                if job.id in visited :
+                    continue
+                print(job.id)
+                wrong_list.append(job)
+                visited.add(job.id)
+                for other in ready_jobs:
+                    if other.id in visited or  other.latitude or other.longitude:
+                        continue    
+                    if not other.longitude and not other.latitude:
+                        wrong_list.append(other)
+                        visited.add(other.id)                
+        if wrong_list:
+            wrong_group_obj = SchedulerGroup.objects.create(
+                company=request.user.company,
+                user=request.user,
+                map_url=None,
+                wrong_postcodes=True,               
+                )
+            wrong_group_obj.jobs.set(wrong_list)
+            wrong_group_obj.save()
+            print("WROO",wrong_group_obj)
+        return redirect('scheduler')
+    elif "optimize" in request.POST:
+        # 🔄 Optimize every SchedulerGroup
         for group in ex_sg:
-            job_ids = [int(id_) for id_ in group.job_ids.split(",") if id_]
-            jobs = Job.objects.filter(id__in=job_ids)
-            groups_with_maps.append({
-                "jobs": jobs,
-                "map_url": group.map_url
-            })
+            if group.optimized_at:
+                continue  # Skip already optimized groups   
 
-    try:
-        groups_with_maps=sorted(groups_with_maps, key=lambda g: len(g["jobs"]), reverse=True)
-    except:
-        pass
-    return render(request, "inventory/scheduler.html", {"groups":  groups_with_maps,'ex_sg':ex_sg[0] })
+            # Fetch related jobs
+            jobs = list(group.jobs.all())
+            
+            # Attach coordinates (cached)
+            for job in jobs:
+                postcode = job.post_code.strip().upper()
+                job.latitude, job.longitude = get_coords(postcode)
 
+            # Optimize order
+            optimized_jobs = _greedy_fallback(jobs)
+            # ✅ Update ManyToMany relation
+            group.jobs.set(optimized_jobs, clear=True)
+            group.job_order=[job.id for job in optimized_jobs] 
+            # Generate map URL
+            postcodes = [j.post_code.strip() for j in optimized_jobs if j.post_code]
+            group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)
+            print("Generated map URL:", group.map_url)
+            # Mark optimization time
+            group.optimized_at = timezone.now()
+            # ✅ Save only normal fields (no M2M)
+            group.save()
+        return redirect('scheduler')
+    else:
+        try:
+            if request.method=="POST" and ("move_up" or "move_down" in request.post):
+                order,group=move(request,ex_sg)
+                group.job_order =order
+                postcodes = [job.post_code.strip() for job in group.ordered_jobs() if job.post_code]
+                group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)
+                group.save(update_fields=["job_order","map_url"])
+                return redirect("scheduler")
+        except:
+            pass
+
+    # Get the first SchedulerGroup with no map_url
+    groupx = SchedulerGroup.objects.filter(company=request.user.company,user=request.user , wrong_postcodes=True).first()
+    return render(request, "inventory/scheduler.html", {"groups":  ex_sg,'ex_sg':ex_sg[0] ,'groupx':groupx})
 
 #youssif_USF_SPY

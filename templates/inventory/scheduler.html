@@ -1,38 +1,100 @@
 {% extends 'inventory/base.html' %}
 {% load static %}
-{% block title %}Scheduler - Stocky{% endblock %}
+{% block title %}
+  Scheduler - Stocky
+{% endblock %}
 {% block body %}
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Scheduler</h1>
-    <p>The following groups were generated at: {{ex_sg.created_at}}</p>
-    
+    <h1 class="h3 mb-0 text-gray-800" style="
+    background: linear-gradient(90deg, #312e11ff, #ff5733, #ff33a6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 600;
+    ">Scheduler Assistant</h1>
+    <p>The following groups were generated at: {{ ex_sg.created_at }}</p>
   </div>
-  <form action="" method="post">
+  <form action="" method="post" class="d-flex gap-3 align-items-center mt-3">
     {% csrf_token %}
-    <button name="regenerate" type="submit">
-          <input type="hidden" name="confirm_sending" />
 
-      Regenerate
+    <button name="regenerate" type="submit" class="btn fw-bold shadow-sm px-4 py-2 rounded-pill" style="background: linear-gradient(90deg, #007bff, #22434eff); color: white; border: none;">🔄 Regenerate</button>
 
-    </button>
-
-
+    <button name="optimize" type="submit" class="btn fw-bold shadow-sm px-4 py-2 rounded-pill" style="background: linear-gradient(90deg, #28a745, #5d866eff); color: white; border: none;">⚙️ Optimize</button>
   </form>
+
+  <span style="background-color: black;">⚠️ <small style="
+    
+    background: linear-gradient(90deg, #fce100);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 600;
+  ">Note: Optimization results may not be 100% accurate. Always double-check on maps.</small></span>
   {% for group in groups %}
+    {% if not group.wrong_postcodes %}
+      <div class="card my-3 shadow-sm border-0">
+        <!-- Card Header -->
+        <div class="card-header text-white fw-bold d-flex justify-content-between align-items-center" style="background-color: #404960ff;">
+          <span>Group {{ forloop.counter }} — {{ group.jobs.all|length }} job{{ group.jobs.all|length|pluralize }}</span>
+
+          {% if group.optimized_at %}
+            <span style="
+      background: linear-gradient(90deg, #a7e26fff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 600;
+      text-shadow: 0 0 8px rgba(38, 172, 225, 0.54);
+    ">Route Optimized at: {{ group.optimized_at }}</span>
+          {% endif %}
+
+          {% if group.map_url %}
+            <a href="{{ group.map_url }}" target="_blank" class="btn btn-light btn-sm fw-bold px-3 py-1 shadow-sm" style="border-radius: 20px;"><i class="bi bi-geo-alt-fill me-1"></i> View on maps</a>
+          {% endif %}
+        </div>
+
+        <!-- Job List -->
+        <ul class="list-group list-group-flush">
+          {% for job in group.ordered_jobs %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                {{ job.id }}
+                <a href="{% url 'update_job' job.job_id %}" class="fw-bold text-decoration-none text-primary">{{ job.job_id }}</a>
+                <span class="text-muted">— {{ job.address }}-{{ job.post_code }}</span>
+              </div>
+              <div>
+                <form action="" method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="group_id" value="{{ group.id }}" />
+                  <button type="submit" name="move_down" value="{{ job.id }}">🔻</button>
+                  <button type="submit" name="move_up" value="{{ job.id }}">🔼</button>
+
+                  {% comment %} <select name="move_to_group" id="" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
+                    {% for group_options in groups %}
+                      <option value="{{ group_options.id }}">Group {{ forloop.parentloop.parentloop.counter }}</option>
+                    {% endfor %}
+                  </select> {% endcomment %}
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    <!-- Card for groups without map_url -->
+  {% empty %}
+    <div class="alert alert-warning text-center shadow-sm mt-4">No ready jobs found.</div>
+  {% endfor %}
+  {% if groupx %}
     <div class="card my-3 shadow-sm border-0">
       <!-- Card Header -->
-      <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center">
-        <span>Group {{ forloop.counter }} — {{ group.jobs|length }} job{{ group.jobs|length|pluralize }}</span>
-        {% if group.map_url %}
-          <a href="{{ group.map_url }}" target="_blank" class="btn btn-light btn-sm fw-bold px-3 py-1 shadow-sm" style="border-radius: 20px;"><i class="bi bi-geo-alt-fill me-1"></i> View on maps</a>
-        {% endif %}
+      <div class="card-header text-white fw-bold d-flex justify-content-between align-items-center" style="background-color: #ff0000ff;">
+        <span>Wrong postcodes group — {{ group.jobs|length }} job{{ group.jobs|length|pluralize }}</span>
       </div>
 
       <!-- Job List -->
       <ul class="list-group list-group-flush">
-        {% for job in group.jobs %}
+        {% for job in groupx.jobs.all %}
           <li class="list-group-item d-flex justify-content-between align-items-center">
             <div>
+              {{ job.id }}
               <a href="{% url 'update_job' job.job_id %}" class="fw-bold text-decoration-none text-primary">{{ job.job_id }}</a>
               <span class="text-muted">— {{ job.address }}-{{ job.post_code }}</span>
             </div>
@@ -40,7 +102,5 @@
         {% endfor %}
       </ul>
     </div>
-  {% empty %}
-    <div class="alert alert-warning text-center shadow-sm mt-4">No ready jobs found.</div>
-  {% endfor %}
+  {% endif %}
 {% endblock %}

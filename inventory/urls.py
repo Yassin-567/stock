@@ -31,7 +31,7 @@ urlpatterns=[
     path('adpaneleng/',views.engineer,name='add_eng'),
     path('updateeng/<int:pk>',views.update_engineer,name='update_engineer'),
     path('scheduler/',views.scheduler,name='scheduler'),
-
+   
     
 
 
