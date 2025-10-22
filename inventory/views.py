@@ -1724,11 +1724,15 @@ def fetch_jobs(request):
 def scheduler(request):
     
     ex_sg=SchedulerGroup.objects.filter(company=request.user.company,user=request.user,wrong_postcodes=False).annotate(job_count=Count("jobs")).order_by("-job_count")
+
     if not ex_sg.exists() or ( request.POST and "regenerate" in request.POST):
         ex_sg.delete()
     # --- Helper: get coordinates from postcode ---
         # --- Step 1: Fetch all ready jobs ---
         ready_jobs = list(Job.objects.filter(company=request.user.company,status="ready"))
+        if not ready_jobs:
+
+            return redirect ("scheduler")
         # --- Step 2: Cache postcode coordinates ---
         for job in ready_jobs:
             postcode = job.post_code.strip().upper()
