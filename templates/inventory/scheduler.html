@@ -30,10 +30,10 @@
   ">Note: Optimization results may not be 100% accurate. Always double-check on maps.</small></span>
   {% for group in groups %}
     {% if not group.wrong_postcodes %}
-      <div class="card my-3 shadow-sm border-0">
+      <div class="card my-3 shadow-sm border-0" id="{{group.id}}" onclick="localStorage.setItem('lastJob',{{group.id}});">
         <!-- Card Header -->
         <div class="card-header text-white fw-bold d-flex justify-content-between align-items-center" style="background-color: #404960ff;">
-          <span>Group {{ forloop.counter }} — {{ group.jobs.all|length }} job{{ group.jobs.all|length|pluralize }}</span>
+          <span> {{group.id}} Group {{ forloop.counter }} — {{ group.jobs.all|length }} job{{ group.jobs.all|length|pluralize }}</span>
 
           {% if group.optimized_at %}
             <span style="
@@ -59,19 +59,28 @@
                 <a href="{% url 'update_job' job.job_id %}" class="fw-bold text-decoration-none text-primary">{{ job.job_id }}</a>
                 <span class="text-muted">— {{ job.address }}-{{ job.post_code }}</span>
               </div>
-              <div>
-                <form action="" method="post">
-                  {% csrf_token %}
-                  <input type="hidden" name="group_id" value="{{ group.id }}" />
-                  <button type="submit" name="move_down" value="{{ job.id }}">🔻</button>
-                  <button type="submit" name="move_up" value="{{ job.id }}">🔼</button>
+              <div><form action="" method="post" class="d-inline-flex align-items-center gap-1 m-0 p-0" style="font-size: 0.85rem;">
+  {% csrf_token %}
+  <input type="hidden" name="group_id" value="{{ group.id }}">
+  <input type="hidden" name="job_id" value="{{ job.id }}">
 
-                  {% comment %} <select name="move_to_group" id="" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
-                    {% for group_options in groups %}
-                      <option value="{{ group_options.id }}">Group {{ forloop.parentloop.parentloop.counter }}</option>
-                    {% endfor %}
-                  </select> {% endcomment %}
-                </form>
+  <button type="submit" name="move_up" value="{{ job.id }}" 
+          class="btn btn-light btn-sm p-0 px-1 border-0" title="Move Up"  style="color: #16a34a; ">▲</button>
+
+  <button type="submit" name="move_down" value="{{ job.id }}" 
+          class="btn btn-light btn-sm p-0 px-1 border-0" title="Move Down" style="color: red;">▼</button>
+
+  <select name="new_group" onchange="this.form.submit()" 
+          
+          style="font-size: 0.8rem;">
+    {% for group_options in groups %}
+      <option value="{{ group_options.id }}" {% if group_options.id == group.id %}selected{% endif %}>
+        Group-{{ forloop.counter }}
+      </option>
+    {% endfor %}
+  </select>
+</form>
+
               </div>
             </li>
           {% endfor %}
@@ -86,7 +95,7 @@
     <div class="card my-3 shadow-sm border-0">
       <!-- Card Header -->
       <div class="card-header text-white fw-bold d-flex justify-content-between align-items-center" style="background-color: #ff0000ff;">
-        <span>Wrong postcodes group — {{ group.jobs|length }} job{{ group.jobs|length|pluralize }}</span>
+        <span>Wrong postcodes group — {{ groupx.jobs.all|length }} job{{ groupx.jobs|length|pluralize }}</span>
       </div>
 
       <!-- Job List -->
@@ -103,4 +112,61 @@
       </ul>
     </div>
   {% endif %}
+
+
+  
+<script> 
+  
+
+// Scroll to job on load if hash exists
+window.addEventListener("load", function () {
+if (window.location.hash) {
+
+const el = document.querySelector(window.location.hash);
+if (el) {
+el.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+}
+});
+
+// Preserve hash across pagination
+document.querySelectorAll(".pagination a").forEach(link => {
+link.addEventListener("click", function() {
+if (window.location.hash) {
+this.href = this.href + window.location.hash;
+}
+});
+});
+</script> 
+<script>
+window.addEventListener("load", function () {
+let job_id = localStorage.getItem('lastJob');
+if (!job_id) return;
+
+let card = document.getElementById(job_id);
+
+if (card) {
+card.style.backgroundColor = '#1482b5ff';
+
+card.style.transition = 'background-color 3s ease ';
+card.style.padding = '0.5rem 0.5rem';
+card.scrollIntoView({ behavior: "smooth", block: "center" });
+localStorage.removeItem('lastJob');
+return;
+}
+
+// If not found, go to next page if available
+const nextPageLink = document.querySelector('.pagination .page-link[title="Next"]');
+if (nextPageLink) {
+// Preserve other query params and hash
+nextPageLink.href += '';
+nextPageLink.click();
+} else {
+// Job not found, cleanup
+localStorage.removeItem('lastJob');
+}
+});
+</script>
+
+
 {% endblock %}

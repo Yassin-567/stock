@@ -1720,13 +1720,28 @@ def fetch_jobs(request):
         return redirect("inventory")
     
 
+from geopy.distance import geodesic
 
 def scheduler(request):
-    
+    import socket
+    try:
+        # Try to connect to a well-known DNS (Google)
+        socket.create_connection(("8.8.8.8", 53), timeout=3)
+        internet_ok = True
+    except OSError:
+        internet_ok = False
+
+    if not internet_ok:
+        return redirect("inventory")
     ex_sg=SchedulerGroup.objects.filter(company=request.user.company,user=request.user,wrong_postcodes=False).annotate(job_count=Count("jobs")).order_by("-job_count")
+    groupx = SchedulerGroup.objects.filter(company=request.user.company,user=request.user , wrong_postcodes=True).first()
 
     if not ex_sg.exists() or ( request.POST and "regenerate" in request.POST):
-        ex_sg.delete()
+        
+        if ex_sg.exists():
+            ex_sg.delete()
+        if groupx:
+            groupx.delete()
     # --- Helper: get coordinates from postcode ---
         # --- Step 1: Fetch all ready jobs ---
         ready_jobs = list(Job.objects.filter(company=request.user.company,status="ready"))
@@ -1745,18 +1760,26 @@ def scheduler(request):
                 continue
             
             if job.latitude and job.longitude:
-                print("KKKK",job.id, job.latitude ,job.longitude,)
                 jobs_list=[]
                 jobs_list.append(job)
                 visited.add(job.id)
+                distances = []
                 for other in ready_jobs:
                     if other.id in visited or not other.latitude:
-                        continue                    
-                    distance = haversine(job.latitude, job.longitude, other.latitude, other.longitude)
-                    
-                    if (distance <= 14 and len(jobs_list) < 9 ) or ( job.post_code.strip() == other.post_code.strip()) :
-                        
-                        
+                        continue     
+                    d = haversine(job.latitude, job.longitude, other.latitude, other.longitude)
+                    distances.append({"other": other, "distance": d})
+
+                    distances.sort(key=lambda x: x["distance"])
+
+                # Step 3: pick closest ones up to limit
+                for entry in distances:
+                    other = entry["other"]
+                    distance = entry["distance"]
+
+                    if (distance <= 15 and len(jobs_list) < 9) or (
+                        job.post_code.strip() == other.post_code.strip()
+                    ):
                         jobs_list.append(other)
                         visited.add(other.id)
                 postcodes = [j.post_code.strip() for j in jobs_list if j.post_code]
@@ -1775,7 +1798,7 @@ def scheduler(request):
             else:
                 if job.id in visited :
                     continue
-                print(job.id)
+             
                 wrong_list.append(job)
                 visited.add(job.id)
                 for other in ready_jobs:
@@ -1825,18 +1848,15 @@ def scheduler(request):
         return redirect('scheduler')
     else:
         try:
-            if request.method=="POST" and ("move_up" or "move_down" in request.post):
-                order,group=move(request,ex_sg)
-                group.job_order =order
-                postcodes = [job.post_code.strip() for job in group.ordered_jobs() if job.post_code]
-                group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)
-                group.save(update_fields=["job_order","map_url"])
+            if request.method == "POST" and ("move_up" in request.POST or "move_down" in request.POST or "new_group" in request.POST):           
+                move(request,ex_sg)
+                
                 return redirect("scheduler")
         except:
+
             pass
 
     # Get the first SchedulerGroup with no map_url
-    groupx = SchedulerGroup.objects.filter(company=request.user.company,user=request.user , wrong_postcodes=True).first()
     return render(request, "inventory/scheduler.html", {"groups":  ex_sg,'ex_sg':ex_sg[0] ,'groupx':groupx})
 
 #youssif_USF_SPY

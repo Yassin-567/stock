@@ -2,6 +2,7 @@ from django.db import models
 import requests
 from django.db.models import Q
 
+
 def items_arrived(self):
     from .models import Job, JobItem
     all_arrived=False
@@ -547,6 +548,8 @@ def _greedy_fallback(jobs):
 #MOVE UP AND DOWN
 
 def move (request,ex_sg,) :
+    from .models import Job
+    from django.db import transaction
     if request.method == "POST" :
         
         if "move_down" in request.POST:    
@@ -564,7 +567,10 @@ def move (request,ex_sg,) :
                 # Swap with the next job if possible
                 if index < len(order) - 1:
                     order[index], order[index + 1] = order[index + 1], order[index]
-                    return order,group
+                    group.job_order=order
+                    postcodes = [job.post_code.strip() for job in group.ordered_jobs() if job.post_code]
+                    group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)    
+                    group.save(update_fields=["job_order","map_url"])
             except ValueError:
                 pass  # job_id not found in order list
         elif "move_up" in request.POST:
@@ -582,8 +588,39 @@ def move (request,ex_sg,) :
                 # Swap with the previous job if possible
                 if index > 0:
                     order[index], order[index - 1] = order[index - 1], order[index]
-                    return order,group
+                    group.job_order=order
+                    postcodes = [job.post_code.strip() for job in group.ordered_jobs() if job.post_code]
+                    group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)    
+                    group.save(update_fields=["job_order","map_url"])
             except ValueError:
                 pass  # job_id not found in order list
-        
+            
+        elif "new_group" in request.POST:
+            
+            old_group_id = int(request.POST.get("group_id"))
+            new_group_id = int(request.POST.get("new_group"))
+            job_id = int(request.POST.get("job_id"))
+            old_group = ex_sg.get(id=old_group_id)
+            new_group = ex_sg.get(id=new_group_id)
 
+            old_group.save()
+            
+            job = Job.objects.get(company=request.user.company, id=job_id)
+
+            with transaction.atomic():
+                # Remove from old group
+                old_group.jobs.remove(job)
+                if job.id in old_group.job_order:
+                    old_group.job_order.remove(job.id)
+                    postcodes = [jobl.post_code.strip() for jobl in old_group.ordered_jobs() if jobl.post_code and jobl.id != job.id]
+                    old_group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)    
+                old_group.save(update_fields=["job_order","map_url"])
+
+                # Add to new group
+                new_group.jobs.add(job)
+                if job.id not in new_group.job_order:
+                    new_group.job_order.append(job.id)
+                new_group.map_url=new_group.map_url+"/"+str(job.post_code)
+                
+                new_group.save(update_fields=["job_order","map_url"])
+           
