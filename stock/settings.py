@@ -105,7 +105,7 @@ else:
         'default': dj_database_url.parse(config('DATABASE_URL'))
     }
 
-if config('DEBUG', default='False') ==True:
+if config('DEBUG', default='False') == "True":
     DEBUG = True
 
 
