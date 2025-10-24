@@ -1721,7 +1721,7 @@ def fetch_jobs(request):
     
 
 #from geopy.distance import geodesic
-
+#
 def scheduler(request):
     import socket
     try:
