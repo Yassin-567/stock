@@ -1,4 +1,4 @@
-# Exclude local environments and junk
+# Exclude local environments and junks
 venv/
 .venv/
 env/
