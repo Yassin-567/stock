@@ -1720,7 +1720,7 @@ def fetch_jobs(request):
         return redirect("inventory")
     
 
-from geopy.distance import geodesic
+#from geopy.distance import geodesic
 
 def scheduler(request):
     import socket
