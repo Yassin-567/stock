@@ -1,0 +1,13 @@
+# Exclude local environments and junk
+venv/
+.venv/
+env/
+stocky-venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+.git/
+node_modules/
