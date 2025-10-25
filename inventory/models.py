@@ -359,13 +359,6 @@ class History(models.Model):
     class Meta:
         ordering = ['-changed_at']
 
-# class SchedulerGroup2(models.Model):
-#     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="scheduler_groups")
-#     user=models.ForeignKey(CustomUser,on_delete=models.CASCADE,related_name="user_scheduler_groups")
-#     job_ids = models.TextField()  # Comma-separated job IDs
-#     map_url = models.URLField(blank=True, null=True)
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     optimized_at = models.DateTimeField(blank=True, null=True)
 
 
 class SchedulerGroup(models.Model):
