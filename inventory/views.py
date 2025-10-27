@@ -357,15 +357,15 @@ def inventory(request,pk=None):
 
         from django.utils.dateparse import parse_date, parse_time
 
-        if request.method == "POST":
+        if any(k in request.POST for k in ["change_from_date", "change_from_time", "change_to_time"]):            
             date_str = request.POST.get("change_from_date")
             from_time_str = request.POST.get("change_from_time")  # corrected name
             to_time_str = request.POST.get("change_to_time")
             
             data = {
-            "date": parse_date(date_str) if date_str else job.date,
-            "from_time": parse_time(from_time_str) if from_time_str else job.from_time,
-            "to_time": parse_time(to_time_str) if to_time_str else job.to_time,
+            "date": parse_date(date_str) if date_str else "",
+            "from_time": parse_time(from_time_str) if from_time_str else "",
+            "to_time": parse_time(to_time_str) if to_time_str else "",
             "status": job.status,
             "company": job.company.id,
             "address": job.address,              # add required fields
@@ -375,42 +375,17 @@ def inventory(request,pk=None):
             print(data["date"])
 
             form = JobForm(data, instance=job)
-            print("=== DEBUG ===")
-            print("Raw date:", request.POST.get("change_from_date"))
-            print("Parsed date:", parse_date(request.POST.get("change_from_date")))
-            print("Form initial date:", job.date)
-
+            
             if form.is_valid():
                 
                 job = form.save(commit=False)
                 job.save(update_fields=["date", "from_time", "to_time"])
-            else:
-                messages.error(request,f"{form.errors }")
-            
+            # else:
+            #     messages.error(request,f"{form.errors["to_time"][0] }")
+            print(type(form))
 
-            return render(request, 'inventory/inventory_compact.html', context)
-
-
-            # Create unbound form instance (no full validation)
-            f = JobForm(instance=job)
-            form = JobForm(request.POST)
-            form.full_clean()  # This builds cleaned_data and runs field-level cleaning
-            form.clean()       # You can safely re-run clean() now if you want
-
-            # Manually feed cleaned_data so clean() works exactly the same
-            f.cleaned_data = {
-                "status": job.status,
-                "from_time": job.from_time,
-                "to_time": job.to_time,
-                "date": job.date,
-            }
-
-            try:
-                f.clean()  # 🔥 Runs your exact form clean() logic
-                job.save(update_fields=["date", "from_time", "to_time"])
-                print("✅ Job updated successfully")
-            except ValidationError as e:
-                print("❌ Validation error:", e.messages)
+            context["form"]=form
+            context["form_job_id"]=job.job_id
 
     return render(request,'inventory/inventory_compact.html',context)
     return render(request,'inventory/inventory.html',context)

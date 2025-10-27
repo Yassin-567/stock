@@ -255,11 +255,9 @@ class JobForm(forms.ModelForm):
         # from datetime import time
         # n=time(from_time)
         # print(n)
-        
-        if from_time and to_time and from_time >= to_time and to_time  != " ":
                 
-                self.add_error('to_time', 'End time must be after start time.')
-            
+        if from_time and to_time and from_time >= to_time:
+            self.add_error('to_time', 'End time must be after start time.')
         if job.pk:
             #if self.fields['status']=='quoted': 
             
@@ -271,9 +269,9 @@ class JobForm(forms.ModelForm):
                     raise forms.ValidationError("Was the quote accpted?")
             items_count=job.items.all().count()
             if status=='paused' and job.status=='ready':
-                raise forms.ValidationError("Can't pause, you can mark as Need attention instead")
+                raise forms.ValidationError("Can't pause, you can put on hold instead")
             if job.on_hold and status=='ready':
-                raise forms.ValidationError("Can't mark as ready, you can unmark need attention instead")
+                raise forms.ValidationError("Can't mark as ready, you can uncheck on hold instead")
             if status=='ready' and  not (items_arrived(job) and items_not_used(job)) and items_count>0 :
             
                 raise forms.ValidationError("Not all items arrived")

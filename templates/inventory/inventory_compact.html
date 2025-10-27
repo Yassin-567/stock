@@ -248,13 +248,13 @@ document.querySelectorAll('.quote-select').forEach(updateSelectColor);
                 </td>
                 <td>{{ job.address }}</td>
 
-                <form action="" method="post" onclick="this.form.submit();">
+                <form action="" method="post" name="change_datetime" onclick="this.form.submit();">
                   {% csrf_token %}
 <input type="hidden" name="job_id" value="{{job.id}}" id="">
                 <td>
                         <input type="text" id="added_from_date" name="change_from_date"
                     class="form-control form-control-sm w-auto flatpickr_date"
-                    placeholder="{{ job.date }}"
+                    placeholder="Select date"
                     value="{{ job.date }}" />
                   
                 </td>
@@ -262,11 +262,12 @@ document.querySelectorAll('.quote-select').forEach(updateSelectColor);
 
 
                 <td>
- <input type="text" id="change_from_time" name="change_from_time"
+  <input type="text" id="change_from_time" name="change_from_time"
                class="form-control form-control-sm w-auto flatpickr_time"
                placeholder="Select from time"
                value="{{ job.from_time|time}}" />
-
+               {% if form_job_id == job.job_id  %}
+  {{ form.to_time.errors }}{% endif %}
               
  <input type="text" id="change_to_time" name="change_to_time"
                class="form-control form-control-sm w-auto flatpickr_time"
@@ -274,7 +275,7 @@ document.querySelectorAll('.quote-select').forEach(updateSelectColor);
                value="{{job.to_time}}" />
           <button type="submit" class="btn btn-sm btn-primary mt-1">
         <i class="bi bi-funnel"></i> Apply date&time
-      </button>
+      </button> 
 
                 </td>      
 
@@ -284,14 +285,19 @@ document.querySelectorAll('.quote-select').forEach(updateSelectColor);
 
 
 
-                <td>{{ job.engineer }}</td>
-                <td>
-                  {{ job.items.count }} items, Arrived: {{ job|total_arrived_quantity }}
+                <td >{{ job.engineer|default:"- " }}</td>
+                <td style="width: auto;">
+                  {% if job.items.all %}
+                  {{ job|total_quantity }} req items, Arrived: {{ job|total_arrived_quantity }}
                   <button class="btn btn-sm btn-outline-primary" type="button" onclick="toggleItemsRow(this)">Show Items</button>
                   <ul class="job-items list-unstyled ms-2" style="display:none;">
-                    {% for item in job.items.all %}
-                      <li>{{ item.name }} - {{ item.part_number }} - ${{ item.price }}</li>
-                    {% endfor %}
+                   {% for item in job.items.all %}
+      <div>
+        <a href="{% url 'update_item' item.id %}">{{ item.name }}</a> - {{ item.part_number }} - ${{ item.price }}
+      </div>
+    {% empty %}
+      <div>--</div>
+    {% endfor %}{% else %}No items{% endif %}
                   </ul>
                 </td>
                 <td>
@@ -305,6 +311,8 @@ document.querySelectorAll('.quote-select').forEach(updateSelectColor);
     {% else %}
       <p>No jobs found.</p>
     {% endif %}
+
+
 <div class="d-flex justify-content-center mt-4">
 <nav>
 <ul class="pagination pagination-sm mb-0">
@@ -350,6 +358,7 @@ enableTime: false,
 dateFormat: 'Y-m-d',
 altInput: true,
 altFormat: 'F j, Y'
+
 })
 
     flatpickr('.flatpickr_time', {
