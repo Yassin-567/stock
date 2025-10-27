@@ -243,15 +243,21 @@ class JobForm(forms.ModelForm):
             # Disable fields if updating
             self.fields['job_id'].widget=forms.HiddenInput()
     def clean(self,*args, **kwargs):
+        
         cleaned_data=super().clean()
+        print(cleaned_data)
         status=cleaned_data.get('status')
         from_time=cleaned_data.get('from_time')
         to_time=cleaned_data.get('to_time')
         job=self.instance
+        print(from_time,to_time,job.job_id)
+        print("KKKK")
         # from datetime import time
         # n=time(from_time)
         # print(n)
+        
         if from_time and to_time and from_time >= to_time and to_time  != " ":
+                
                 self.add_error('to_time', 'End time must be after start time.')
             
         if job.pk:

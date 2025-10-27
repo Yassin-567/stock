@@ -332,27 +332,86 @@ def inventory(request,pk=None):
         return redirect('inventory')
     if 'coming_from_job' in request.POST:
         return redirect('update_job', jobitem.job.job_id)
-    if request.method=="POST" and 'change_quote_status' in request.POST and "job_id" in request.POST:
-        quote_status=request.POST.get("change_quote_status")
+    if request.method=="POST" and "job_id" in request.POST :
+
         job_id=request.POST.get("job_id")
         job=Job.objects.get(company=request.user.company,id=job_id)
-        if quote_status == "accepted":
-            job.quote_accepted=True
-            job.quote_declined=False
-            job.save(update_fields=["quote_accepted","quote_declined"])
-        elif quote_status == "declined":
-            job.quote_accepted=False
-            job.quote_declined=True
-            job.save(update_fields=["quote_accepted","quote_declined"])
+        if 'change_quote_status' in request.POST :
+            quote_status=request.POST.get("change_quote_status")
 
-        else:
-            job.quote_accepted=False
-            job.quote_declined=False
-            job.save(update_fields=["quote_accepted","quote_declined"])
-        # return redirect('inventory')
+            if quote_status == "accepted":
+                job.quote_accepted=True
+                job.quote_declined=False
+                job.save(update_fields=["quote_accepted","quote_declined","status"])
+            elif quote_status == "declined":
+                job.quote_accepted=False
+                job.quote_declined=True
+                job.save(update_fields=["quote_accepted","quote_declined","status"])
+
+            else:
+                job.quote_accepted=False
+                job.quote_declined=False
+                job.save(update_fields=["quote_accepted","quote_declined","status"])
+        # if "change_from_date" in request.POST or "change_from_time" in request.POST or "change_to_time" in request.POST:
+            
+
+        from django.utils.dateparse import parse_date, parse_time
+
+        if request.method == "POST":
+            date_str = request.POST.get("change_from_date")
+            from_time_str = request.POST.get("change_from_time")  # corrected name
+            to_time_str = request.POST.get("change_to_time")
+            
+            data = {
+            "date": parse_date(date_str) if date_str else job.date,
+            "from_time": parse_time(from_time_str) if from_time_str else job.from_time,
+            "to_time": parse_time(to_time_str) if to_time_str else job.to_time,
+            "status": job.status,
+            "company": job.company.id,
+            "address": job.address,              # add required fields
+            "job_id": job.job_id,
+            "parent_account": job.parent_account
+        }
+            print(data["date"])
+
+            form = JobForm(data, instance=job)
+            print("=== DEBUG ===")
+            print("Raw date:", request.POST.get("change_from_date"))
+            print("Parsed date:", parse_date(request.POST.get("change_from_date")))
+            print("Form initial date:", job.date)
+
+            if form.is_valid():
+                
+                job = form.save(commit=False)
+                job.save(update_fields=["date", "from_time", "to_time"])
+            else:
+                messages.error(request,f"{form.errors }")
+            
+
+            return render(request, 'inventory/inventory_compact.html', context)
 
 
-        
+            # Create unbound form instance (no full validation)
+            f = JobForm(instance=job)
+            form = JobForm(request.POST)
+            form.full_clean()  # This builds cleaned_data and runs field-level cleaning
+            form.clean()       # You can safely re-run clean() now if you want
+
+            # Manually feed cleaned_data so clean() works exactly the same
+            f.cleaned_data = {
+                "status": job.status,
+                "from_time": job.from_time,
+                "to_time": job.to_time,
+                "date": job.date,
+            }
+
+            try:
+                f.clean()  # 🔥 Runs your exact form clean() logic
+                job.save(update_fields=["date", "from_time", "to_time"])
+                print("✅ Job updated successfully")
+            except ValidationError as e:
+                print("❌ Validation error:", e.messages)
+
     return render(request,'inventory/inventory_compact.html',context)
     return render(request,'inventory/inventory.html',context)
     

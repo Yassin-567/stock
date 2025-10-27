@@ -164,15 +164,7 @@
 </div></form>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script>
-flatpickr('.flatpickr_date', {
-enableTime: false,
-dateFormat: 'Y-m-d',
-altInput: true,
-altFormat: 'F j, Y'
-})
-</script>
+
     {% if rjobs %}
       <div  class="table-responsive">
         <table class="table table-striped table-hover align-middle">
@@ -184,6 +176,7 @@ altFormat: 'F j, Y'
               <th>Address</th>
               <th>Date</th>
               <th>Time</th>
+              
               <th>Engineer</th>
               <th>Items</th>
               <th>Actions</th>
@@ -251,22 +244,46 @@ document.querySelectorAll('.quote-select').forEach(updateSelectColor);
                     </select>
                     
                   </form>{% endif %}
-                   {% comment %} {% if job.quoted %}
-                    ${{ job.quotation }}
-                    {% if job.quote_accepted %}
-                      <span class="badge quote-accepted">Accepted</span>
-                    
-                    {% elif job.quote_declined %}
-                      <span class="badge quote-declined">Declined</span>
-                      {% else %}
-                                            <span class="badge quote-unknown">Waiting </span>
-
-                    {% endif %}
-                  {% endif %}  {% endcomment %}
+                  
                 </td>
                 <td>{{ job.address }}</td>
-                <td>{{ job.date }}</td>
-                <td>{{ job.from_time }} - {{ job.to_time }}</td>
+
+                <form action="" method="post" onclick="this.form.submit();">
+                  {% csrf_token %}
+<input type="hidden" name="job_id" value="{{job.id}}" id="">
+                <td>
+                        <input type="text" id="added_from_date" name="change_from_date"
+                    class="form-control form-control-sm w-auto flatpickr_date"
+                    placeholder="{{ job.date }}"
+                    value="{{ job.date }}" />
+                  
+                </td>
+
+
+
+                <td>
+ <input type="text" id="change_from_time" name="change_from_time"
+               class="form-control form-control-sm w-auto flatpickr_time"
+               placeholder="Select from time"
+               value="{{ job.from_time|time}}" />
+
+              
+ <input type="text" id="change_to_time" name="change_to_time"
+               class="form-control form-control-sm w-auto flatpickr_time"
+               placeholder="Select to time"
+               value="{{job.to_time}}" />
+          <button type="submit" class="btn btn-sm btn-primary mt-1">
+        <i class="bi bi-funnel"></i> Apply date&time
+      </button>
+
+                </td>      
+
+   
+  
+  </form>
+
+
+
                 <td>{{ job.engineer }}</td>
                 <td>
                   {{ job.items.count }} items, Arrived: {{ job|total_arrived_quantity }}
@@ -326,7 +343,31 @@ document.querySelectorAll('.quote-select').forEach(updateSelectColor);
 {% endif %}
 </ul>
 </nav>
-</div>
+</div><script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+flatpickr('.flatpickr_date', {
+enableTime: false,
+dateFormat: 'Y-m-d',
+altInput: true,
+altFormat: 'F j, Y'
+})
+
+    flatpickr('.flatpickr_time', {
+      enableTime: true,
+      noCalendar: true,
+      dateFormat: 'H:i',
+      altInput: true,
+      altFormat: 'h:i K',
+      allowInput: true,
+      onReady: function (selectedDates, dateStr, instance) {
+        instance._input.addEventListener('keydown', function (e) {
+          if (e.key === 'Backspace' || e.key === 'Delete') {
+            instance.clear()
+          }
+        })
+      }
+    })
+</script>
 
     <script>
       function toggleItemsRow(btn) {
