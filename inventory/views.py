@@ -21,6 +21,8 @@ from django.utils.crypto import get_random_string
 import random
 from urllib.parse import urlencode
 import requests
+from django.utils.dateparse import parse_date, parse_time
+
 def create_guest_request(request):
     form=GuestEmail()
     guest_id = request.COOKIES.get("guest_id")
@@ -342,50 +344,65 @@ def inventory(request,pk=None):
             if quote_status == "accepted":
                 job.quote_accepted=True
                 job.quote_declined=False
-                job.save(update_fields=["quote_accepted","quote_declined","status"])
             elif quote_status == "declined":
                 job.quote_accepted=False
                 job.quote_declined=True
-                job.save(update_fields=["quote_accepted","quote_declined","status"])
 
             else:
                 job.quote_accepted=False
                 job.quote_declined=False
-                job.save(update_fields=["quote_accepted","quote_declined","status"])
+            job.save(update_fields=["quote_accepted","quote_declined","status"],request=request)
         # if "change_from_date" in request.POST or "change_from_time" in request.POST or "change_to_time" in request.POST:
             
 
-        from django.utils.dateparse import parse_date, parse_time
 
         if any(k in request.POST for k in ["change_from_date", "change_from_time", "change_to_time"]):            
             date_str = request.POST.get("change_from_date")
             from_time_str = request.POST.get("change_from_time")  # corrected name
             to_time_str = request.POST.get("change_to_time")
-            
+            print("THIS IS DateSTr ", date_str )
+            date_value = parse_date(date_str) if date_str else job.date
+            from_time_value = parse_time(from_time_str) if from_time_str else job.from_time
+            to_time_value = parse_time(to_time_str) if to_time_str else job.to_time
+
             data = {
-            "date": parse_date(date_str) if date_str else "",
-            "from_time": parse_time(from_time_str) if from_time_str else "",
-            "to_time": parse_time(to_time_str) if to_time_str else "",
+            "date": date_value.strftime("%Y-%m-%d") if date_value else "",
+            "from_time": from_time_value.strftime("%H:%M:%S") if from_time_value else "",
+            "to_time": to_time_value.strftime("%H:%M:%S") if to_time_value else "",
             "status": job.status,
             "company": job.company.id,
             "address": job.address,              # add required fields
             "job_id": job.job_id,
             "parent_account": job.parent_account
         }
-            print(data["date"])
+            print("This is date: ",data["date"])
 
             form = JobForm(data, instance=job)
             
             if form.is_valid():
                 
                 job = form.save(commit=False)
-                job.save(update_fields=["date", "from_time", "to_time"])
+                job.save(update_fields=["date", "from_time", "to_time"],request=request)
             # else:
             #     messages.error(request,f"{form.errors["to_time"][0] }")
-            print(type(form))
 
             context["form"]=form
             context["form_job_id"]=job.job_id
+        if "change_engineer" in request.POST:
+            job_id=request.POST.get("job_id")
+            job=Job.objects.get(company=request.user.company,id=job_id)
+            engineer_id=request.POST.get("change_engineer",None)
+            try:
+                engineer=Engineer.objects.get(company=request.user.company,id=engineer_id)
+            except:
+                job.engineer=None
+                job.save(request=request,update_fields=["engineer"])
+                return render(request,'inventory/inventory_compact.html',context)
+
+            if engineer:
+                job.engineer=engineer
+                job.save(request=request,update_fields=["engineer"])
+
 
     return render(request,'inventory/inventory_compact.html',context)
     return render(request,'inventory/inventory.html',context)

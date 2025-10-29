@@ -170,7 +170,8 @@
         <table class="table table-striped table-hover align-middle">
           <thead class="table-dark">
             <tr>
-              <th>Job ID</th>
+              <th>Job ID   
+</th>
               <th>Status</th>
               <th>Quotation</th>
               <th>Address</th>
@@ -179,11 +180,11 @@
               
               <th>Engineer</th>
               <th>Items</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for job in rjobs %}
+            
               <tr id="{{ job.job_id }}" onclick="localStorage.setItem('lastJob',{{ job.job_id }});" >
                 <td>
                   <a href="{% url 'update_job' job.job_id %}" onclick="localStorage.setItem('lastJob',{{ job.job_id }});">{{ job.job_id }}</a>
@@ -208,76 +209,51 @@
   <option value="waiting" {% if not job.quote_declined and not job.quote_accepted %}selected{% endif %}>Waiting</option>
 </select>
 
-<style>
-.quote-select {
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-weight: 500;
-  border: 1px solid #ccc;
-  color: #000;
-  transition: background-color 0.5s ease, color 0.3s ease;
-  }
 
-.quote-select option {
-  background-color: white !important; /* Keep dropdown list white */
-  color: #000 !important; /* readable text in dropdown */
-}
-</style>
-
-<script>
-function updateSelectColor(select) {
-  const colors = {
-    accepted: { bg: '#d4edda', text: '#155724' },  // light green
-    declined: { bg: '#f8d7da', text: '#721c24' },  // light red
-    waiting:  { bg: '#fff3cd', text: '#856404' }   // light yellow
-  };
-  
-  const style = colors[select.value] || { bg: 'white', text: '#000' };
-  select.style.backgroundColor = style.bg;
-  select.style.color = style.text;
-}
-
-// Apply on page load
-document.querySelectorAll('.quote-select').forEach(updateSelectColor);
-</script>
 
                     </select>
                     
                   </form>{% endif %}
                   
                 </td>
-                <td>{{ job.address }}</td>
-
+                <td>{{ job.address }} </td>
+              
                 <form action="" method="post" name="change_datetime" onclick="this.form.submit();">
                   {% csrf_token %}
 <input type="hidden" name="job_id" value="{{job.id}}" id="">
                 <td>
                         <input type="text" id="added_from_date" name="change_from_date"
                     class="form-control form-control-sm w-auto flatpickr_date"
-                    placeholder="Select date"
-                    value="{{ job.date }}" />
-                  
-                </td>
+                    placeholder="{{ job.date|default:"Select date" }}"
+                    value="{{ job.date|date:'Y-m-d' }}" />
+    
+             </td>
 
+<td class="align-top">
+  <div class="d-flex flex-column gap-1">
+    <input type="text" id="change_from_time" name="change_from_time"
+           class="form-control form-control-sm flatpickr_time"
+           style="width: 120px;"
+           placeholder="From"
+           value="{{ job.from_time|time:'H:i' }}" />
 
+    <input type="text" id="change_to_time" name="change_to_time"
+           class="form-control form-control-sm flatpickr_time"
+           style="width: 120px;"
+           placeholder="To"
+           value="{{ job.to_time|time:'H:i' }}" />
 
-                <td>
-  <input type="text" id="change_from_time" name="change_from_time"
-               class="form-control form-control-sm w-auto flatpickr_time"
-               placeholder="Select from time"
-               value="{{ job.from_time|time}}" />
-               {% if form_job_id == job.job_id  %}
-  {{ form.to_time.errors }}{% endif %}
-              
- <input type="text" id="change_to_time" name="change_to_time"
-               class="form-control form-control-sm w-auto flatpickr_time"
-               placeholder="Select to time"
-               value="{{job.to_time}}" />
-          <button type="submit" class="btn btn-sm btn-primary mt-1">
-        <i class="bi bi-funnel"></i> Apply date&time
-      </button> 
+    <button type="submit" class="btn btn-sm btn-primary mt-1 w-100">
+      <i class="bi bi-funnel"></i> Apply
+    </button>
 
-                </td>      
+    {% if form_job_id == job.job_id %}
+      <div class="text-danger small mt-1">
+        {{ form.to_time.errors }}
+      </div>
+    {% endif %}
+  </div>
+</td>
 
    
   
@@ -285,7 +261,27 @@ document.querySelectorAll('.quote-select').forEach(updateSelectColor);
 
 
 
-                <td >{{ job.engineer|default:"- " }}</td>
+                <td >
+                  <form action="" method="post">
+                    {% csrf_token %}
+                              <input type="hidden" name="job_id" value="{{job.id}}" id="">
+            
+          <select name="change_engineer" id="" onchange=" this.form.submit();">
+
+                      <option value="" {% if not engineer%} selected {% endif %}>-</option>
+                    {% for eng in request.user.company.engineers_company.all %}
+                    
+                    <option value="{{eng.id}}" {% if eng.id == job.engineer.id %}selected{% endif %}>{{eng.name}}</option>
+                    {% endfor %}
+
+
+</select>
+
+                  </form>
+
+
+
+                </td>
                 <td style="width: auto;">
                   {% if job.items.all %}
                   {{ job|total_quantity }} req items, Arrived: {{ job|total_arrived_quantity }}
@@ -298,11 +294,10 @@ document.querySelectorAll('.quote-select').forEach(updateSelectColor);
     {% empty %}
       <div>--</div>
     {% endfor %}{% else %}No items{% endif %}
+
                   </ul>
                 </td>
-                <td>
-                  <a href="{% url 'update_job' job.job_id %}" class="btn btn-sm btn-primary">Edit</a>
-                </td>
+               
               </tr>
             {% endfor %}
           </tbody>
@@ -351,7 +346,39 @@ document.querySelectorAll('.quote-select').forEach(updateSelectColor);
 {% endif %}
 </ul>
 </nav>
-</div><script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+</div>
+<style>
+.quote-select {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 500;
+  border: 1px solid #ccc;
+  color: #000;
+  transition: background-color 0.5s ease, color 0.3s ease;
+  }
+
+.quote-select option {
+  background-color: white !important; /* Keep dropdown list white */
+  color: #000 !important; /* readable text in dropdown */
+}
+</style>
+
+<script>
+function updateSelectColor(select) {
+  const colors = {
+    accepted: { bg: '#d4edda', text: '#155724' },  // light green
+    declined: { bg: '#f8d7da', text: '#721c24' },  // light red
+    waiting:  { bg: '#fff3cd', text: '#856404' }   // light yellow
+  };
+  
+  const style = colors[select.value] || { bg: 'white', text: '#000' };
+  select.style.backgroundColor = style.bg;
+  select.style.color = style.text;
+}
+
+// Apply on page load
+document.querySelectorAll('.quote-select').forEach(updateSelectColor);
+</script><script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
 flatpickr('.flatpickr_date', {
 enableTime: false,
