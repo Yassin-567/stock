@@ -6,8 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from .decorators import admins_only,no_ban,owner_only
-from django.db.models import F
-from django.db.models import Count, Q
+from django.db.models import Count, Q,Case, When, BooleanField, Value,F,Sum
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
@@ -184,6 +183,15 @@ def inventory(request,pk=None):
     now_time=timezone.now()
     rjobs=Job.objects.filter(company=request.user.company).order_by('retirement_date')
     refresh=True if request.GET.get("refresh") else False
+    sort=request.GET.get("sort",None)
+    
+    if 'view_option' in request.GET:
+            # Save new choice in session
+            request.session['view_option'] = request.GET.get('view_option')
+
+        # Step 2: Get current option from session (or set default)
+    view_option = request.session.get('view_option', 'detailed_view')
+
     if refresh:
         status = None
         date = None
@@ -192,6 +200,7 @@ def inventory(request,pk=None):
         age=None
         added_from_date=None
         added_to_date=None
+        
     else:
         status = request.GET.get('status')
         q=request.GET.get('q')
@@ -203,7 +212,7 @@ def inventory(request,pk=None):
         added_from_date = request.GET.get('added_from_date')
         quotation_status = request.GET.get('quotation_status') 
         age = request.GET.get('age') if request.GET.get('age') else None
- 
+
         # if status is not None:
         #     request.session['status'] = status
         # elif request.session.get('status') is not None:
@@ -236,7 +245,10 @@ def inventory(request,pk=None):
             if added_from_date and added_to_date:
                 if added_from_date > added_to_date:
                     messages.error(request, "The 'From' date cannot be later than the 'To' date.")
-                    return redirect('inventory')
+                    if view_option == "compact_view":
+                        return redirect('inventory_compact')
+                    else:
+                        return redirect('inventory')
                 # elif added_from_date == added_to_date:
                 #     rjobs = rjobs.filter(birthday=added_to_date_obj)
             if added_from_date:
@@ -259,6 +271,26 @@ def inventory(request,pk=None):
                 rjobs = rjobs.filter(quoted=True, quote_accepted=False, quote_declined=False)
             else:
                 quotation_status = None
+    if sort and sort!="quotation" and sort!="-quotation" and sort!="items_arrived" and sort!="-items_arrived":
+        rjobs=rjobs.order_by(sort)
+    elif sort and sort=="quotation":
+        rjobs = rjobs.order_by("-quoted","quote_accepted")
+    elif sort and sort=="-quotation":
+        
+
+        rjobs = rjobs.annotate(
+            waiting=Case(
+                When(quoted=True, quote_accepted=False, quote_declined=False, ),
+                default=Value(False),
+                output_field=BooleanField(),
+            )
+        ).order_by("-quote_accepted","waiting")
+    elif sort=="items":
+        rjobs = Job.objects.annotate(  total_required_qty=Sum("items__job_quantity")).order_by("total_required_qty")
+    elif sort == "-items":
+        rjobs = Job.objects.annotate(  total_required_qty=Sum("items__job_quantity")).order_by("-total_required_qty")
+
+
     paginator=Paginator(rjobs,25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -286,7 +318,10 @@ def inventory(request,pk=None):
                 jobs=Job.objects.filter(company=request.user.company,date=date,items__gt=0).distinct() 
             except:
                 messages.error(request, "Please select a date before sending emails.")
-                return redirect('inventory')
+                if view_option == "compact_view":
+                    return redirect('inventory_compact')
+                else:
+                    return redirect('inventory')
             return render(request,'inventory/send_emails.html',{"date":date,'jobs':jobs })
         else:
             messages.error(request, "Please select a date before sending emails.")
@@ -315,13 +350,20 @@ def inventory(request,pk=None):
         if 'coming_from_job' in request.POST:
             return redirect('update_job', jobitem.job.job_id)
         else:
-
-            return render(request,'inventory/inventory.html',{
+            if view_option == "compact_view":
+                return render(request,'inventory/inventory_compact.html',{
                 'rjobs': page_obj,
                 'page_obj':page_obj,
                 'status':'paused',
                 'now_time':now_time
                 })
+            else:
+                return render(request,'inventory/inventory.html',{
+                    'rjobs': page_obj,
+                    'page_obj':page_obj,
+                    'status':'paused',
+                    'now_time':now_time
+                    })
     elif request.method=="POST" and 'job_is_ready' in request.POST:
         job=Job.objects.get(job_id=pk,company=request.user.company)
         if job.items.exclude(is_used=False).exists():
@@ -331,7 +373,10 @@ def inventory(request,pk=None):
         job.save(request=request)#update_fields=['status']
         messages.success(request,"This job is now ready.")
         # return redirect('update_job', job.job_id)
-        return redirect('inventory')
+        if view_option == "compact_view":
+            return redirect('inventory_compact')
+        else:
+            return redirect('inventory')
     if 'coming_from_job' in request.POST:
         return redirect('update_job', jobitem.job.job_id)
     if request.method=="POST" and "job_id" in request.POST :
@@ -397,15 +442,18 @@ def inventory(request,pk=None):
             except:
                 job.engineer=None
                 job.save(request=request,update_fields=["engineer"])
+
                 return render(request,'inventory/inventory_compact.html',context)
 
             if engineer:
                 job.engineer=engineer
                 job.save(request=request,update_fields=["engineer"])
+        return render(request,'inventory/inventory_compact.html',context)
 
-
-    return render(request,'inventory/inventory_compact.html',context)
-    return render(request,'inventory/inventory.html',context)
+    if view_option == "compact_view":
+        return render(request,'inventory/inventory_compact.html',context)
+    else:
+        return render(request,'inventory/inventory.html',context)
     
 def show_sent_emails(request):
     # ✅ Retrieve from session
@@ -1834,8 +1882,12 @@ def scheduler(request):
             return redirect ("scheduler")
         # --- Step 2: Cache postcode coordinates ---
         for job in ready_jobs:
-            postcode = job.post_code.strip().upper()
-            job.latitude, job.longitude = get_coords(postcode)
+            try:
+                postcode = job.post_code.strip().upper()
+                job.latitude, job.longitude = get_coords(postcode)
+            except:
+                job.latitude, job.longitude=None,None
+                pass
             # --- Step 3: Grouping Logic ---
         visited = set()
         wrong_list=[]

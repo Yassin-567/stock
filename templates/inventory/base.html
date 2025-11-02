@@ -9,7 +9,7 @@
 
     <title>
       {% block title %}
-        
+
       {% endblock %}
     </title>
 
@@ -21,19 +21,65 @@
   </head>
   <body>
     {% if request.user.is_authenticated %}
-      <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #051627;">
         <div class="container-fluid">
-          <a class="navbar-brand" href="{% url 'inventory' %}?refresh=True">{{ request.user.company.company_name }}</a>
+          <a class="navbar-brand" href="{% url 'inventory' %}?refresh=True" style="color: #249064;">{{ request.user.company.company_name }}</a>
 
+          <img src="{% static 'images/logo.jpg' %}" alt="goEng" class="me-2 d-inline-block align-text-top shake-logo" style="height: 40px; width: auto; object-fit: contain;" />
+          <style>
+            /* Initial shake on reload */
+            .shake-logo.animate {
+              animation: shake 0.8s ease-in-out both;
+            }
+            
+            /* Shake again on hover */
+            .shake-logo:hover {
+              animation: shake 0.8s ease-in-out both;
+            }
+            
+            /* Shake keyframes */
+            @keyframes shake {
+              0% {
+                transform: rotate(10deg);
+              }
+              15% {
+                transform: rotate(-9deg);
+              }
+              30% {
+                transform: rotate(9deg);
+              }
+              45% {
+                transform: rotate(-10deg);
+              }
+              60% {
+                transform: rotate(8deg);
+              }
+              75% {
+                transform: rotate(-6deg);
+              }
+              100% {
+                transform: rotate(0deg);
+              }
+            }
+          </style>
+
+          <script>
+            // Trigger shake on page load
+            window.addEventListener('load', () => {
+              const logo = document.querySelector('.shake-logo')
+              logo.classList.add('animate')
+            
+              // remove after animation ends so hover can retrigger it
+              setTimeout(() => logo.classList.remove('animate'), 800)
+            })
+          </script>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
           <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto align-items-center">
               <!-- Replace <search></search> with this: -->
               <!-- User Info -->
               <li class="nav-item">
-<a class="nav-link fw-bold text-light" href="{% url 'scheduler' %}" target="_blank">
-  <span
-    style="
+                <a class="nav-link fw-bold text-light" href="{% url 'scheduler' %}" target="_blank"><span style="
       background: linear-gradient(90deg, #0d82f7, #eee3d8ff, #0d82f7);
       background-size: 200% auto;
       -webkit-background-clip: text;
@@ -41,25 +87,21 @@
       text-shadow: 0 0 8px rgba(13,130,247,0.6), 0 0 20px rgba(123, 206, 231, 0.61)
       font-weight: 700;
       animation: shine 6s both infinite;
-    "
-    
-  >
-    Auto scheduler
-  </span>
-</a>
+    ">Auto scheduler</span></a>
 
-<style>
-@keyframes shine {
-  0% { background-position: 0% center; }
-  100% { background-position: 500% center; }
-}
-</style>
-
-
+                <style>
+                  @keyframes shine {
+                    0% {
+                      background-position: 0% center;
+                    }
+                    100% {
+                      background-position: 500% center;
+                    }
+                  }
+                </style>
               </li>
 
               <li class="nav-item">
-
                 <a class="nav-link fw-bold text-light" href="{% url 'update_user' request.user.id %}">
                   {% if request.user|is_owner %}
                     Hi, {{ request.user.username }} ✨

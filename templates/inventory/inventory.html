@@ -18,7 +18,8 @@
           
           width: fit-content;
           padding: 1px 12px;
-          background: linear-gradient(90deg, #4f5c5bff, #343d3cff, #4f5c5bff);
+          background-color: #2e3946;
+          color: #a5e1c7;
           border-radius: 10px;
           display: flex;
           align-items: center;
@@ -28,7 +29,7 @@
         ">
 
     <!-- Status -->
-    <div class="col-auto">
+    <div class="col-auto" >
       <label for="status" class="form-label mb-0 me-1 text-white">Status</label>
       <select name="status" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
         <option value="all" {% if not status or status == 'all' %}selected{% endif %}>All jobs</option>
@@ -103,11 +104,31 @@
 
     <!-- Apply Button -->
     <div class="col-auto">
-      <button type="submit" class="btn btn-sm btn-primary mt-3">
+      <button type="submit" class="btn btn-sm  mt-3" style="background-color: #009e6c
+;">
         <i class="bi bi-funnel"></i> Apply
       </button>
     </div>
   </form>
+  <form action="" method="get">
+  <input type="hidden" name="view_option" value="{% if request.session.view_option == 'compact_view' %}detailed_view{% else %}compact_view{% endif %}">
+     <label class="form-check-label" for="view_option">
+Detail view    </label>
+  <div class="form-check form-switch">
+    <label class="form-check-label" for="view_option">
+ Compact view
+    </label>
+
+    <input 
+      type="checkbox"
+      class="form-check-input"
+      id="view_option"
+    
+      value=""
+      {% if request.session.view_option == "compact_view" %}checked{% endif %}
+      onchange="this.form.submit()">
+  </div>
+</form>
 
   <!-- Sync Jobs Button -->
   <a class="btn btn-success btn-sm px-3 py-1 fw-bold shadow-sm mt-2 mt-lg-0"

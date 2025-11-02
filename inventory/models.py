@@ -160,9 +160,10 @@ class Job(models.Model):
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="job_company")
     items_arrived=models.BooleanField(default=False, )
     post_code=models.CharField(max_length=10, null=True, blank=True)
-    quoted=models.BooleanField(default=False)
     quote_accepted=models.BooleanField(default=False)
     quote_declined=models.BooleanField(default=False)
+    quoted=models.BooleanField(default=False)
+
     date=models.DateField( auto_now=False, auto_now_add=False,blank=True,null=True)
     from_time=models.TimeField(auto_now=False,auto_now_add=False,blank=True,null=True)
     to_time=models.TimeField(auto_now=False,auto_now_add=False,blank=True,null=True)

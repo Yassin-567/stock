@@ -4,13 +4,47 @@
   Scheduler - Stocky
 {% endblock %}
 {% block body %}
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 mb-0 text-gray-800" style="
+ 
+
+  <div class="d-flex justify-content-between align-items-center mb-4 ">
+
+    <h1 class="h3 mb-0 text-gray-800 animated-logo me-0 d-inline-block align-text-top" style="
     background: linear-gradient(90deg, #312e11ff, #ff5733, #ff33a6);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     font-weight: 600;
-    ">Scheduler Assistant</h1>
+    "> <img 
+    src="{% static 'images/logo.jpg' %}" 
+    alt="goEng"
+    class="animated-logo logo me-0 d-inline-block align-text-top"
+  />
+  
+Scheduler Assistant</h1>
+    
+<style>
+.animated-logo {
+  height: 40px;              /* Bigger size */
+  width: auto;
+  object-fit: contain;
+  animation: drive 3s ease-in-out forwards;
+}
+/* Drive-in with a wobble effect */
+@keyframes drive {
+ 
+  0%   { transform: translateX(-200px) rotate(-20deg); opacity: 0; }
+  20%  { transform: translateX(50px) rotate(10deg); opacity: 0.5; }
+  40%  { transform: translateX(-25px) rotate(-5deg); }
+  60%  { transform: translateX(15px) rotate(3deg); }
+  80%  { transform: translateX(0) rotate(0deg); }
+  85%  { transform: translateX(0) rotate(0deg); }
+  90%  { transform: translateX(0) rotate(0deg); }
+  95%  { transform: translateX(0) rotate(0deg); }
+  97%  { transform: translateX(0) rotate(0deg); }
+  98%  { transform: translateX(0) rotate(0deg); }
+  100% { transform: translateX(0) rotate(0deg); font-size: large; }
+}
+</style>
+
     <p>The following groups were generated at: {{ ex_sg.created_at }}</p>
   </div>
   <form action="" method="post" class="d-flex gap-3 align-items-center mt-3">

@@ -111,6 +111,26 @@
       </button>
     </div>
   </form>
+<form action="" method="get">
+  <input type="hidden" name="view_option" value="{% if request.session.view_option == 'compact_view' %}detailed_view{% else %}compact_view{% endif %}">
+     <label class="form-check-label" for="view_option">
+Detail view    </label>
+  <div class="form-check form-switch">
+    <label class="form-check-label" for="view_option">
+ Compact view
+    </label>
+
+    <input 
+      type="checkbox"
+      class="form-check-input"
+      id="view_option"
+    
+      value=""
+      {% if request.session.view_option == "compact_view" %}checked{% endif %}
+      onchange="this.form.submit()">
+  </div>
+</form>
+
 
   <!-- Sync Jobs Button -->
   <a class="btn btn-success btn-sm px-3 py-1 fw-bold shadow-sm mt-2 mt-lg-0"
@@ -119,8 +139,7 @@
      href="{% url 'get_jobs_from_sf' %}">
     <i class="bi bi-arrow-repeat"></i> Sync jobs
   </a>
-</div>
-
+</div>  
 
 
   <script>
@@ -164,27 +183,131 @@
 </div></form>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
-
     {% if rjobs %}
       <div  class="table-responsive">
         <table class="table table-striped table-hover align-middle">
-          <thead class="table-dark">
-            <tr>
-              <th>Job ID   
-</th>
-              <th>Status</th>
-              <th>Quotation</th>
-              <th>Address</th>
-              <th>Date</th>
-              <th>Time</th>
-              
-              <th>Engineer</th>
-              <th>Items</th>
-            </tr>
-          </thead>
+        <thead class="table-dark">
+  <tr>
+    <th>Job ID
+      {% with request.GET.urlencode|cut:'sort=' as query %}
+      <a href="?{{ query }}&sort={% if request.GET.sort  == 'job_id' %}-job_id{% else %}job_id{% endif %}">
+        
+        {% if request.GET.sort == 'job_id' %}
+          ▲
+        {% elif request.GET.sort == '-job_id' %}
+          ▼
+           {% else %}
+          ▲▼
+        {% endif %}
+        {% endwith %}
+      </a>
+    </th>
+    <th>Status
+      {% with request.GET.urlencode|cut:'sort=' as query %}
+      <a href="?{{ query }}&sort={% if request.GET.sort == 'status' %}-status{% else %}status{% endif %}">
+        
+        {% if request.GET.sort == 'status' %}
+          ▲
+        {% elif request.GET.sort == '-status' %}
+          ▼
+           {% else %}
+          ▲▼
+        {% endif %}
+        {% endwith %}
+      </a>
+    </th>
+    <th>Quotation
+      {% with request.GET.urlencode|cut:'sort=' as query %}
+      <a href="?{{ query }}&sort={% if request.GET.sort  == 'quotation' %}-quotation{% else %}quotation{% endif %}">
+        
+        {% if request.GET.sort == 'quotation' %}
+          ▲
+        {% elif request.GET.sort == '-quotation' %}
+          ▼
+           {% else %}
+          ▲▼
+        {% endif %}
+        {% endwith %}
+      </a>
+    </th>
+    <th>Address
+      {% with request.GET.urlencode|cut:'sort=' as query %}
+      <a href="?{{ query }}&sort={% if request.GET.sort  == 'address' %}-address{% else %}address{% endif %}">
+        
+        {% if request.GET.sort == 'address' %}
+          ▲
+        {% elif request.GET.sort == '-address' %}
+          ▼
+          {% else %}
+          ▲▼
+        {% endif %}
+        {% endwith %}
+      </a>
+    </th>
+    <th>Date
+      {% with request.GET.urlencode|cut:'sort=' as query %}
+     <a href="?{{ query }}&sort={% if request.GET.sort  == 'date' %}-date{% else %}date{% endif %}">
+        
+        {% if request.GET.sort == 'date' %}
+          ▲
+        {% elif request.GET.sort == '-date' %}
+          ▼
+           {% else %}
+          ▲▼
+        {% endif %}
+        {% endwith %}
+      </a>
+    </th>
+    <th>Time
+      {% with request.GET.urlencode|cut:'sort=' as query %}
+      <a href="?{{ query }}&sort={% if request.GET.sort  == 'from_time' %}-from_time{% else %}from_time{% endif %}">
+        
+        {% if request.GET.sort == 'from_time' %}
+          ▲
+        {% elif request.GET.sort == '-from_time' %}
+        
+          ▼
+           {% else %}
+          ▲▼
+        {% endif %}
+        {% endwith %}
+      </a>
+    </th>
+    <th>Engineer
+      {% with request.GET.urlencode|cut:'sort=' as query %}
+      <a href="?{{ query }}&sort={% if request.GET.sort  == 'engineer__name' %}-engineer__name{% else %}engineer__name{% endif %}">
+        
+        {% if request.GET.sort == 'engineer__name' %}
+          ▲
+        {% elif request.GET.sort == '-engineer__name' %}
+          ▼
+           {% else %}
+          ▲▼
+        {% endif %}
+        {% endwith %}
+      </a>
+    </th>
+    <th>Items
+
+
+      {% with request.GET.urlencode|cut:'sort=' as query %}
+      <a href="?{{ query }}&sort={% if request.GET.sort  == 'items' %}-items{% else %}items{% endif %}">
+        
+        {% if request.GET.sort == 'items' %}
+          ▲
+        {% elif request.GET.sort == '-items' %}
+          ▼
+           {% else %}
+          ▲▼
+        {% endif %}
+        {% endwith %}
+    </th>
+  </tr>
+</thead>
+
           <tbody>
             {% for job in rjobs %}
-            
+           
               <tr id="{{ job.job_id }}" onclick="localStorage.setItem('lastJob',{{ job.job_id }});" >
                 <td>
                   <a href="{% url 'update_job' job.job_id %}" onclick="localStorage.setItem('lastJob',{{ job.job_id }});">{{ job.job_id }}</a>
@@ -348,6 +471,14 @@
 </nav>
 </div>
 <style>
+  th a {
+  color: white;
+  text-decoration: none;
+}
+th a:hover {
+  text-decoration: underline;
+}
+
 .quote-select {
   padding: 4px 8px;
   border-radius: 6px;
