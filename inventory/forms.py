@@ -438,6 +438,26 @@ class WarehouseitemForm(forms.ModelForm):
     #     #         label="Stock Quantity",
     #     #         widget=forms.NumberInput(attrs={'class': 'form-control'}))
        
+
+class CompanySettingsForm(forms.ModelForm):
+    class Meta:
+        model = CompanySettings
+        exclude = [
+            'company',
+            'sf_access_token',
+            'sf_refresh_token',
+            'sf_token_expires',
+        ]
+        widgets = {
+            'integrate_sf': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'sf_client_secret': forms.PasswordInput(render_value=True, attrs={'class': 'form-control'}),
+            'sf_client_id': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+        labels = {
+            'integrate_sf': 'Service Fusion Integration',
+            'sf_client_id': 'Service Fusion Client ID',
+            'sf_client_secret': 'Service Fusion Client Secret',
+        }
 class EngineerForm(forms.ModelForm):
    
     class Meta:

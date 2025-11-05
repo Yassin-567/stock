@@ -24,8 +24,49 @@
       <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #051627;">
         <div class="container-fluid">
           <a class="navbar-brand" href="{% url 'inventory' %}?refresh=True" style="color: #249064;">{{ request.user.company.company_name }}</a>
+          <span class="jumper" onclick="jumpLogo(this)"><img src="{% static 'images/logo.png' %}" alt="goEng" title="goEng" class="me-2 d-inline-block align-text-top shake-logo" style="height: 40px; width: auto; object-fit: contain; " /></span>
+          <style>
+            @keyframes jump {
+              0% {
+                transform: translateY(0);
+              }
+              20% {
+                transform: translateY(-25px);
+              }
+              40% {
+                transform: translateY(0);
+              }
+              55% {
+                transform: translateY(-15px);
+              }
+              70% {
+                transform: translateY(0);
+              }
+              80% {
+                transform: translateY(-8px);
+              }
+              100% {
+                transform: translateY(0);
+              }
+            }
+            
+            .jump {
+              animation: jump 0.9s cubic-bezier(0.28, 0.84, 0.42, 1);
+            }
+          </style>
 
-          <img src="{% static 'images/logo.jpg' %}" alt="goEng" class="me-2 d-inline-block align-text-top shake-logo" style="height: 40px; width: auto; object-fit: contain;" />
+          <script>
+            function jumpLogo(element) {
+              element.classList.add('jump')
+              element.addEventListener(
+                'animationend',
+                () => {
+                  element.classList.remove('jump')
+                },
+                { once: true }
+              )
+            }
+          </script>
           <style>
             /* Initial shake on reload */
             .shake-logo.animate {

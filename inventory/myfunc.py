@@ -1,7 +1,7 @@
 from django.db import models
 import requests
 from django.db.models import Q
-
+from datetime import timedelta
 
 def items_arrived(self):
     from .models import Job, JobItem
@@ -161,11 +161,78 @@ def send_multiple_emails(jobs, request=None,single=False,):
             Email.objects.create(type=Email.EmailType.BATCH,company=company,user=user,to=engineer.name,subject=f"Your Job Parts List for{job.date}",body=full_message,date=timezone.now(),)
 
 
+
+def get_access_token(company):
+    SF_CLIENT_ID = company.settings.sf_client_id
+    SF_CLIENT_SECRET = company.settings.sf_client_secret
+    if not SF_CLIENT_ID or not SF_CLIENT_SECRET:
+        raise Exception ("Missing Client ID or Client Secret")
+    if (
+        not company.settings.sf_access_token
+        or not company.settings.sf_refresh_token
+        or company.settings.sf_token_expires <= timezone.now()
+    ):
+        url = "https://api.servicefusion.com/oauth/access_token"
+        data = {
+        "grant_type": "client_credentials",
+        "client_id":SF_CLIENT_ID ,
+        "client_secret": SF_CLIENT_SECRET,
+        }
+        headers = {"Content-Type": "application/json"}
+        resp=requests.post(url, json=data, headers=headers )
+        if resp.status_code == 200 :
+            tokens = resp.json()
+            company.settings.sf_access_token=tokens["access_token"]
+            company.settings.sf_token_expires=timezone.now() + timedelta(seconds=tokens["expires_in"])
+            company.settings.sf_refresh_token=tokens.get("refresh_token")
+            company.settings.save()
+            return company.settings.sf_access_token
+        else:
+            raise Exception(f"Failed to refresh token: {resp.text}")
+    return company.settings.sf_access_token
+
+
+def refresh_sf_token(company):
+    SF_CLIENT_ID = company.settings.sf_client_id
+    SF_CLIENT_SECRET = company.settings.sf_client_secret
+    SF_REFRESH_TOKEN=company.settings.sf_refresh_token
+    url = "https://api.servicefusion.com/oauth/access_token"
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": SF_REFRESH_TOKEN,
+        "client_id": SF_CLIENT_ID,
+        "client_secret": SF_CLIENT_SECRET,
+    }
+    headers = {"Content-Type": "application/json"}
+
+    resp = requests.post(url, json=data, headers=headers)
+    if resp.status_code == 200:
+        tokens = resp.json()
+        company.settings.sf_access_token = tokens["access_token"]
+        company.settings.sf_token_expires = timezone.now() + timedelta(seconds=tokens["expires_in"])
+        # Some APIs return a new refresh token too
+        if "refresh_token" in tokens:
+            company.settings.sf_refresh_token = tokens["refresh_token"]
+        company.settings.save()
+        return company.settings.sf_access_token
+    else:
+        raise Exception(f"Failed to refresh token: {resp.text}")
+
+
 def sync_engineers_func(request):
+
     from .models import Engineer
     url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/engs"
-    data=response = requests.get(url)
-    data = response.json()  
+    headers = {"Authorization": f"Bearer {request.user.company.sf_access_token}"}
+    response = requests.get(url, headers=headers)
+
+
+    if response.status_code == 401:
+        new_token = refresh_sf_token(request.user.company)
+        headers = {"Authorization": f"Bearer {new_token}"}
+        response = requests.get(url, headers=headers)
+    data=response.json()
+    
     for eng in data:
         email=eng["email"]
         try:

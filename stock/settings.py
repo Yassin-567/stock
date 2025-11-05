@@ -107,7 +107,10 @@ else:
 
 if config('DEBUG', default='False') == "True":
     DEBUG = True
-
+import dj_database_url
+DATABASES = {
+    'default': dj_database_url.parse(config('DATABASE_URL'))
+}
 
 # DATABASES = {
 #     'default': {

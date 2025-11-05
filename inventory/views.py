@@ -11,7 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func,haversine,get_coords,get_drive_time_ors,optimize_group_order,optimize_group_order2,_greedy_fallback,move
+from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func,haversine,get_coords,get_drive_time_ors,optimize_group_order,optimize_group_order2,_greedy_fallback,move,refresh_sf_token
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
@@ -1567,33 +1567,20 @@ def verify_otp(request) :
     left_time=left_time if left_time>0 else "Expired"
     return render(request, 'auths/otp.html', {'email':email,'company_email':company_email,'left_time':left_time})
 @owner_only
-
 def company_settings(request):
-    # from inventory.utils import  seed_company_and_users   
-    company = request.user.company
-    print(company)
+    company = request.user.company  # assuming each user belongs to a company
+    settings, created = CompanySettings.objects.get_or_create(company=company)
 
-    try:
-        instance = company.settings
-    except CompanySettings.DoesNotExist:
-        instance = None
-
-    form = CompanySettingsForm(request.POST or None, instance=instance)
-
-    if request.method == 'POST' and form.is_valid():
-        settings = form.save(commit=False)
-        settings.company = company
-        settings.save()
-        
-        # from inventory.utils import migrate_client_db, seed_company_and_users
-        # migrate_client_db(settings) 
-        # from inventory.utils import migrate_client_db, seed_company_and_users
-        
-        #     # 2. Migrate the new DB
-        # migrate_client_db(settings)  # only runs `call_command('migrate')`
-
-        # # 3. Now that tables exist, copy company and user
-        # seed_company_and_users(settings)
+    if request.method == 'POST':
+        form = CompanySettingsForm(request.POST, instance=settings)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Company settings updated successfully.")
+            return redirect('company_settings')  # name of this view in urls.py
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = CompanySettingsForm(instance=settings)
 
     return render(request, 'inventory/company_settings.html', {'form': form})
 def warehouse(request):
@@ -1761,6 +1748,7 @@ def fetch_api_data(request):
     response = requests.get(url)
     data = response.json()  # Convert to dict
     return render(request, 'inventory/api_data.html',{'data':data})
+
 def sync_engineers_view(request):
     try:
         sync_engineers_func(request)
@@ -1772,10 +1760,18 @@ def fetch_jobs(request):
     try:
         with transaction.atomic():
             sync_engineers_func(request)
-            url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs"
-            data=response = requests.get(url)
-            print(data)
-            data = response.json()  
+
+            headers = {"Authorization": f"Bearer {request.user.company.sf_access_token}"}
+
+    # Request real jobs from Service Fusion
+            response = requests.get("https://api.servicefusion.com/v1/jobs", headers=headers)
+
+            # If token expired, refresh and retry
+            if response.status_code == 401:
+                new_token = refresh_sf_token(request.user.company)
+                headers["Authorization"] = f"Bearer {new_token}"
+                response = requests.get("https://api.servicefusion.com/v1/jobs", headers=headers)
+            data = response.json()
             field_map={
                 "address":lambda d:f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
                 "parent_account":lambda d:d["parent_customer"],

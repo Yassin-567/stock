@@ -65,15 +65,27 @@ class Company(models.Model):
         verbose_name_plural = 'companies'
         ordering = ['company_name']
 
+
 class CompanySettings(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name="settings")
+
+    integrate_sf=models.BooleanField(default=False)
+    sf_access_token = models.TextField(blank=True, null=True)
+    sf_refresh_token = models.TextField(blank=True, null=True)
+    sf_token_expires = models.DateTimeField(blank=True, null=True)
+    sf_client_id=models.TextField(blank=True,null=True)
+    sf_client_secret=models.TextField(blank=True, null=True)
+    
+
+# class CompanySettings(models.Model):
    
-    company = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='settings')    
-    use_own_db = models.BooleanField(default=False)
-    db_name = models.CharField(max_length=100)
-    db_user = models.CharField(max_length=100)
-    db_pass = models.CharField(max_length=100)
-    db_host = models.CharField(max_length=100, default='localhost')
-    db_port = models.CharField(max_length=6, default='5432')
+#     company = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='settings')    
+#     use_own_db = models.BooleanField(default=False)
+#     db_name = models.CharField(max_length=100)
+#     db_user = models.CharField(max_length=100)
+#     db_pass = models.CharField(max_length=100)
+#     db_host = models.CharField(max_length=100, default='localhost')
+#     db_port = models.CharField(max_length=6, default='5432')
     # def save(self,*args, **kwargs):
     #     if self.use_own_db:
     #         from .utils import migrate_client_db,seed_company_and_users

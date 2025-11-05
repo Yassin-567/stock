@@ -15,6 +15,7 @@
         {% if request.user.company %}
           {% if request.user|is_owner %}
             <a href="{% url 'update_company' %}" class="btn btn-outline-primary px-4 me-3">Company Information</a>
+            <a href="{% url 'company_settings' %}" class="btn btn-outline-primary px-4 me-3">Integrations</a>
           {% endif %}
         {% endif %}
         <a href="{% url 'history' %}" class="btn btn-outline-primary px-4 me-3">History</a>
