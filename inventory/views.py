@@ -204,10 +204,11 @@ def inventory(request,pk=None):
     else:
         status = request.GET.get('status')
         q=request.GET.get('q')
+        q=q.strip() if q else None
         date = request.GET.get('date')
         status = status.strip() if status else None
         date = date.strip() if date else None
-        q=q.strip() if q else None
+        
         added_to_date = request.GET.get('added_to_date')
         added_from_date = request.GET.get('added_from_date')
         quotation_status = request.GET.get('quotation_status') 
@@ -219,7 +220,11 @@ def inventory(request,pk=None):
         #     status = request.session['status']
         if status and status != 'all':
             if status == 'on_hold':
-                rjobs = rjobs.filter(on_hold=True).exclude(status__in=['completed','cancelled'])
+                rjobs = rjobs.filter(on_hold=True)
+            elif status == "quoted":
+                rjobs = rjobs.filter(quoted=True)
+            elif status == "parts_need_attention":
+                rjobs = rjobs.filter(parts_need_attention=True)
             else:
                 rjobs = rjobs.filter(status=status)
             
@@ -405,7 +410,6 @@ def inventory(request,pk=None):
             date_str = request.POST.get("change_from_date")
             from_time_str = request.POST.get("change_from_time")  # corrected name
             to_time_str = request.POST.get("change_to_time")
-            print("THIS IS DateSTr ", date_str )
             date_value = parse_date(date_str) if date_str else job.date
             from_time_value = parse_time(from_time_str) if from_time_str else job.from_time
             to_time_value = parse_time(to_time_str) if to_time_str else job.to_time
@@ -420,7 +424,6 @@ def inventory(request,pk=None):
             "job_id": job.job_id,
             "parent_account": job.parent_account
         }
-            print("This is date: ",data["date"])
 
             form = JobForm(data, instance=job)
             
@@ -428,6 +431,7 @@ def inventory(request,pk=None):
                 
                 job = form.save(commit=False)
                 job.save(update_fields=["date", "from_time", "to_time"],request=request)
+                return redirect(request.path)
             # else:
             #     messages.error(request,f"{form.errors["to_time"][0] }")
 
@@ -567,11 +571,25 @@ def update_job(request, pk, cancel=0):
             messages.success(request,'Now this job is cancelled')
             return redirect('update_job',pk=pk)
     if request.method=="POST":
-        if 'on_hold' in request.POST:
-            job.on_hold= not job.on_hold
-            job.save(update_fields=['on_hold','status'],request=request)
+        if 'hold' in request.POST:
+            if 'on_hold' in request.POST:
+                job.on_hold = False
+            else:
+                job.on_hold = True
+            job.save(update_fields=['on_hold', 'status'], request=request)
+            messages.success(request, 'Job updated')
+            return redirect('update_job', pk=pk)
+        if 'parts_attention' in request.POST:
+            if 'parts_dont_need_attention' in request.POST:
+                job.parts_need_attention = False
+                job.save(update_fields=['parts_need_attention','status'],request=request)
+
+            else:
+                job.parts_need_attention = True
+                job.save(update_fields=['parts_need_attention','status'],request=request)
             messages.success(request,'Job updated')
             return redirect('update_job',pk=pk)
+        
         if  job.quoted :
             try:
                 quote_status=request.POST.get('quote_status')
@@ -1047,10 +1065,13 @@ def update_item(request, pk):
         comments_form=CommentForm(request.POST)
         prevq=item.job_quantity
         
-        if 'edit' in request.POST and form.is_valid()  : 
-            
+        if form.is_valid() and 'edit' in request.POST  :
+            print("SSS")
             job_quantity=form.cleaned_data['job_quantity']
+            print(job_quantity)
             if item.from_warehouse:
+                job_quantity=form.cleaned_data['job_quantity']
+
                
             # -------- CASE 1: increase quantity --------
                 if job_quantity > prevq:
@@ -1160,25 +1181,25 @@ def update_item(request, pk):
 
         # -------- CASE: not from warehouse --------
             else:
-                
+                print("OOOOOOOOOOOOOOOOOOOOOOOOOO")
                 item = form.save(commit=False)
                 item.save(request=request)
                 return render(request, 'inventory/update_item.html',
-                            {'form': JobItemForm(instance=item),
+                            {'form': form,
                             'item': item,
                             'comments_form': comments_form,
                             "comments": comments})
 
         # fallback context
           
-            return render(request, 'inventory/update_item.html',
-                    {'form': form,'item': item,
-                    'comments_form': comments_form,
-                    "comments": comments,
-                    "completed": completed})
+        return render(request, 'inventory/update_item.html',
+                {'form': form,'item': item,
+                'comments_form': comments_form,
+                "comments": comments,
+                "completed": completed})
                 
-          
-    form = JobItemForm(instance=item,)#,updating=True,completed=completed
+   
+    # form = JobItemForm(instance=item,)#,updating=True,completed=completed
     comments_form=CommentForm(initial={
         'content_type': ContentType.objects.get_for_model(JobItem),
         'object_id': item.id,
@@ -1583,17 +1604,11 @@ def company_settings(request):
         form = CompanySettingsForm(instance=settings)
 
     return render(request, 'inventory/company_settings.html', {'form': form})
-def warehouse(request):
-    # from django.db.models import Sum
-    # parts_summary = (
-    #     WarehouseItem.objects
-    #     .filter(company=request.user.company)
-    #     .values('part_number', 'name', 'category__category')  # updated line
-    #     .annotate(total_quantity=Sum('warehouse_quantity'))
-    #     .order_by('part_number')
-    # )
 
 
+
+def warehouse(request, ):
+    
     items_status=request.GET.get('items_status') if request.GET.get('items_status') else 'available'
     q=request.GET.get("q") if request.GET.get("q") else ''
     warehouse_items=WarehouseItem.objects.filter(company=request.user.company)
@@ -1613,6 +1628,24 @@ def warehouse(request):
         taken_warehouse_items=taken_warehouse_items.filter(Q(name__icontains=q) | Q(part_number__icontains=q) | Q(reference__icontains=q) | Q(supplier__icontains=q) | Q(category__category__icontains=q))
     entry_method=request.GET.get("entry_method")
     return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items,'used_warehouse_items':used_warehouse_items,'taken_warehouse_items':taken_warehouse_items,'entry_method':entry_method,'items_status':items_status})
+
+
+def review_ordered_items(request,):
+    items=JobItem.objects.filter(company=request.user.company,is_used=False,from_warehouse=False,ordered=True)
+
+    if request.method=="POST":
+        arrived=int(request.POST.get("arrived"))
+        item_id=request.POST.get("item_id")
+        item=JobItem.objects.get(company=request.user.company,id=item_id)
+        print(item)
+        item.arrived_quantity=arrived
+        item.save(request=request,update_fields=["arrived_quantity","arrived"])
+        messages.info(request,f"{arrived} parts of {item} arrived for {item.job.address}")
+        return redirect('review_ordered_items')
+    return render(request,'inventory/review_ordered_items.html',{'items':items})
+
+
+
 
 def engineer(request):
     form=EngineerForm()
@@ -1754,17 +1787,24 @@ def sync_engineers_view(request):
         sync_engineers_func(request)
     except:
         messages.error(request,"Syncing failed.")
+        return redirect('admin_panel')
     messages.success(request,"Engineers synced.")
     return redirect('admin_panel')
-def fetch_jobs(request):
-    try:
+
+
+def fetch_jobs(request,job_id=None):
+    # try:
         with transaction.atomic():
             sync_engineers_func(request)
-
-            headers = {"Authorization": f"Bearer {request.user.company.sf_access_token}"}
-
-    # Request real jobs from Service Fusion
-            response = requests.get("https://api.servicefusion.com/v1/jobs", headers=headers)
+            headers = {"Authorization": f"Bearer {request.user.company.settings.sf_access_token }"}
+            if job_id:
+                print()
+                # response = requests.get(f"https://api.servicefusion.com/v1/jobs/{job_id}", headers=headers) #for production
+                response = requests.get(f"https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs/{job_id}", headers=headers) #for testing
+                
+            else:
+                # response = requests.get("https://api.servicefusion.com/v1/jobs", headers=headers) #for production
+                response = requests.get("https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs", headers=headers) #for testing
 
             # If token expired, refresh and retry
             if response.status_code == 401:
@@ -1773,71 +1813,90 @@ def fetch_jobs(request):
                 response = requests.get("https://api.servicefusion.com/v1/jobs", headers=headers)
             data = response.json()
             field_map={
+                'status':lambda d:d["status"],
                 "address":lambda d:f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
-                "parent_account":lambda d:d["parent_customer"],
+                "parent_account":lambda d:d["parent_customer"],     
                 "post_code":lambda d:d["postal_code"],  
                 'date': lambda d: datetime.strptime(d["visits"][0]["start_date"], "%Y-%m-%d").date(),
                 'birthday': lambda d: datetime.fromisoformat(d["created_at"]),
                 'from_time': lambda d: datetime.strptime(d["visits"][0]["time_frame_promised_start"], "%H:%M").time(),
                 'to_time': lambda d: datetime.strptime(d["visits"][0]["time_frame_promised_end"], "%H:%M").time(),
                 "engineer":lambda d:Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"])),
-                        
+                "sf_id":lambda d:int(d["id"]),
+                
                     }
-            
-            for d in data["items"]:
-                print(d)
-                if int(d["id"]):
-                    engineer=Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"]))
-                    try:
-                        ex_job=Job.objects.get(Q(company=request.user.company) & Q(job_id=d["id"]))
-                        update_if_changed(ex_job, d, field_map,request=request, affected_by_sync=True, )
-                        ex_job.address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}"
-                        ex_job.parent_account=d["parent_customer"]
-                        ex_job.post_code=d["postal_code"]
-                        ex_job.date=d["visits"][0]["start_date"]
-                        ex_job.from_time=d["visits"][0]["time_frame_promised_start"]
-                        ex_job.to_time=d["visits"][0]["time_frame_promised_end"]
-                        ex_job.birthday=d["created_at"]
-                        ex_job.engineer=engineer
-                        # ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday','engineer'],request=request,affected_by_sync=True)
-                    except Job.DoesNotExist:
-                        synced_job=Job(
-                            company=request.user.company,
-                            job_id=int(d["id"]),
-                            address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
-                            status= d["status"],
-                            quotation=None,
-                            engineer=engineer,#Temporarily nnon
-                            parent_account=d["parent_customer"],
-                            added_date=timezone.now(),
-                            items_arrived=False,
-                            post_code=d["postal_code"],
-                            quoted=False,
-                            quote_accepted=False,
-                            quote_declined=False,
-                            date=d["visits"][0]["start_date"],
-                            from_time=d["visits"][0]["time_frame_promised_start"],
-                            to_time=d["visits"][0]["time_frame_promised_start"],
-                            # history =None ,
-                            # comments = None,
-                            birthday=d["created_at"],
-                            retirement_date=None,
-                            on_hold=False,
-                            added_by_sync=True,
-            
-                        )
-                        synced_job.save(request=request,affected_by_sync=True)
-                        messages.success(request,f"Job with id {d['id']} synced successfully")
+            if job_id:
+                if int(data["id"]):
+                    engineer=Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=data["visits"][0]["techs_assigned"][0]["id"]))
+                    
+                    ex_job=Job.objects.get(Q(company=request.user.company) & Q(job_id=job_id))
+                    update_if_changed(ex_job, data, field_map,request=request, affected_by_sync=True, )
+                    messages.success(request,f"Job with id {data['number']} synced successfully")
+                    return redirect('update_job',job_id)
+            else:      
+                updated_count=0
+                new_count=0  
+                for d in data["items"]:
+                
+                    if int(d["id"]):
+                        engineer=Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"]))
+                        try:
+                            
+                            ex_job=Job.objects.get(Q(company=request.user.company) & Q(job_id=d["number"]))
+                            x=update_if_changed(ex_job, d, field_map,request=request, affected_by_sync=True, )
+                            updated_count=updated_count+1 if len( x ) > 0 else updated_count
+                    
+                            # ex_job.address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}"
+                            # ex_job.parent_account=d["parent_customer"]
+                            # ex_job.post_code=d["postal_code"]
+                            # ex_job.date=d["visits"][0]["start_date"]
+                            # ex_job.from_time=d["visits"][0]["time_frame_promised_start"]
+                            # ex_job.to_time=d["visits"][0]["time_frame_promised_end"]
+                            # ex_job.birthday=d["created_at"]
+                            # ex_job.engineer=engineer
+                            # ex_job.save(update_fields=['address','parent_account','post_code','date','from_time','to_time','birthday','engineer'],request=request,affected_by_sync=True)
+                        except Job.DoesNotExist:
+                            synced_job=Job(
+                                company=request.user.company,
+                                job_id=int(d["number"]),
+                                address = f"{d['street_1']} {d.get('street_2', '')} {d['city']} {d['state_prov']} {d['postal_code']}",
+                                status= d["status"],
+                                quotation=None,
+                                engineer=engineer,#Temporarily nnon
+                                parent_account=d["parent_customer"],
+                                added_date=timezone.now(),
+                                items_arrived=False,
+                                post_code=d["postal_code"],
+                                quoted=False,
+                                quote_accepted=False,
+                                quote_declined=False,
+                                date=d["visits"][0]["start_date"],
+                                from_time=d["visits"][0]["time_frame_promised_start"],
+                                to_time=d["visits"][0]["time_frame_promised_start"],
+                                # history =None ,
+                                # comments = None,
+                                birthday=d["created_at"],
+                                retirement_date=None,
+                                on_hold=False,
+                                parts_need_attention=True if d["status"] == "paused" else False,
+                                added_by_sync=True,
+                                sf_id=int(d["id"]),
+                            )   
+                            synced_job.save(request=request,affected_by_sync=True)
+                            new_count=new_count+1
+
+                messages.success(request,f"{new_count}Jobs synced successfully.")
+                messages.success(request,f"{updated_count}Jobs updated successfully.")
+
+                           
             #data = data.get("items", [])# Convert to dict
-            messages.success(request,"Jobs synced successfully.")
+            
             return redirect("inventory")
-    except:
-        messages.error(request,"Synicng failed")
-        return redirect("inventory")
+    # except:
+    #     messages.error(request,"Synicng failed")
+    #     return redirect("inventory")
     
 
-#from geopy.distance import geodesic
-#
 def scheduler(request):
     import socket
     try:
@@ -1862,7 +1921,7 @@ def scheduler(request):
     ).first()
 
     # Safe handling
-    if not ex_sg.exists() or (request.POST and "regenerate" in request.POST):
+    if  (request.POST and "regenerate" in request.POST):
         if ex_sg.exists():
             ex_sg.delete()
 
@@ -1909,9 +1968,10 @@ def scheduler(request):
                     other = entry["other"]
                     distance = entry["distance"]
 
-                    if (distance <= 15 and len(jobs_list) < 9) or (
+                    if (distance <= 15    and len(jobs_list) < 9) or (
                         job.post_code.strip() == other.post_code.strip()
                     ):
+                        print(job.post_code, ">>>" ,other.post_code, "dis", distance)
                         jobs_list.append(other)
                         visited.add(other.id)
                 postcodes = [j.post_code.strip() for j in jobs_list if j.post_code]
@@ -1958,7 +2018,7 @@ def scheduler(request):
                 continue  # Skip already optimized groups   
 
             # Fetch related jobs
-            jobs = list(group.jobs.all())
+            jobs = list(group.ordered_jobs())
             
             # Attach coordinates (cached)
             for job in jobs:
@@ -1990,6 +2050,147 @@ def scheduler(request):
             pass
 
     # Get the first SchedulerGroup with no map_url
-    return render(request, "inventory/scheduler.html", {"groups":  ex_sg,'ex_sg':ex_sg[0] ,'groupx':groupx})
+    return render(request, "inventory/scheduler.html", {"groups":  ex_sg,'ex_sg':ex_sg[0] if ex_sg else None ,'groupx':groupx})
 
 #youssif_USF_SPY
+
+
+
+
+
+# views.py
+from calendar import monthrange, Calendar
+from datetime import date, datetime, timedelta
+from django.shortcuts import render, get_object_or_404
+from django.urls import reverse
+from django.http import JsonResponse, HttpResponseBadRequest
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+
+from .models import Job  # adjust import as needed
+
+@login_required
+def monthly_calendar(request, year=None, month=None):
+    # Defaults to current month
+    today = timezone.localdate()
+    if year and month:
+        try:
+            year = int(year); month = int(month)
+            current = date(year, month, 1)
+        except Exception:
+            current = date(today.year, today.month, 1)
+    else:
+        current = date(today.year, today.month, 1)
+
+    cal = Calendar(firstweekday=0)  # 0 = Monday? Python's 0 is Monday; change if needed
+    month_days = list(cal.monthdatescalendar(current.year, current.month))
+    # month_days is a list of weeks, each week is list of 7 date objects
+
+    # Filter jobs for this company and month range
+    user_company = getattr(request.user, 'company', None)
+    if not user_company:
+        jobs_qs = Job.objects.none()
+    else:
+        first_day = month_days[0][0]
+        last_day = month_days[-1][-1]
+        jobs_qs = Job.objects.filter(company=user_company, date__range=(first_day, last_day)).order_by('date', 'from_time')
+        
+    # Group jobs by date
+    jobs_by_date = {}
+    for job in jobs_qs:
+        if job.date:
+            jobs_by_date.setdefault(job.date, []).append(job) ####Need explanation waht is setdefault
+   
+    # Create prev/next month values
+    prev_month = (current.replace(day=1) - timedelta(days=1)).replace(day=1)
+    next_month = (current.replace(day=28) + timedelta(days=4)).replace(day=1)  # safe next-month calc
+    prev_month_url = reverse('calendar_month', args=[prev_month.year, prev_month.month])
+    next_month_url = reverse('calendar_month', args=[next_month.year, next_month.month])
+    
+
+    
+
+
+    context = {
+        'month_weeks': month_days,           # list of weeks -> each week is list of 7 date objects
+        'current_month': current,
+        'today': today,
+        'jobs_by_date': jobs_by_date,
+        'prev_month_url': prev_month_url,
+        'next_month_url': next_month_url,
+    }
+    if request.method=='POST':
+        print(request.POST)
+        if any(k in request.POST for k in ["change_from_date", "change_from_time", "change_to_time"]):            
+            job_id=request.POST.get("job_id")
+            job=jobs_qs.filter(job_id=job_id).first()
+            date_str = request.POST.get("change_from_date",None)
+            print("datestrr",date_str)
+            from_time_str = request.POST.get("change_from_time",None)  # corrected name
+            to_time_str = request.POST.get("change_to_time",None)
+            date_value = parse_date(date_str) if date_str else job.date
+            from_time_value = parse_time(from_time_str) if from_time_str else job.from_time
+            to_time_value = parse_time(to_time_str) if to_time_str else job.to_time
+            from django.forms.models import model_to_dict
+            data=model_to_dict(job)
+            data["date"] = date_value.strftime("%Y-%m-%d") if date_value else None
+            data["from_time"] = from_time_value.strftime("%H:%M:%S") if from_time_value else None
+            data["to_time"] = to_time_value.strftime("%H:%M:%S") if to_time_value else None
+
+            form = JobForm(data, instance=job)
+            
+            if form.is_valid():
+                job = form.save(commit=False)
+                
+                job.save(update_fields=["date", "from_time", "to_time"], request=request)
+                print(form.changed_data)
+                if 'date' in form.changed_data:
+                    
+                    messages.info(request,f"job {job.address} moved to {job.date} ")
+                return redirect(request.path) 
+            else:
+                context["form"] = form
+                context["form_job_id"] = form.instance.job_id
+                return render(request, 'inventory/calendar.html', context)
+            # context["form"]=form
+            
+        
+    return render(request, 'inventory/calendar.html', context)
+
+
+@login_required
+@require_POST
+def move_job_to_date(request):
+    """
+    AJAX endpoint: receives { job_id, target_date } and updates job.date to target_date.
+    Returns JSON with updated job summary.
+    """
+    try:
+        job_id = int(request.POST.get('job_id'))
+        target = request.POST.get('target_date')  # expected YYYY-MM-DD
+        target_date = datetime.strptime(target, "%Y-%m-%d").date()
+    except Exception:
+        return HttpResponseBadRequest("Invalid data")
+
+    job = get_object_or_404(Job, pk=job_id, company=request.user.company)
+    # Optionally clear times if you want
+    job.date = target_date
+    # If you want, keep existing times; otherwise uncomment:
+    # job.from_time = None
+    # job.to_time = None
+    job.save()
+
+    # minimal JSON summary for client update
+    data = {
+        'ok': True,
+        'job_id': job.id,
+        'new_date': job.date.isoformat(),
+        'card_html': render_job_card_html(job, request)  # returns small html snippet server-side
+    }
+    return JsonResponse(data)
+
+# small helper to render the job card server-side (so client can insert if needed)
+from django.template.loader import render_to_string
+def render_job_card_html(job, request):
+    return render_to_string('inventory/_job_card.html', {'job': job, 'request': request})

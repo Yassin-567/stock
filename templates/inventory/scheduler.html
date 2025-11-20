@@ -1,7 +1,7 @@
 {% extends 'inventory/base.html' %}
 {% load static %}
 {% block title %}
-  Scheduler - Stocky
+  Scheduler - goEng
 {% endblock %}
 {% block body %}
  
@@ -14,8 +14,9 @@
     -webkit-text-fill-color: transparent;
     font-weight: 600;
     "> <img 
-    src="{% static 'images/logo.jpg' %}" 
+    src="{% static 'images/logo.png' %}" 
     alt="goEng"
+    title="goEng"
     class="animated-logo logo me-0 d-inline-block align-text-top"
   />
   
@@ -27,6 +28,7 @@ Scheduler Assistant</h1>
   width: auto;
   object-fit: contain;
   animation: drive 3s ease-in-out forwards;
+  
 }
 /* Drive-in with a wobble effect */
 @keyframes drive {
@@ -49,19 +51,28 @@ Scheduler Assistant</h1>
   </div>
   <form action="" method="post" class="d-flex gap-3 align-items-center mt-3">
     {% csrf_token %}
+<input type="number" name="preferred_group_size" id="">
 
+<select name="preferred_distance" id="">
+  <option value="5">>5Km</option>
+  <option value="10">>10Km</option>
+  <option value="15">>15Km</option>
+  <option value="20">>20Km</option>
+
+</select>
     <button name="regenerate" type="submit" class="btn fw-bold shadow-sm px-4 py-2 rounded-pill" style="background: linear-gradient(90deg, #007bff, #22434eff); color: white; border: none;">🔄 Regenerate</button>
 
     <button name="optimize" type="submit" class="btn fw-bold shadow-sm px-4 py-2 rounded-pill" style="background: linear-gradient(90deg, #28a745, #5d866eff); color: white; border: none;">⚙️ Optimize</button>
   </form>
 
-  <span style="background-color: black;">⚠️ <small style="
+  <span >⚠️<span style="background-color: black;"> <small style="
     
     background: linear-gradient(90deg, #fce100);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-color: black;
     font-weight: 600;
-  ">Note: Optimization results may not be 100% accurate. Always double-check on maps.</small></span>
+  ">Note: Optimization results may not be 100% accurate. Always double-check on maps.</small></span></span>
   {% for group in groups %}
     {% if not group.wrong_postcodes %}
       <div class="card my-3 shadow-sm border-0" id="{{group.id}}" onclick="localStorage.setItem('lastJob',{{group.id}});">
@@ -93,6 +104,11 @@ Scheduler Assistant</h1>
                 <a href="{% url 'update_job' job.job_id %}" class="fw-bold text-decoration-none text-primary">{{ job.job_id }}</a>
                 <span class="text-muted">— {{ job.address }}-{{ job.post_code }}</span>
               </div>
+              <div>{% if  forloop.counter == 1  %} <span style="background: linear-gradient(90deg, #139391ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 600;
+      text-shadow: 0 0 10px rgba(220, 230, 32, 0.54);">Start</span> {% endif %}</div>
               <div><form action="" method="post" class="d-inline-flex align-items-center gap-1 m-0 p-0" style="font-size: 0.85rem;">
   {% csrf_token %}
   <input type="hidden" name="group_id" value="{{ group.id }}">

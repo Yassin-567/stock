@@ -3,7 +3,7 @@
 {% load custom_tags %}
 
 {% block title %}
-  Inventory - Stocky
+  Inventory - goEng
 {% endblock %}
 
 {% block body %}
@@ -62,8 +62,9 @@
               {% else %}
                 <tr>
                   <td style="background-color: brown;color: white;">{{ job.job_id }}</td>
-                  <td>                    <a href="{% url 'update_job' job.job_id %}" target="_blank">{{ job.address }}</a>
-</td>
+                  <td>
+                    <a href="{% url 'update_job' job.job_id %}" target="_blank">{{ job.address }}</a>
+                  </td>
                   {% if job.engineer %}
                     <td>{{ job.engineer }}</td>
                   {% else %}

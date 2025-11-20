@@ -3,7 +3,7 @@
   {% load custom_tags %}
 
   {% block title %}
-    Stocky
+    goEng
   {% endblock %}
   {% block body %}
     {% if messages %}
@@ -311,12 +311,13 @@ Detail view    </label>
               <tr id="{{ job.job_id }}" onclick="localStorage.setItem('lastJob',{{ job.job_id }});" >
                 <td>
                   <a href="{% url 'update_job' job.job_id %}" onclick="localStorage.setItem('lastJob',{{ job.job_id }});">{{ job.job_id }}</a>
-                  {% if job.on_hold %}✋{% endif %}
+                  {% if job.on_hold %}✋{% endif %}{% if job.parts_need_attention %}<span>👀</span>{% endif %}
                 </td>
                 <td>
                   <span class="badge status-{{ job.status }}">{{ job.get_status_display }}</span>
                 </td>
                 <td>
+                  
 {% if job.quoted %}
 
                   <form action="" method="post"> 
@@ -341,35 +342,38 @@ Detail view    </label>
                 </td>
                 <td>{{ job.address }} </td>
               
-                <form action="" method="post" name="change_datetime" onclick="this.form.submit();">
+                <form action="" method="post" name="change_datetime" >
                   {% csrf_token %}
 <input type="hidden" name="job_id" value="{{job.id}}" id="">
                 <td>
-                        <input type="text" id="added_from_date" name="change_from_date"
-                    class="form-control form-control-sm w-auto flatpickr_date"
-                    placeholder="{{ job.date|default:"Select date" }}"
-                    value="{{ job.date|date:'Y-m-d' }}" />
-    
-             </td>
+                      <div class="input-with-clear">
+                          <input type="text" id="added_from_date" name="change_from_date" class="form-control form-control-sm flatpickr_date" placeholder="{{ job.date|default:'Select date' }}" value="{{ job.date|date:'Y-m-d' }}" />
+                          <button type="submit" name="delete_date"  class="clear-btn" aria-label="Clear date" onclick="event.preventDefault(); ">×</button>
+                     
 
+                        </div>
+             </td>
 <td class="align-top">
   <div class="d-flex flex-column gap-1">
+    <div class="input-with-clear mt-1" style="max-width: 150px;">
     <input type="text" id="change_from_time" name="change_from_time"
            class="form-control form-control-sm flatpickr_time"
            style="width: 120px;"
            placeholder="From"
-           value="{{ job.from_time|time:'H:i' }}" />
-
+           value="{{ job.from_time|time:'H:i' }}" />      
+           <button type="submit" name="delete_from_time"  class="clear-btn" aria-label="Clear from time" onclick="event.preventDefault(); ">×</button>
+    </div>
+<div class="input-with-clear mt-1" style="max-width: 150px;">
     <input type="text" id="change_to_time" name="change_to_time"
            class="form-control form-control-sm flatpickr_time"
            style="width: 120px;"
            placeholder="To"
-           value="{{ job.to_time|time:'H:i' }}" />
-
+           value="{{ job.to_time|time:'H:i' }}" />                      
+            <button type="submit" name="delete_to_time"  class="clear-btn" aria-label="Clear to time" onclick="event.preventDefault(); ">×</button>
+</div>
     <button type="submit" class="btn btn-sm btn-primary mt-1 w-100">
       <i class="bi bi-funnel"></i> Apply
     </button>
-
     {% if form_job_id == job.job_id %}
       <div class="text-danger small mt-1">
         {{ form.to_time.errors }}
@@ -377,12 +381,29 @@ Detail view    </label>
     {% endif %}
   </div>
 </td>
-
-   
-  
   </form>
-
-
+   <script>
+    function clearInputAndSubmit(button) {
+      const input = button.parentElement.querySelector('input')
+        if (!input || input.value.trim() === '') {
+        return;
+    }
+      if (input ) {
+        input.value = 'None'
+      }
+      button.form.submit()
+    }
+    
+    // Attach event listeners dynamically on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.input-with-clear button.clear-btn').forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+          event.preventDefault()
+          clearInputAndSubmit(event.currentTarget)
+        })
+      })
+    })
+  </script>
 
                 <td >
                   <form action="" method="post">
@@ -404,7 +425,7 @@ Detail view    </label>
 
 
 
-                </td>
+            </td>
                 <td style="width: auto;">
                   {% if job.items.all %}
                   {{ job|total_quantity }} req items, Arrived: {{ job|total_arrived_quantity }}
@@ -470,6 +491,37 @@ Detail view    </label>
 </ul>
 </nav>
 </div>
+
+
+
+<style>
+                             .input-with-clear {
+                               position: relative;
+                               display: inline-block;
+                               max-width: 220px; /* adjust as needed */
+                             }
+                             .input-with-clear input {
+                               padding-right: 2rem; /* space for the clear button */
+                             }
+                             .input-with-clear button.clear-btn {
+                               position: absolute;
+                               right: 0.25rem;
+                               top: 50%;
+                               transform: translateY(-50%);
+                               border: none;
+                               background: transparent;
+                               color: #999;
+                               cursor: pointer;
+                               font-weight: bold;
+                               font-size: 1rem;
+                               padding: 0;
+                               line-height: 1;
+                             }
+                             .input-with-clear button.clear-btn:hover {
+                               color: #d33;
+                             }
+                           </style>
+
 <style>
   th a {
   color: white;
@@ -509,7 +561,8 @@ function updateSelectColor(select) {
 
 // Apply on page load
 document.querySelectorAll('.quote-select').forEach(updateSelectColor);
-</script><script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+</script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
 flatpickr('.flatpickr_date', {
 enableTime: false,
@@ -526,13 +579,7 @@ altFormat: 'F j, Y'
       altInput: true,
       altFormat: 'h:i K',
       allowInput: true,
-      onReady: function (selectedDates, dateStr, instance) {
-        instance._input.addEventListener('keydown', function (e) {
-          if (e.key === 'Backspace' || e.key === 'Delete') {
-            instance.clear()
-          }
-        })
-      }
+      
     })
 </script>
 

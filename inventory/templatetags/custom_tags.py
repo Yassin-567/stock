@@ -129,3 +129,18 @@ def days_float(value):
         return None
     delta = timezone.now() - value
     return delta.total_seconds() / 86400  # 86400 seconds in a day
+
+
+
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key, [])
+
+
+@register.filter
+def num_range(value):
+    try:
+        value = int(value)
+        return range(1, value + 1)
+    except:
+        return []

@@ -2,7 +2,7 @@
 {% load static %}
 {% load custom_tags %}
 
-{% block title %}Stocky{% endblock %}
+{% block title %}goEng{% endblock %}
 {% block body %}
 {% if messages %}
 {% for message in messages %}
@@ -39,6 +39,7 @@
         <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
         <option value="quoted" {% if status == 'quoted' %}selected{% endif %}>Quoted</option>
         <option value="on_hold" {% if status == 'on_hold' %}selected{% endif %}>On hold✋</option>
+        <option value="parts_need_attention" {% if status == 'parts_need_attention' %}selected{% endif %}>Parts need attention</option>
       </select>
     </div>
 
@@ -344,8 +345,11 @@ altFormat: 'F j, Y'
 <div class="row g-3">
 {% for h in job.history.all %}
   <div class="col-12">
+    
+
     <div class="card shadow-sm h-100">
       <div class="card-body text-center">
+        {% if h.updated_by_syncing %}🔄{% endif %}
         <h5 class="card-title">{{ h.content_type.model|capfirst }}</h5>
         <small class="text-muted">
           <a href="{{ h.content_object|get_link }}">{{ h.content_object }}</a>

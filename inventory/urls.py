@@ -31,6 +31,7 @@ urlpatterns=[
     path('adpaneleng/',views.engineer,name='add_eng'),
     path('updateeng/<int:pk>',views.update_engineer,name='update_engineer'),
     path('scheduler/',views.scheduler,name='scheduler'),
+    
    
     
 
@@ -39,7 +40,10 @@ urlpatterns=[
     path('batch_entry',views.batch_entry,name='batch_entry'),
     path('clear_batch',views.clear_batch,name='clear_batch'),
     path('create_batch_items/', views.create_batch_items, name='create_batch_items'),
+
     path('get_jobs_from_sf/', views.fetch_jobs, name='get_jobs_from_sf'),
+    path('get_jobs_from_sf/<int:job_id>/', views.fetch_jobs, name='get_jobs_from_sf'),
+
     path('sync_engineers/', views.sync_engineers_view, name='sync_engineers'),
     path('login/',views.login_user,name='login'),
     path('logout/',views.logout_user,name='logout'),
@@ -47,6 +51,8 @@ urlpatterns=[
     path('otp/',views.verify_otp,name='otp'),
     path('createjob/',views.job_create,name='create_job'),
     path('warehouse/',views.warehouse,name='warehouse'),
+    path('revieworders/',views.review_ordered_items,name='review_ordered_items'),
+
     path('show-sent-emails/', views.show_sent_emails, name='show_sent_emails'),
 
     path('emails',views.emails_history,name='emails_history'),
@@ -58,4 +64,8 @@ urlpatterns=[
     path('register/',views.register_user,name='register'),
     path('adpanel/',views.admin_panel,name='admin_panel'),
     path('api/',views.fetch_api_data,name='api_data'),
+
+    path('calendar/', views.monthly_calendar, name='calendar_root'),
+    path('calendar/<int:year>/<int:month>/', views.monthly_calendar, name='calendar_month'),
+    path('calendar/move-job/', views.move_job_to_date, name='move_job_to_date'),
 ]

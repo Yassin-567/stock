@@ -1,0 +1,420 @@
+{# templates/inventory/calendar.html #}
+{% extends 'inventory/base.html' %}
+{% load static %}
+{% load custom_tags %}
+
+{% block title %}
+  Calendar - {{ current_month|date:'F Y' }}
+{% endblock %}
+
+{% block body %}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">{{ current_month|date:'F Y' }}</h3>
+    <div>
+      <a href="{{ prev_month_url }}" class="btn btn-outline-secondary btn-sm" id="prev">&larr; Prev</a>
+      <a href="{{ next_month_url }}" class="btn btn-outline-secondary btn-sm" id="next">Next &rarr;</a>
+      <a href="{% url 'calendar_root' %}" class="btn btn-sm btn-outline-primary" id="today">Today</a>
+    </div>
+  </div>
+
+  <div class="calendar">
+    <!-- Weekday headers -->
+    <div class="week bg-light p-2" style="font-weight:600;">
+      <div class="col-1 d-flex flex-fill text-center" style="flex:1">Mon</div>
+      <div class="col-1 d-flex flex-fill text-center" style="flex:1">Tue</div>
+      <div class="col-1 d-flex flex-fill text-center" style="flex:1">Wed</div>
+      <div class="col-1 d-flex flex-fill text-center" style="flex:1">Thu</div>
+      <div class="col-1 d-flex flex-fill text-center" style="flex:1">Fri</div>
+      <div class="col-1 d-flex flex-fill text-center" style="flex:1">Sat</div>
+      <div class="col-1 d-flex flex-fill text-center" style="flex:1">Sun</div>
+    </div>
+
+    {# Weeks loop #}
+    {% for week in month_weeks %}
+      <div class="week d-flex">
+        {% for day in week %}
+          <div class="day 
+        {% if day.month != current_month.month %} empty {% endif %}
+        {% if day == today %} today {% endif %}" data-date="{{ day|date:'Y-m-d' }}" ondragover="allowDrop(event)" ondrop="dropOnDay(event)">
+            <div class="day-number">
+              <span>{{ day|date:'j' }}</span>
+              <small class="text-muted">{{ day|date:'M' }}</small>
+            </div>
+            {% for job in jobs_by_date|get_item:day %}
+              <div class="card shadow-border-0 mb-2" style="background-color: #f9faf8ff; border-radius: 10px;" id="{{ job.job_id }}" onclick="localStorage.setItem('lastJob', '{{ job.job_id }}');">
+                <div class="card-body p-2">
+                  <h6 class="card-title mb-1 text-truncate">
+                    <span class="fw-bold text-primary">#<a href="{% url 'update_job' job.job_id %}" onclick="localStorage.setItem('lastJob', '{{ job.job_id }}');">{{ job.job_id }}</a></span>
+                    <span class=" badge status-{{ job.status }}">{{ job.get_status_display }}</span>
+                  </h6>
+                  <div class="card-text small text-muted">
+                    <div>
+                      <strong>Eng:</strong> {{ job.return_egnineer }}
+                    </div>
+                    <div>
+                      <strong>Client:</strong> {{ job.parent_account }}
+                    </div>
+                    <div>
+                      <strong>Address:</strong> {{ job.address }}
+                    </div>
+                    <div>
+                      <strong>Quote:</strong> {{ job.quote_status }}
+                    </div>
+
+                    <form action="" method="post" name="change_datetime" onclick="this.form.submit();">
+                      {% csrf_token %}
+                      <div>
+                        <strong>Date:</strong>
+                        <div class="input-with-clear">
+                          <input type="text" id="added_from_date" name="change_from_date" class="form-control form-control-sm flatpickr_date" placeholder="{{ job.date|default:'Select date' }}" value="{{ job.date|date:'Y-m-d' }}" />
+                          <button type="submit" name="delete_date" value="" class="clear-btn" aria-label="Clear date" onclick="event.preventDefault(); ">×</button>
+                        </div>
+                      </div>
+
+                      <div class="mt-2">
+                        <strong>Time:</strong>
+                        {% if form_job_id == job.job_id %}
+                          <div class="text-danger small mt-1">{{ form.to_time.errors }}</div>
+                        {% endif %}
+                        <div>
+                          <input type="hidden" name="job_id" value="{{ job.job_id }}" id="" />
+
+                          <div class="input-with-clear mt-1" style="max-width: 150px;">
+                            <input type="text" id="change_from_time" name="change_from_time" class="form-control form-control-sm flatpickr_time" placeholder="From" value="{{ job.from_time|time:'H:i' }}" />
+                            <button type="submit" name="delete_from_time" value="" class="clear-btn" aria-label="Clear from time" onclick="event.preventDefault();">×</button>
+                          </div>
+
+                          <div class="input-with-clear mt-1" style="max-width: 150px;">
+                            <input type="text" id="change_to_time" name="change_to_time" class="form-control form-control-sm flatpickr_time" placeholder="To" value="{{ job.to_time|time:'H:i' }}" />
+                            <button type="submit" name="delete_to_time" value="" class="clear-btn" aria-label="Clear to time" onclick="event.preventDefault(); ">×</button>
+                          </div>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-primary mt-2 w-100"><i class="bi bi-funnel"></i> Apply</button>
+                      </div>
+                    </form>
+
+                    <div>
+                      <strong>Items:</strong> {{ job|total_quantity }}
+                    </div>
+                    <div>
+                      <strong>Arrived:</strong> {{ job|total_arrived_quantity }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% empty %}
+              <div class="text-muted small fst-italic">No jobs</div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    function clearInputAndSubmit(button) {
+      const input = button.parentElement.querySelector('input')
+      if (input) {
+        input.value = 'None'
+      }
+      button.closest('form').submit()
+    }
+    
+    // Attach event listeners dynamically on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.input-with-clear button.clear-btn').forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+          event.preventDefault()
+          clearInputAndSubmit(event.currentTarget)
+        })
+      })
+    })
+  </script>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+  <script>
+    /* ---------------- DATE PICKER (CLEARABLE) ---------------- */
+    flatpickr('.flatpickr_date', {
+      enableTime: false,
+      dateFormat: 'Y-m-d',
+      altInput: true,
+      altFormat: 'F j, Y',
+      allowInput: true
+    
+      // Update value ONLY when user selects a real date
+    })
+    
+    /* ---------------- TIME PICKERS (CLEARABLE) ---------------- */
+    flatpickr('.flatpickr_time', {
+      enableTime: true,
+      noCalendar: true,
+      dateFormat: 'H:i',
+      altInput: true,
+      altFormat: 'h:i K',
+      allowInput: true
+    
+      // Update only when user actually picks a time
+    })
+  </script>
+  <script>
+    window.addEventListener('load', function () {
+      let job_id = localStorage.getItem('lastJob')
+      if (!job_id) return
+    
+      let card = document.getElementById(job_id)
+      if (card) {
+        // Apply initial highlight
+    
+        card.style.transition = 'border-color 0.3s ease'
+        card.style.border = '4px solid #407299ff'
+        card.style.padding = '0.5rem 0.5rem'
+    
+        // Scroll smoothly to the element
+        card.scrollIntoView({ behavior: 'instant', block: 'center' })
+    
+        // After 2 seconds, fade out the border
+        setTimeout(() => {
+          card.style.transition = 'border-color 1s ease'
+          card.style.borderColor = 'transparent'
+        }, 2000)
+    
+        // Cleanup
+        localStorage.removeItem('lastJob')
+        return
+      }
+    })
+  </script>
+
+  <style>
+    .input-with-clear {
+      position: relative;
+      display: inline-block;
+      max-width: 220px; /* adjust as needed */
+    }
+    .input-with-clear input {
+      padding-right: 2rem; /* space for the clear button */
+    }
+    .input-with-clear button.clear-btn {
+      position: absolute;
+      right: 0.25rem;
+      top: 50%;
+      transform: translateY(-50%);
+      border: none;
+      background: transparent;
+      color: #999;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1rem;
+      padding: 0;
+      line-height: 1;
+    }
+    .input-with-clear button.clear-btn:hover {
+      color: #d33;
+    }
+  </style>
+  <style>
+    .status-ready {
+      background-color: rgb(0, 129, 43);
+    }
+    .status-paused {
+      background-color: rgb(0, 98, 255);
+    }
+    .status-cancelled {
+      background-color: rgb(167, 30, 12);
+    }
+    .status-completed {
+      background-color: rgb(131, 25, 108);
+    }
+    .status-quoted {
+      background-color: rgb(228, 216, 51);
+      color: #000;
+    }
+  </style>
+  <style>
+    /* Calendar layout */
+    .calendar {
+      border: 1px solid #e6e6e6;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .calendar .week {
+      display: flex;
+    }
+    .calendar .day {
+      flex: 1 0 0;
+      min-height: 140px;
+      border-right: 1px solid #e9ecef;
+      border-bottom: 1px solid #e9ecef;
+      padding: 6px;
+      position: relative;
+    }
+    .calendar .day.empty {
+      background: #f9fafb;
+      color: #9aa0a6;
+    }
+    .calendar .day .day-number {
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+    .calendar .day .drop-hint {
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+    
+    /* Job card */
+    .job-card {
+      background: #ffffff;
+      border-radius: 6px;
+      padding: 0.45rem 0.6rem;
+      margin-bottom: 0.5rem;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+      cursor: grab;
+    }
+    .job-card.dragging {
+      opacity: 0.5;
+      transform: scale(0.98);
+    }
+    .job-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 0.25rem;
+    }
+    .job-meta {
+      font-size: 0.82rem;
+      color: #555;
+    }
+    .job-status-badge {
+      font-size: 0.75rem;
+      padding: 3px 6px;
+      border-radius: 6px;
+      color: #fff;
+      text-transform: capitalize;
+    }
+    
+    /* status colors - match your CSS naming */
+    .status-ready {
+      background-color: rgb(0, 129, 43);
+    }
+    .status-paused {
+      background-color: rgb(0, 98, 255);
+    }
+    .status-completed {
+      background-color: rgb(131, 25, 108);
+    }
+    .status-cancelled {
+      background-color: rgb(167, 30, 12);
+    }
+    .status-quoted {
+      background-color: rgb(228, 216, 51);
+      color: #000;
+    }
+    
+    /* small helpers */
+    .day.today {
+      background: linear-gradient(90deg, rgba(240, 248, 255, 0.6), rgba(255, 255, 255, 0.4));
+    }
+    .day .jobs {
+      max-height: 320px;
+      overflow-y: auto;
+      padding-right: 4px;
+      margin-top: 6px;
+    }
+  </style>
+
+  {# CSRF token for fetch POSTs #}
+  <input type="hidden" id="csrf-token" value="{{ csrf_token }}" />
+
+  <!-- small template partial is used by both server and JS for rendering -->
+  {# we included _job_card.html above; nothing else needed here #}
+
+  <script>
+    /* ---- Drag & Drop logic ---- */
+    let draggingCard = null
+    
+    function allowDrop(ev) {
+      ev.preventDefault()
+      // highlight drop target optionally
+      ev.currentTarget.classList.add('drop-target')
+    }
+    function dropOnDay(ev) {
+      ev.preventDefault()
+      const target = ev.currentTarget
+      target.classList.remove('drop-target')
+    
+      const targetDate = target.getAttribute('data-date')
+      const jobId = ev.dataTransfer.getData('text/plain')
+      if (!jobId || !targetDate) return
+    
+      // optimistic move in DOM
+      const card = document.getElementById('job-card-'  jobId)
+      if (card) {
+        // append to target list
+        const list = target.querySelector('.jobs')
+        if (list) list.prepend(card)
+      }
+    
+      // send AJAX POST to update server
+      const csrftoken = document.getElementById('csrf-token').value
+      fetch("{% url 'move_job_to_date' %}", {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrftoken,
+          Accept: 'application/json'
+        },
+        body: new URLSearchParams({
+          job_id: jobId,
+          target_date: targetDate
+        })
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data.ok) {
+            // rollback UI or show an alert
+            alert('Failed to move job on server')
+            location.reload() // fallback
+          }
+        })
+        .catch((err) => {
+          console.error(err)
+          alert('Network error while moving job')
+          location.reload()
+        })
+    }
+    
+    /* Setup draggable handlers for existing cards */
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('.job-card').forEach((card) => {
+        card.addEventListener('dragstart', function (e) {
+          draggingCard = this
+          this.classList.add('dragging')
+          e.dataTransfer.setData('text/plain', this.datasetJobId)
+          // Firefox requires effectAllowed
+          e.dataTransfer.effectAllowed = 'move'
+        })
+        card.addEventListener('dragend', function () {
+          this.classList.remove('dragging')
+          draggingCard = null
+        })
+      })
+    
+      // remove drop-target class on mouseleave
+      document.querySelectorAll('.day').forEach((d) => {
+        d.addEventListener('dragleave', (e) => e.currentTarget.classList.remove('drop-target'))
+      })
+    })
+  </script>
+{% endblock %}

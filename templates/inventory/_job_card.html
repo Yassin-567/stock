@@ -1,0 +1,37 @@
+{# templates/inventory/_job_card.html #}
+{# Expects `job` in context #}
+<div class="job-card" id="job-card-{{ job.id }}" draggable="true" data-job-id="{{ job.id }}" data-job-status="{{ job.status }}" data-date="{{ job.date|default:'' }}">
+  <div class="d-flex justify-content-between align-items-start">
+    <div class="job-title">{{ job.parent_account|default:job.address|truncatechars:30 }}</div>
+    <div>
+      <span class="job-status-badge status-{{ job.status }}">{{ job.get_status_display }}</span>
+    </div>
+  </div>
+
+  <div class="job-meta mt-1">
+    <div>
+      <strong>Job:</strong> {{ job.job_id }}
+    </div>
+    <div>
+      <strong>When:</strong>
+      {% if job.date %}{{ job.date|date:'Y-m-d' }}{% endif %}
+      {% if job.from_time %}
+        — {{ job.from_time|time:'H:i' }}
+      {% endif %}
+    </div>
+    <div>
+      <strong>Address:</strong> {{ job.address|truncatechars:40 }}
+    </div>
+
+    <div class="mt-1">
+      <strong>Parts:</strong>
+      {% if job.items.all %}
+        {% with total_required=job|total_quantity total_arrived=job|total_arrived_quantity %}
+          {{ total_required }} req, Arrived: {{ total_arrived }}
+        {% endwith %}
+      {% else %}
+        No items
+      {% endif %}
+    </div>
+  </div>
+</div>

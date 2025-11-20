@@ -67,7 +67,7 @@ class Company(models.Model):
 
 
 class CompanySettings(models.Model):
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name="settings")
+    company = models.OneToOneField(Company, on_delete=models.CASCADE, null=True, blank=True, related_name="settings")
 
     integrate_sf=models.BooleanField(default=False)
     sf_access_token = models.TextField(blank=True, null=True)
@@ -135,6 +135,13 @@ class CustomUser(AbstractUser):
     class Meta:
         verbose_name_plural = 'users'
         ordering = ['is_owner','is_admin','is_employee','is_banned']
+
+        
+class UserSettings(models.Model):
+    company = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True, related_name="user_settings")
+    preferred_scheduler_distance=models.PositiveSmallIntegerField(null=True,blank=True)
+    preferred_scheduler_group_size=models.PositiveSmallIntegerField(null=True,blank=True)
+
 ################################## Items, engineers and Jobs ######################################
 class Engineer(models.Model):
     name=models.CharField(max_length=40,)
@@ -184,29 +191,49 @@ class Job(models.Model):
     birthday=models.DateTimeField(auto_now_add=True)
     retirement_date=models.DateTimeField(null=True,blank=True)
     on_hold=models.BooleanField(default=False)
+    parts_need_attention=models.BooleanField(default=False)
     added_by_sync=models.BooleanField(default=False)
     emailed=models.DateTimeField(null=True,blank=True)
+    sf_id=models.PositiveIntegerField(max_length=40,blank=True,null=True)
+
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
     def save(self,*args, request=None,dont_save_history=False,affected_by_sync=False,**kwargs):
-        if not self.pk:
+        print("OK hahah")
+        if not self.pk or affected_by_sync:
             super().save(*args, **kwargs) 
-            self.retirement_date=self.birthday+timedelta(days=7)
             
+            self.retirement_date=self.birthday+timedelta(days=7)
         self.request=request
         self.dont_save_history=dont_save_history
         self.affected_by_sync=affected_by_sync
 
         job_reopened(self,)
+        self.parts_need_attention = self.items.filter(ordered=False,from_warehouse=False).exists()
+        print("KKK",self.parts_need_attention)
+        print(self.items.filter(ordered=False,from_warehouse=False))
         if not job_completed(self,) and  self.status!='cancelled':
 
-            self.status = 'ready' if items_arrived(self) and items_not_used(self) and quote_accepted(self) and not self.on_hold else 'paused'
+            self.status = 'ready' if items_arrived(self) and items_not_used(self) and quote_accepted(self) and not self.on_hold and not self.parts_need_attention else 'paused'
             self.items_arrived=items_arrived(self) and items_not_used(self) 
+        if self.quoted:
+            if not self.quote_accepted:
+                self.status="paused"
         elif self.status=='cancelled' and self.quoted and not self.quote_accepted and not self.quote_declined :
             self.quote_declined=True
-
         super().save(*args, **kwargs)
+
+        
+    def quote_status(self):
+        if self.quoted:
+            if quote_accepted:
+                return "Quote Accepted"
+            return "Quote Declined"
+    def return_egnineer(self):
+        if self.engineer:
+            return self.engineer
+        return "No Engineer"
     def __str__(self):
         #return self.address +" ("+ str(self.parent_account)+") "
         return str(self.id)
@@ -305,7 +332,7 @@ class JobItem(models.Model):
         super().save(*args, **kwargs)
         if not dont_move_used and not no_recursion:
             
-            self.job.save(update_fields=['status','items_arrived'],request=self.request,dont_save_history=True)
+            self.job.save(update_fields=['status','items_arrived',"parts_need_attention"],request=self.request,dont_save_history=True)
             
     def __str__(self):
         return str(self.name)

@@ -70,10 +70,12 @@ def item_arrived(self):
         
         return True
     if self.ordered:
+            print("LLLLLLLLLLL", self.arrived_quantity)
             if self.arrived_quantity >= self.job_quantity:
                 self.arrived = True
             else:
                 self.arrived=False
+            
     else:
         self.arrived = False
     return self.arrived
@@ -111,7 +113,7 @@ def send_guest_email(email, login_email,password):
     from django.core.mail import send_mail
     from django.conf import settings
     send_mail(
-        subject='Stocky login credentials',
+        subject='goEng login credentials',
         message=f'Welcome to Stock, \n Your login details \n Email: {login_email} \n Password: {password} ',
         from_email=settings.EMAIL_HOST_USER,
         recipient_list=[email],
@@ -222,11 +224,11 @@ def refresh_sf_token(company):
 def sync_engineers_func(request):
 
     from .models import Engineer
-    url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/engs"
-    headers = {"Authorization": f"Bearer {request.user.company.sf_access_token}"}
+    # url = "https://api.servicefusion.com/v1/techs" #for production
+    url = "https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/engs" #for testing
+    headers = {"Authorization": f"Bearer {request.user.company.settings.sf_access_token}"}
     response = requests.get(url, headers=headers)
-
-
+    
     if response.status_code == 401:
         new_token = refresh_sf_token(request.user.company)
         headers = {"Authorization": f"Bearer {new_token}"}
@@ -267,7 +269,7 @@ def update_if_changed(instance: models.Model, d: dict, field_map: dict, *,reques
         list: Names of changed fields (empty if no change).
     """
     changed_fields = []
-
+    print("affected",affected_by_sync)
     for field, get_val in field_map.items():
         try:
             # if field=="date" or field=="birthday":
@@ -278,7 +280,6 @@ def update_if_changed(instance: models.Model, d: dict, field_map: dict, *,reques
             new_val = get_val(d)
         except Exception as e:
             continue
-
         old_val = getattr(instance, field)
 
         # Optional cleanup for strings
@@ -286,26 +287,31 @@ def update_if_changed(instance: models.Model, d: dict, field_map: dict, *,reques
             new_val = new_val.strip()
         if isinstance(old_val, str):
             old_val = old_val.strip()
-
+        
         # Optionally skip empty values
         if ignore_empty and (new_val in ("", None)):
             continue
 
         # Compare & update
         if old_val != new_val:
+            
             setattr(instance, field, new_val)
             changed_fields.append(field)
 
+        if field=="status":
+            if new_val=="paused":
+                # changed_fields.remove("status")
+                instance.parts_need_attention=True
+                changed_fields.append("parts_need_attention")
+        
     # Save only if something actually changed
     if changed_fields:
+        changed_fields.append("retirement_date")
         instance.save(
             update_fields=changed_fields,
             request=request,
             affected_by_sync=affected_by_sync
         )
-        print(f"✅ {instance.__class__.__name__} {getattr(instance, 'id', '')} updated — {changed_fields}")
-    else:
-        print(f"⏩ {instance.__class__.__name__} {getattr(instance, 'id', '')} skipped — no changes detected.")
 
     return changed_fields
 import requests
@@ -592,6 +598,8 @@ def _greedy_fallback(jobs):
     else:
         optimized = [valid_jobs[0]]
         remaining = list(valid_jobs[1:])
+        print("op",optimized)
+        print(remaining)
 
         while remaining:
             last = optimized[-1]
