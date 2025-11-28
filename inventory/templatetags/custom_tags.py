@@ -4,6 +4,8 @@ from django.urls import reverse
 from django.db.models import Q
 register = template.Library()
 from django.shortcuts import redirect
+from django.utils.http import urlencode
+from django.utils.safestring import mark_safe
 
 @register.filter
 def is_admin(user):
@@ -144,3 +146,105 @@ def num_range(value):
         return range(1, value + 1)
     except:
         return []
+    
+
+
+@register.simple_tag
+def next_sort(current_sort, field):
+    if current_sort == field:
+        return f"-{field}"
+    return field
+
+
+
+@register.simple_tag
+def sortable(field,name, current_sort, query_dict=None):
+    """
+    Generates a full <th> with clickable sorting link and arrow icons.
+
+    Usage:
+        {% sortable 'name' sort query %}
+
+    field: the field to sort by
+    current_sort: the current ?sort=
+    query_dict: a QueryDict converted to a dictionary (except 'sort')
+    """
+
+    # Determine sorting state
+    if current_sort == field:
+        # Currently ascending → next descending
+        next_sort = "-" + field
+        arrow = "▲"
+    elif current_sort == "-" + field:
+        # Currently descending → next ascending
+        next_sort = field
+        arrow = "▼"
+    else:
+        # Not sorted → default icon
+        next_sort = field
+        arrow = "▲▼"
+
+    # Rebuild querystring without "sort"
+    base_qs = urlencode(query_dict) if query_dict else ""
+
+    # Build final URL
+    if base_qs:
+        url = f"?{base_qs}&sort={next_sort}"
+    else:
+        url = f"?sort={next_sort}"
+    # Return HTML ready to use inside <th>
+    html = f"""
+        <div style='display:flex; align-items:center; gap:4px;'>
+            <span>{name}</span>
+            <a href="{url}" style="text-decoration:none;">{arrow}</a>
+        </div>
+    """
+    return mark_safe(html)
+
+import folium
+from folium.features import DivIcon
+
+@register.simple_tag
+def get_map(ex_sg):
+    x=ex_sg.ordered_jobs()
+   
+   
+    m = folium.Map(location=[x[0].latitude,x[0].longitude], zoom_start=11)
+
+    trail_coordinates = ex_sg.get_jobs_coordinates()
+
+    folium.Marker((x[0].latitude,x[0].longitude), icon=folium.Icon("green")).add_to(m)
+    folium.Marker((x[len(x)-1].latitude,x[len(x)-1].longitude), icon=folium.Icon("red")).add_to(m)
+    folium.Marker(
+            location=[x[0].latitude, x[0].longitude],
+            icon=DivIcon(
+                icon_size=(150, 36),
+                icon_anchor=(0, 0),
+                html=f'<div style="font-size: 20px; color: green;  font-weight: bold;">{x[0].post_code}</div>',
+            )
+        ).add_to(m)
+    folium.Marker(
+            location=[x[len(x)-1].latitude, x[len(x)-1].longitude],
+            icon=DivIcon(
+                icon_size=(150, 36),
+                icon_anchor=(0, 0),
+                html=f'<div style="font-size: 20px; color: red; font-weight: bold; ">{x[len(x)-1].post_code}</div>',
+            )
+        ).add_to(m)
+    for i in range(2,len(x)-1):
+        # folium.Marker((x[i].latitude,x[i].longitude), icon=folium.Icon("orange")).add_to(m)
+        folium.Marker(
+            location=[x[i].latitude, x[i].longitude],   
+            icon=DivIcon(
+                icon_size=(150, 36),
+                icon_anchor=(0, 0),
+                html=f'<div style="font-size: 12px; color: blue; font-weight: bold; ">{x[i].post_code}</div>',
+            )
+        ).add_to(m)
+
+    folium.PolyLine(trail_coordinates, tooltip="Coast").add_to(m)
+    folium.PolyLine(trail_coordinates, tooltip="Coast").add_to(m)
+    
+    # Convert map to HTML string
+    map_html = m._repr_html_() 
+    return mark_safe(map_html)

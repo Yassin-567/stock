@@ -10,9 +10,11 @@ class GuestCleanupMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-
+        
         now = timezone.now()
         try :
+           
+
             Company.objects.filter(is_guest=True, expiry_date__lt=now).delete()
         except:
             pass

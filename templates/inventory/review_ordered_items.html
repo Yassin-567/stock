@@ -8,72 +8,102 @@
       {% for message in messages %}
         <div class="alert alert-{{ message.tags }}">{{ message }}</div>
       {% endfor %}
-    {% endif %}
-    <form method="get" class="mb-3">
-        <label for="entry_method" class="form-label">Filter by entry method:</label>
-        <select name="entry_method" onchange="this.form.submit()" class="form-select w-auto d-inline">
-            <option value="all" {% if not entry_method or entry_method == 'all' %}selected{% endif %}>All</option>
+    {% endif %}<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap">
+
+    <form method="get" class="row row-cols-lg-auto g-2 align-items-center mb-0"
+        style="
+          width: fit-content;
+          padding: 8px 14px;
+          background-color: #2e3946;
+          color: #a5e1c7;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        ">
+
+        <div class="col-auto">
+            <label for="items_status" class="form-label mb-0 me-1 ">Filter status:</label>
+            <select name="items_status" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
+                <option value="all" {% if not items_status or items_status == 'all' %}selected{% endif %}>All</option>
+                <option value="arrived" {% if items_status == 'arrived' %}selected{% endif %}>Arrived</option>
+                <option value="not_arrived" {% if items_status == "not_arrived" %}selected{% endif %}>Awaiting</option>
+            </select>
+        </div>
+
+        <div class="col-auto">
+            <label for="ordered_from_date" class="form-label mb-0  ">From</label>
+            <input type="text" id="date" name="ordered_from_date"
+                class="form-control form-control-sm w-auto flatpickr_date"
+                placeholder="Select date"
+                value="{{ request.GET.ordered_from_date }}" />
+        </div>
+
+        <div class="col-auto">
+            <label for="ordered_to_date" class="form-label mb-0 me-1 ">To</label>
+            <input type="text" id="date" name="ordered_to_date"
+                class="form-control form-control-sm w-auto flatpickr_date"
+                placeholder="Select date"
+                value="{{ request.GET.ordered_to_date }}" />
+        </div>
+
+        <div class="col-auto">
+            <label for="search" class="form-label mb-0 me-1">Search</label>
+            <input type="search" name="q"
+                class="form-control form-control-sm w-auto"
+                placeholder="Search"
+                aria-label="Search"
+                value="{{ request.GET.q }}" />
+        </div>
+
+        <div class="col-auto">
+            <button type="submit" class="btn btn-sm mt-2" style="background-color: #009e6c;">
+                <i class="bi bi-funnel"></i> Apply
+            </button>
+        </div>
+ <div class="col-auto">
+              <a style="font-size: larger;color: #b51e0eff;" href="{% url "review_ordered_items" %}">X</a>
             
-            <option value="batch_entry" {% if entry_method == "batch_entry"  %}selected{% endif %}>Batch entry method</option>
-            <option value="normal_entry" {% if entry_method == "normal_entry" %}selected{% endif %}>Normal method</option>
-    
-        </select> 
-        <label for="items_status" class="form-label">Filter by entry method:</label>
-        <select name="items_status" onchange="this.form.submit()" class="form-select w-auto d-inline">
-            <option value="available" {% if not items_status or items_status == 'available' %}selected{% endif %}>Available parts</option>
-            
-            <option value="used" {% if items_status == "used"  %}selected{% endif %}>Used parts from warehouse</option>
-            <option value="linked" {% if items_status == "linked" %}selected{% endif %}>Linked to a job</option>
-    
-        </select>
-<div class="col-auto  ">
-    <label for="search" class="form-label mb-0 me-1">Search</label>
-    <input type="search" name="q"
-      class="form-control form-control-sm w-auto"
-      placeholder="Search jobs"
-      aria-label="Search"
-      value="{{ request.GET.q }}" />
-  </div>
+        </div>
     </form>
 
+</div>
 
-   <a href="{% url 'add_warehouseitem' %}" 
-   style="
-      display: inline-block;
-      margin: 4px;
-      padding: 8px 16px;
-      background: linear-gradient(135deg, #4facfe, #00f2fe);
-      color: white;
-      font-weight: 600;
-      font-size: 0.9rem;
-      border-radius: 8px;
-      text-decoration: none;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-      transition: all 0.2s ease;
-   "
-   onmouseover="this.style.background='linear-gradient(135deg, #00f2fe, #4facfe)'; this.style.transform='scale(1.05)';"
-   onmouseout="this.style.background='linear-gradient(135deg, #4facfe, #00f2fe)'; this.style.transform='scale(1)';">
-   ➕ Add Warehouse Item
-</a>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+flatpickr('.flatpickr_date', {
+enableTime: false,
+dateFormat: 'Y-m-d',
+altInput: true,
+altFormat: 'F j, Y'
+})
+</script>
 
-<a href="{% url 'batch_entry' %}" 
-   style="
-      display: inline-block;
-      margin: 4px;
-      padding: 8px 16px;
-      background: linear-gradient(135deg, #43e97b, #38f9d7);
-      color: white;
-      font-weight: 600;
-      font-size: 0.9rem;
-      border-radius: 8px;
-      text-decoration: none;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-      transition: all 0.2s ease;
-   "
-   onmouseover="this.style.background='linear-gradient(135deg, #38f9d7, #43e97b)'; this.style.transform='scale(1.05)'; "
-   onmouseout="this.style.background='linear-gradient(135deg, #43e97b, #38f9d7)'; this.style.transform='scale(1)';">
-   📂 Bulk Add (Excel File)
-</a>
+ <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+
+
+    <a href="{% url 'warehouse' %}" 
+    style="
+        display: inline-block;
+        margin: 4px;
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #1e2e3cff, #151a1aff);
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border-radius: 8px;
+        text-decoration: none;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        transition: all 0.2s ease;
+    "
+    onmouseover="this.style.background='linear-gradient(135deg, #424949ff, #4d4f52ff)'; this.style.transform='scale(1.05)';"
+    onmouseout="this.style.background='linear-gradient(135deg, #1e2e3cff, #151a1aff)'; this.style.transform='scale(1)';">
+        🔙Back to Warehouse
+    </a>
+
+</div>
 
     <div class="accordion">
       <!-- 1. Warehouse Items -->
@@ -93,17 +123,43 @@
       "> Following items are Ordered for certain jobs and they haven't been used yet.<span >
         </h2>
         <div >
+
+
+
           <div class="accordion-body">
             {% if items %}
               <table class="table table-striped table-sm align-middle">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Part Number</th>
-                    <th>Price</th>
-                    <th>Ordered Qty</th>
-                    <th>Arrived Qty</th>
-                    <th>Job</th>
+
+
+<th>
+{% sortable 'name' 'Name' sort clean_query %}
+
+</th>
+
+
+                    <th>
+                      {% sortable 'part_number' 'Part Number' sort clean_query %}
+                    </th>
+                    <th>{% sortable 'price' 'Price' sort clean_query %}
+                      
+
+                    </th>
+                    <th>{% sortable 'ordered_date' 'Order date' sort clean_query %}
+                    </th>
+
+                    <th>{% sortable 'job_quantity' 'Ordered Quantity' sort clean_query %}
+
+
+                    </th>
+                    <th>{% sortable 'arrived_quantity' "Arrived Quantity" sort clean_query %}
+                
+                    </th>
+                    <th>Job
+                      
+                    </th>
+                
                   </tr>
                 </thead>
                 <tbody>
@@ -113,10 +169,12 @@
                         <a href="{% url 'update_item' item.id %}">{{ item.name }}</a>
                       </td>
                       <td>{{ item.part_number }}</td>
-                      <td>${{ item.price }}</td>
+                      <td>{{request.user.company.settings.currency_symbol}}{{ item.price }}</td>
+                      <td>{{ item.ordered_date }}</td>
+
                       <td >{{ item.job_quantity }}</td>
 
-                      <td {% if item.job_quantity == item.arrived_quantity %} style="background-color: #43e97b;" {% else %}style="background-color: #b51e0eff;"{% endif %}>
+                      <td {% if item.arrived%} style="background-color: #43e97b;" {% else %}style="background-color: #b51e0eff;"{% endif %}>
                         <form action="" method="post">
                           {% csrf_token %}
                           <input type="hidden" name="item_id" value="{{item.id}}">
@@ -152,4 +210,46 @@
            <!-- 4. Taken Moved Items -->
     </div> <!-- /accordion -->
   </div> <!-- /container -->
+
+  
+
+<div class="d-flex justify-content-center mt-4">
+<nav>
+<ul class="pagination pagination-sm mb-0">
+{% if page_obj.has_previous %}
+  <li class="page-item">
+    <a class="page-link"
+      href="?page=1{{querystring}}"
+      title="First">&laquo;</a>
+  </li>
+  <li class="page-item">
+    <a class="page-link"
+      href="?page={{ page_obj.previous_page_number }}{{querystring}}"
+      title="Previous">&lsaquo;</a>
+  </li>
+  {% else %}
+  <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+  <li class="page-item disabled"><span class="page-link">&lsaquo;</span></li>
+{% endif %}
+
+<li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+
+{% if page_obj.has_next %}
+  <li class="page-item">
+    <a class="page-link"
+      href="?page={{ page_obj.next_page_number }}{{querystring}}"
+      title="Next">&rsaquo;</a>
+  </li>
+  <li class="page-item">
+    <a class="page-link"
+      href="?page={{ page_obj.paginator.num_pages }}{{querystring}}"
+      title="Last">&raquo;</a>
+  </li>
+{% else %}
+  <li class="page-item disabled"><span class="page-link">&rsaquo;</span></li>
+  <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+{% endif %}
+</ul>
+</nav>
+</div>
 {% endblock %}

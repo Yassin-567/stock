@@ -185,122 +185,27 @@ Detail view    </label>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
     {% if rjobs %}
       <div  class="table-responsive">
+        <style>
+ 
+</style>
         <table class="table table-striped table-hover align-middle">
         <thead class="table-dark">
-  <tr>
-    <th>Job ID
-      {% with request.GET.urlencode|cut:'sort=' as query %}
-      <a href="?{{ query }}&sort={% if request.GET.sort  == 'job_id' %}-job_id{% else %}job_id{% endif %}">
-        
-        {% if request.GET.sort == 'job_id' %}
-          ▲
-        {% elif request.GET.sort == '-job_id' %}
-          ▼
-           {% else %}
-          ▲▼
-        {% endif %}
-        {% endwith %}
-      </a>
+  <tr >
+    <th >  {% sortable 'job_id' 'Job ID' sort clean_query %}
     </th>
-    <th>Status
-      {% with request.GET.urlencode|cut:'sort=' as query %}
-      <a href="?{{ query }}&sort={% if request.GET.sort == 'status' %}-status{% else %}status{% endif %}">
-        
-        {% if request.GET.sort == 'status' %}
-          ▲
-        {% elif request.GET.sort == '-status' %}
-          ▼
-           {% else %}
-          ▲▼
-        {% endif %}
-        {% endwith %}
-      </a>
+    <th>  {% sortable 'status' 'Status' sort clean_query %}
     </th>
-    <th>Quotation
-      {% with request.GET.urlencode|cut:'sort=' as query %}
-      <a href="?{{ query }}&sort={% if request.GET.sort  == 'quotation' %}-quotation{% else %}quotation{% endif %}">
-        
-        {% if request.GET.sort == 'quotation' %}
-          ▲
-        {% elif request.GET.sort == '-quotation' %}
-          ▼
-           {% else %}
-          ▲▼
-        {% endif %}
-        {% endwith %}
-      </a>
+    <th>  {% sortable 'quotation' 'Quotation' sort clean_query %}
     </th>
-    <th>Address
-      {% with request.GET.urlencode|cut:'sort=' as query %}
-      <a href="?{{ query }}&sort={% if request.GET.sort  == 'address' %}-address{% else %}address{% endif %}">
-        
-        {% if request.GET.sort == 'address' %}
-          ▲
-        {% elif request.GET.sort == '-address' %}
-          ▼
-          {% else %}
-          ▲▼
-        {% endif %}
-        {% endwith %}
-      </a>
+    <th>  {% sortable 'address' 'Address' sort clean_query %}
     </th>
-    <th>Date
-      {% with request.GET.urlencode|cut:'sort=' as query %}
-     <a href="?{{ query }}&sort={% if request.GET.sort  == 'date' %}-date{% else %}date{% endif %}">
-        
-        {% if request.GET.sort == 'date' %}
-          ▲
-        {% elif request.GET.sort == '-date' %}
-          ▼
-           {% else %}
-          ▲▼
-        {% endif %}
-        {% endwith %}
-      </a>
+    <th>  {% sortable 'date' 'Date' sort clean_query %}
     </th>
-    <th>Time
-      {% with request.GET.urlencode|cut:'sort=' as query %}
-      <a href="?{{ query }}&sort={% if request.GET.sort  == 'from_time' %}-from_time{% else %}from_time{% endif %}">
-        
-        {% if request.GET.sort == 'from_time' %}
-          ▲
-        {% elif request.GET.sort == '-from_time' %}
-        
-          ▼
-           {% else %}
-          ▲▼
-        {% endif %}
-        {% endwith %}
-      </a>
+    <th>  {% sortable 'from_time' 'Time ' sort clean_query %}
     </th>
-    <th>Engineer
-      {% with request.GET.urlencode|cut:'sort=' as query %}
-      <a href="?{{ query }}&sort={% if request.GET.sort  == 'engineer__name' %}-engineer__name{% else %}engineer__name{% endif %}">
-        
-        {% if request.GET.sort == 'engineer__name' %}
-          ▲
-        {% elif request.GET.sort == '-engineer__name' %}
-          ▼
-           {% else %}
-          ▲▼
-        {% endif %}
-        {% endwith %}
-      </a>
+    <th>  {% sortable 'engineer' 'Engineer' sort clean_query %}
     </th>
-    <th>Items
-
-
-      {% with request.GET.urlencode|cut:'sort=' as query %}
-      <a href="?{{ query }}&sort={% if request.GET.sort  == 'items' %}-items{% else %}items{% endif %}">
-        
-        {% if request.GET.sort == 'items' %}
-          ▲
-        {% elif request.GET.sort == '-items' %}
-          ▼
-           {% else %}
-          ▲▼
-        {% endif %}
-        {% endwith %}
+    <th>  {% sortable 'items' 'Items' sort clean_query %}
     </th>
   </tr>
 </thead>
@@ -323,7 +228,7 @@ Detail view    </label>
                   <form action="" method="post"> 
                     {% csrf_token %}
                     <input type="hidden" name="job_id" value="{{job.id}}" id="">
-                    ${{job.quotation}}
+                    {{request.user.company.settings.currency_symbol}}{{job.quotation}}
                 <select name="change_quote_status"
         onchange="updateSelectColor(this); this.form.submit();"
         class="quote-select"
@@ -433,7 +338,7 @@ Detail view    </label>
                   <ul class="job-items list-unstyled ms-2" style="display:none;">
                    {% for item in job.items.all %}
       <div>
-        <a href="{% url 'update_item' item.id %}">{{ item.name }}</a> - {{ item.part_number }} - ${{ item.price }}
+        <a href="{% url 'update_item' item.id %}">{{ item.name }}</a> - {{ item.part_number }} - {{request.user.company.settings.currency_symbol}}{{ item.price }}
       </div>
     {% empty %}
       <div>--</div>

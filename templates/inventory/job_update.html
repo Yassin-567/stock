@@ -7,6 +7,7 @@
       <div class="alert alert-{{ message.tags }}" style="z-index: 999;">{{ message }}</div>
     {% endfor %}
   {% endif %}
+  <a href="{% url 'get_jobs_from_sf' job.job_id %}">sync</a>
   <h2 class="job-header">
     <!-- Job ID -->
     <span>
@@ -21,7 +22,7 @@
     <!-- Quotation -->
     {% if job.quoted %}
       <span class="quote-box">
-        Quoted: $<span class="quote-value">{{ job.quotation }}</span>
+        Quoted: {{request.user.company.settings.currency_symbol}}<span class="quote-value">{{ job.quotation }}</span>
 
         {% if job.quote_accepted %}
           <span class="quote-status accepted">Quote accepted</span>
@@ -252,7 +253,7 @@
   <ol>
     {% for jobitem in job.items.all %}
       <li>
-        <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.name }}</a> - Part Number: {{ jobitem.part_number }} - Price: ${{ jobitem.price }} - Qty: {{ jobitem.job_quantity }}
+        <a href="{% url 'update_item' jobitem.id %}">{{ jobitem.name }}</a> - Part Number: {{ jobitem.part_number }} - Price: {{request.user.company.settings.currency_symbol}}{{ jobitem.price }} - Qty: {{ jobitem.job_quantity }}
       {% if jobitem.arrived and not jobitem.is_used and not jobitem.from_warehouse %}
         <span class="tag arrived">Arrived</span>
 {% elif jobitem.ordered and not jobitem.from_warehouse and not jobitem.is_used %}
@@ -303,8 +304,9 @@ box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     <h3>Comments</h3>
     <div class="comments-container">
       {% for comment in comments %}
-        <div class="comment-card">
+        <div class="comment-card {% if comment.from_sf %}from-sf{% endif %}" >
           <span>Added by {{ comment.added_by.username }}</span>
+        {% if comment.from_sf %}  <small style="color: #008000; font-size: smaller;">Synced from Service fusion</small>{% endif %}
           <p style="color: rgba(117, 58, 255, 0.79);">{{ comment }}</p>
           <span>{{ comment.added_date }}</span>
         </div>
@@ -313,6 +315,16 @@ box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       {% endfor %}
     </div>
   </section>
+  <style>
+
+    .from-sf {
+      background-color: #f0f0f0;
+      border-left: 4px solid #008000;
+      padding: 10px;
+      margin-bottom: 10px;
+   
+    }
+  </style>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       const statusField = document.getElementById('id_status')

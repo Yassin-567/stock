@@ -30,10 +30,10 @@
           <strong>End Date:</strong> {{ job.end_date }}
         </p>
         <p>
-          <strong>Total:</strong> ${{ job.total }}
+          <strong>Total:</strong> {{ request.user.company.settings.currency_symbol }}{{ job.total }}
         </p>
         <p>
-          <strong>Due Total:</strong> ${{ job.due_total }}
+          <strong>Due Total:</strong> {{ request.user.company.settings.currency_symbol }}{{ job.due_total }}
         </p>
 
         {% if job.techs_assigned %}

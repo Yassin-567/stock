@@ -67,18 +67,30 @@ class Company(models.Model):
 
 
 class CompanySettings(models.Model):
-    company = models.OneToOneField(Company, on_delete=models.CASCADE, null=True, blank=True, related_name="settings")
 
+    CURRENCY_CHOICES = [
+            ("USD", "$"),
+            ("GBP", "£"),
+           
+        ]
+        
+    company = models.OneToOneField(Company, on_delete=models.CASCADE, null=True, blank=True, related_name="settings")
+    currency = models.CharField(
+            max_length=10,
+            choices=CURRENCY_CHOICES,
+            default="GBP",
+        )
     integrate_sf=models.BooleanField(default=False)
     sf_access_token = models.TextField(blank=True, null=True)
     sf_refresh_token = models.TextField(blank=True, null=True)
     sf_token_expires = models.DateTimeField(blank=True, null=True)
     sf_client_id=models.TextField(blank=True,null=True)
     sf_client_secret=models.TextField(blank=True, null=True)
-    
-
-# class CompanySettings(models.Model):
-   
+    def currency_symbol(self):
+            display = self.get_currency_display()
+            return display
+        
+#class CompanySettings(models.Model):
 #     company = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='settings')    
 #     use_own_db = models.BooleanField(default=False)
 #     db_name = models.CharField(max_length=100)
@@ -194,27 +206,35 @@ class Job(models.Model):
     parts_need_attention=models.BooleanField(default=False)
     added_by_sync=models.BooleanField(default=False)
     emailed=models.DateTimeField(null=True,blank=True)
-    sf_id=models.PositiveIntegerField(max_length=40,blank=True,null=True)
+    sf_id=models.PositiveIntegerField(blank=True,null=True)
+    latitude=models.FloatField(blank=True,null=True)
+    longitude=models.FloatField(blank=True,null=True)
 
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
     def save(self,*args, request=None,dont_save_history=False,affected_by_sync=False,**kwargs):
-        print("OK hahah")
         if not self.pk or affected_by_sync:
             super().save(*args, **kwargs) 
+            self.latitude,self.longitude=get_coords(self.post_code.strip().upper().replace(" ", ""))
             
+
             self.retirement_date=self.birthday+timedelta(days=7)
+        old = Job.objects.filter(pk=self.pk).first()
+        if old and old.post_code != self.post_code:
+            print(self.post_code.strip().upper().replace(" ", ""))
+            self.latitude,self.longitude=get_coords(self.post_code.strip().upper().replace(" ", ""))
+
         self.request=request
         self.dont_save_history=dont_save_history
         self.affected_by_sync=affected_by_sync
 
         job_reopened(self,)
-        self.parts_need_attention = self.items.filter(ordered=False,from_warehouse=False).exists()
-        print("KKK",self.parts_need_attention)
-        print(self.items.filter(ordered=False,from_warehouse=False))
+        if not self.parts_need_attention:
+            self.parts_need_attention = self.items.filter(ordered=False,from_warehouse=False).exists()
+     
         if not job_completed(self,) and  self.status!='cancelled':
-
+           
             self.status = 'ready' if items_arrived(self) and items_not_used(self) and quote_accepted(self) and not self.on_hold and not self.parts_need_attention else 'paused'
             self.items_arrived=items_arrived(self) and items_not_used(self) 
         if self.quoted:
@@ -244,24 +264,22 @@ class Comment(models.Model):
     company=models.ForeignKey(Company, on_delete=models.CASCADE,related_name="comment_company")
     content_object = GenericForeignKey('content_type', 'object_id','company')  # Generic relationship
     comment = models.TextField(null=True, blank=True)
-    added_date = models.DateTimeField(auto_now_add=True)
+    added_date = models.DateTimeField(default=timezone.now)
     added_by = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=False, blank=False, related_name="added_by")
-
+    from_sf=models.BooleanField(default=False)
     class Meta:
         ordering = ['-added_date']
     def __str__(self):
         return self.comment#[:20] + "..." if len(self.comment) > 20 else self.comment
-    def save(self,*args, **kwargs):
+    def save(self,*args,from_sf=False,date=None, **kwargs):
         if not self.comment.strip():
             return
+        if from_sf and date:
+            self.from_sf=from_sf
+            self.added_date=date
         super().save(*args, **kwargs) 
 
-CHOICES=[
-        
-        ('arrived', 'Arrived'),
-        (' ','')
-        
-    ]
+
 class Category(models.Model):
     category=models.CharField(max_length=40,unique=True)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="category_company")
@@ -307,7 +325,9 @@ class JobItem(models.Model):
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     reference=models.TextField(blank=True,null=True,max_length=40)
     ordered=models.BooleanField(default=False)
+    ordered_date=models.DateField(null=True,blank=True)
     arrived=models.BooleanField(default=False)
+    arrived_date=models.DateField(null=True,blank=True)
     is_used=models.BooleanField(default=False)
     from_warehouse=models.BooleanField(default=False)
     added_by_batch_entry=models.BooleanField(default=False)
@@ -320,6 +340,17 @@ class JobItem(models.Model):
     def save(self,*args, dont_move_used=False,no_recursion=False,request,**kwargs):
         self.request=request
         item_arrived(self)
+        
+        i=JobItem.objects.get(company=request.user.company,id=self.id)
+        if not i.ordered and self.ordered:
+            print("KLKL")
+            self.ordered_date=timezone.now().date()
+        elif i.ordered and not self.ordered:
+            self.ordered_date=None
+        if self.job_quantity==self.arrived_quantity:
+            self.arrived_date=timezone.now().date()
+        else:
+            self.arrived_date=None
         if not self.category and self.company.id:#self.job.id
             try:
                 self.category=Category.objects.get(category='Others')
@@ -333,7 +364,7 @@ class JobItem(models.Model):
         if not dont_move_used and not no_recursion:
             
             self.job.save(update_fields=['status','items_arrived',"parts_need_attention"],request=self.request,dont_save_history=True)
-            
+    
     def __str__(self):
         return str(self.name)
 
@@ -423,7 +454,11 @@ class SchedulerGroup(models.Model):
     job_order = models.JSONField(default=list, blank=True)
 
     
-
+    def get_jobs_coordinates(self):
+        coordinates=[]
+        for job in self.ordered_jobs():
+            coordinates.append((job.latitude,job.longitude))
+        return coordinates
     def ordered_jobs(self):
         if not self.job_order:
             return self.jobs.all()
@@ -431,3 +466,4 @@ class SchedulerGroup(models.Model):
         ordered = [job_dict[jid] for jid in self.job_order if jid in job_dict]
         return ordered
 
+    

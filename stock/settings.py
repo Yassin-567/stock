@@ -109,6 +109,8 @@ if config('DEBUG', default='False') == "True":
     DEBUG = True
 
 
+
+
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',

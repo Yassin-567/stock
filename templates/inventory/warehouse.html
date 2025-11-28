@@ -9,71 +9,133 @@
         <div class="alert alert-{{ message.tags }}">{{ message }}</div>
       {% endfor %}
     {% endif %}
-    <form method="get" class="mb-3">
-        <label for="entry_method" class="form-label">Filter by entry method:</label>
-        <select name="entry_method" onchange="this.form.submit()" class="form-select w-auto d-inline">
-            <option value="all" {% if not entry_method or entry_method == 'all' %}selected{% endif %}>All</option>
-            
-            <option value="batch_entry" {% if entry_method == "batch_entry"  %}selected{% endif %}>Batch entry method</option>
-            <option value="normal_entry" {% if entry_method == "normal_entry" %}selected{% endif %}>Normal method</option>
-    
-        </select> 
-        <label for="items_status" class="form-label">Filter by entry method:</label>
-        <select name="items_status" onchange="this.form.submit()" class="form-select w-auto d-inline">
-            <option value="available" {% if not items_status or items_status == 'available' %}selected{% endif %}>Available parts</option>
-            
-            <option value="used" {% if items_status == "used"  %}selected{% endif %}>Used parts from warehouse</option>
-            <option value="linked" {% if items_status == "linked" %}selected{% endif %}>Linked to a job</option>
-    
-        </select>
-<div class="col-auto  ">
-    <label for="search" class="form-label mb-0 me-1">Search</label>
-    <input type="search" name="q"
-      class="form-control form-control-sm w-auto"
-      placeholder="Search jobs"
-      aria-label="Search"
-      value="{{ request.GET.q }}" />
-  </div>
+
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap">
+
+    <form method="get" class="row row-cols-lg-auto g-2 align-items-center mb-0"
+        style="
+          width: fit-content;
+          padding: 8px 14px;
+          background-color: #2e3946;
+          color: #a5e1c7;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        ">
+
+        <div class="col-auto">
+            <label for="entry_method" class="form-label mb-0 me-1">Filter by entry method:</label>
+            <select name="entry_method" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
+                <option value="all" {% if not entry_method or entry_method == 'all' %}selected{% endif %}>All</option>
+                <option value="batch_entry" {% if entry_method == 'batch_entry' %}selected{% endif %}>Batch entry method</option>
+                <option value="normal_entry" {% if entry_method == 'normal_entry' %}selected{% endif %}>Normal method</option>
+            </select>
+        </div>
+
+        <div class="col-auto">
+            <label for="items_status" class="form-label mb-0 me-1 " >Filter by entry method:</label>
+            <select name="items_status" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
+                <option value="available" {% if not items_status or items_status == 'available' %}selected{% endif %}>Available parts</option>
+                <option value="used" {% if items_status == 'used' %}selected{% endif %}>Used parts from warehouse</option>
+                <option value="linked" {% if items_status == 'linked' %}selected{% endif %}>Linked to a job</option>
+            </select>
+        </div>
+
+        <div class="col-auto">
+            <label for="search" class="form-label mb-0 me-1">Search</label>
+            <input type="search" name="q"
+                class="form-control form-control-sm w-auto"
+                placeholder="Search"
+                aria-label="Search"
+                value="{{ request.GET.q }}" />
+        </div>
+
+        <div class="col-auto">
+            <button type="submit" class="btn btn-sm mt-2" style="background-color: #009e6c;">
+                <i class="bi bi-funnel"></i> Apply
+            </button>
+        </div>
+
+        <div class="col-auto">
+            <a style="font-size: larger; color: #b51e0eff;" href="{% url 'warehouse' %}">X</a>
+        </div>
+
     </form>
 
+</div>
 
-   <a href="{% url 'add_warehouseitem' %}" 
-   style="
-      display: inline-block;
-      margin: 4px;
-      padding: 8px 16px;
-      background: linear-gradient(135deg, #4facfe, #00f2fe);
-      color: white;
-      font-weight: 600;
-      font-size: 0.9rem;
-      border-radius: 8px;
-      text-decoration: none;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-      transition: all 0.2s ease;
-   "
-   onmouseover="this.style.background='linear-gradient(135deg, #00f2fe, #4facfe)'; this.style.transform='scale(1.05)';"
-   onmouseout="this.style.background='linear-gradient(135deg, #4facfe, #00f2fe)'; this.style.transform='scale(1)';">
-   ➕ Add Warehouse Item
-</a>
 
-<a href="{% url 'batch_entry' %}" 
-   style="
-      display: inline-block;
-      margin: 4px;
-      padding: 8px 16px;
-      background: linear-gradient(135deg, #43e97b, #38f9d7);
-      color: white;
-      font-weight: 600;
-      font-size: 0.9rem;
-      border-radius: 8px;
-      text-decoration: none;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-      transition: all 0.2s ease;
-   "
-   onmouseover="this.style.background='linear-gradient(135deg, #38f9d7, #43e97b)'; this.style.transform='scale(1.05)'; "
-   onmouseout="this.style.background='linear-gradient(135deg, #43e97b, #38f9d7)'; this.style.transform='scale(1)';">
-   📂 Bulk Add (Excel File)
-</a>
+
+   <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+
+    <div>
+        <a href="{% url 'add_warehouseitem' %}" 
+        style="
+            display: inline-block;
+            margin: 4px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            text-decoration: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+        "
+        onmouseover="this.style.background='linear-gradient(135deg, #00f2fe, #4facfe)'; this.style.transform='scale(1.05)';"
+        onmouseout="this.style.background='linear-gradient(135deg, #4facfe, #00f2fe)'; this.style.transform='scale(1)';">
+            ➕ Add Warehouse Item
+        </a>
+
+        <a href="{% url 'batch_entry' %}" 
+        style="
+            display: inline-block;
+            margin: 4px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #43e97b, #38f9d7);
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            text-decoration: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+        "
+        onmouseover="this.style.background='linear-gradient(135deg, #38f9d7, #43e97b)'; this.style.transform='scale(1.05)'; "
+        onmouseout="this.style.background='linear-gradient(135deg, #43e97b, #38f9d7)'; this.style.transform='scale(1)';">
+            📂 Bulk Add (Excel File)
+        </a>
+    </div>
+<style>
+a:hover {
+ 
+    text-decoration: none;
+}
+</style>
+    <a href="{% url 'review_ordered_items' %}" 
+    style="
+        display: inline-block;
+        margin: 4px;
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #1e2e3cff, #151a1aff);
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border-radius: 8px;
+        text-decoration: none;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        transition: all 0.2s ease;
+    "
+    onmouseover="this.style.background='linear-gradient(135deg, #424949ff, #4d4f52ff)'; this.style.transform='scale(1.05)';"
+    onmouseout="this.style.background='linear-gradient(135deg, #1e2e3cff, #151a1aff)'; this.style.transform='scale(1)';">
+        🛒 Review Ordered Items
+    </a>
+
+</div>
+
 
 {% if items_status == "available" %}
     <div class="accordion">
@@ -114,7 +176,7 @@
                         <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a>
                       </td>
                       <td>{{ item.part_number }}</td>
-                      <td>${{ item.price }}</td>
+                      <td>{{request.user.company.settings.currency_symbol}}{{ item.price }}</td>
                       <td>{{ item.warehouse_quantity }}</td>
                       {% if item.is_moved_from_job %}<td>Was moved from: <a href="{% url "update_job" item.is_moved_from_job.job_id %}">{{item.is_moved_from_job}}</a></td>{% else %}
                       <td>Originally from warehouse</td>
@@ -172,7 +234,7 @@
                         <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a>
                       </td>
                       <td>{{ item.part_number }}</td>
-                      <td>${{ item.price }}</td>
+                      <td>{{request.user.company.settings.currency_symbol}}{{ item.price }}</td>
 
                       <td>{{ item.arrived_quantity }}</td>
 
@@ -240,7 +302,7 @@
                         <a href="{% url 'update_warehouse_item' item.id %}">{{ item.name }}</a>
                       </td>
                       <td>{{ item.part_number }}</td>
-                      <td>${{ item.price }}</td>
+                      <td>{{request.user.company.settings.currency_symbol}}{{ item.price }}</td>
                       <td>{{ item.job_quantity }}</td>
                       <td><a href={% url "update_job" item.job.job_id %}>{{ item.job }}</a></td>
                         {% if item.was_for_job %}

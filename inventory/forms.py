@@ -195,7 +195,7 @@ class JobForm(forms.ModelForm):
     class Meta:
         model = Job
         fields = '__all__'
-        exclude = ['user','quotation','quote_declined','quote_accepted','on_hold','retirement_date','added_by_sync','emailed','parts_need_attention']
+        exclude = ['user','quotation','quote_declined','quote_accepted','on_hold','retirement_date','added_by_sync','emailed','sf_id']
         labels = {
             'name': 'Part Name',
         }
@@ -230,6 +230,7 @@ class JobForm(forms.ModelForm):
 
     def __init__(self, *args, updating=False, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['parts_need_attention'].widget=forms.HiddenInput()
         if self.instance.status=='cancelled' or self.instance.status=='completed' :
             for name,field in self.fields.items():
                 if name!='status':
@@ -242,25 +243,21 @@ class JobForm(forms.ModelForm):
         if updating:
             # Disable fields if updating
             self.fields['job_id'].widget=forms.HiddenInput()
-    def clean(self,*args, **kwargs):
-        
+    def clean(self,):
+
         cleaned_data=super().clean()
         status=cleaned_data.get('status')
         from_time=cleaned_data.get('from_time')
         to_time=cleaned_data.get('to_time')
         job=self.instance
-       
-        # from datetime import time
-        # n=time(from_time)
-        # print(n)
-        print(from_time,"FFFFF")
+        parts_need_attention=cleaned_data.get('parts_need_attention')
         if from_time and to_time and from_time >= to_time or (from_time==None and to_time):
             self.add_error('to_time', 'End time must be after start time.')
         if job.pk:
-            #if self.fields['status']=='quoted': 
             
+            if not bool(parts_need_attention ) and job.items.filter(ordered=False,from_warehouse=False).exists():
+                raise forms.ValidationError("Parts need attention must be checked if there are unordered items")
             if self.instance.quoted :
-                
                 if not self.instance.quote_accepted and not self.instance.quote_declined and self.instance.status =='quoted':
                     raise forms.ValidationError("Was the quote accepted or declined?")
                 elif (status!='quoted' and status!='paused' and status!='cancelled') and not job.quote_accepted and not job.quote_declined:
@@ -273,11 +270,9 @@ class JobForm(forms.ModelForm):
             if job.parts_need_attention and status=='ready' :
                 raise forms.ValidationError("Can't mark as ready, you can uncheck part need attention instead")
             if status=='ready' and  not (items_arrived(job) and items_not_used(job)) and items_count>0 :
-            
                 raise forms.ValidationError("Not all items arrived")
             elif status=='ready' and job.items.exclude(is_used=False).exists():
                 raise forms.ValidationError("There is a used item")
-            
             return cleaned_data
 class CommentForm(forms.ModelForm):
     class Meta:
@@ -353,7 +348,7 @@ class JobItemForm(forms.ModelForm):
     class Meta:
         model=JobItem
         fields='__all__'
-        exclude=['job','from_warehouse','is_used','status','was_for_job','added_by','was_it_used','arrived','company']
+        exclude=['job','from_warehouse','is_used','status','was_for_job','added_by','was_it_used','arrived','company','added_by_batch_entry','ordered_date','arrived_date']
         widgets = {
                     #'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
                     'status': forms.Select(attrs={'class': 'form-select','id':'status'}),
@@ -394,13 +389,13 @@ class JobItemForm(forms.ModelForm):
         job_quantity = cleaned_data.get('job_quantity')
         arrived_quantity = cleaned_data.get('arrived_quantity')
         ordered = cleaned_data.get('ordered')
+
         job=cleaned_data.get('job')
         # if job and not ordered and job_quantity == arrived_quantity :
         #     raise forms.ValidationError("Items can't arrive without ordering")
         # elif job  and job_quantity < arrived_quantity:
         #     raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
-       
-    
+        
         if job_quantity == arrived_quantity and not ordered and not self.instance.from_warehouse:
             raise forms.ValidationError("Items can't arrive without ordering")
         elif not  self.instance.from_warehouse and job_quantity<arrived_quantity  :

@@ -2,7 +2,6 @@ from django.db import models
 import requests
 from django.db.models import Q
 from datetime import timedelta
-
 def items_arrived(self):
     from .models import Job, JobItem
     all_arrived=False
@@ -70,7 +69,6 @@ def item_arrived(self):
         
         return True
     if self.ordered:
-            print("LLLLLLLLLLL", self.arrived_quantity)
             if self.arrived_quantity >= self.job_quantity:
                 self.arrived = True
             else:
@@ -268,6 +266,8 @@ def update_if_changed(instance: models.Model, d: dict, field_map: dict, *,reques
     Returns:
         list: Names of changed fields (empty if no change).
     """
+    from .models import Comment
+
     changed_fields = []
     print("affected",affected_by_sync)
     for field, get_val in field_map.items():
@@ -294,19 +294,36 @@ def update_if_changed(instance: models.Model, d: dict, field_map: dict, *,reques
 
         # Compare & update
         if old_val != new_val:
-            
-            setattr(instance, field, new_val)
-            changed_fields.append(field)
-
+            if field !="comments":
+                setattr(instance, field, new_val)
+                changed_fields.append(field)
+            else:
+                x=Comment(
+                    content_object=instance,
+                    company=instance.company,
+                    comment=new_val['notes'],
+                    added_by=request.user,  # or another user
+                )
+                # print("KKK",new_val['created_at'])
+                x.save(from_sf=True,date=new_val['created_at'])
+                continue
         if field=="status":
+            print("old new",new_val)
+            new_val=new_val.lower()
+            print("new new",new_val)
+
             if new_val=="paused":
                 # changed_fields.remove("status")
                 instance.parts_need_attention=True
                 changed_fields.append("parts_need_attention")
-        
     # Save only if something actually changed
     if changed_fields:
         changed_fields.append("retirement_date")
+        print("insta old",instance.status)
+
+        instance.status=instance.status.lower()
+        print("insta new",instance.status)
+
         instance.save(
             update_fields=changed_fields,
             request=request,

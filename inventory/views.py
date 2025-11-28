@@ -21,6 +21,7 @@ import random
 from urllib.parse import urlencode
 import requests
 from django.utils.dateparse import parse_date, parse_time
+from django.forms.models import model_to_dict
 
 def create_guest_request(request):
     form=GuestEmail()
@@ -302,14 +303,24 @@ def inventory(request,pk=None):
     
     
     params = request.GET.copy()
-    params.pop('page', None)  # drop 'page' param
-    querystring = '&' + urlencode({k: v.strip() for k, v in params.items() if v and v.strip()})
+
+    # Build querystring (without page)
+    no_page = params.copy()
+    no_page.pop("page", None)
+    querystring = '&' + urlencode({k: v.strip() for k, v in no_page.items() if v and v.strip()})
+
+    # Clean query (without sort)
+    no_sort = params.copy()
+    no_sort.pop("sort", None)
+    clean_query = no_sort.dict()
     context={
             'jobs_count':rjobs.count(),
             'rjobs': page_obj,
             'page_obj':page_obj,
             'status':status,
             'querystring':querystring,
+            'clean_query':clean_query,
+            'sort':sort,
             'q':q,
             'quotation_status':quotation_status,
             'now_time':now_time,
@@ -580,15 +591,46 @@ def update_job(request, pk, cancel=0):
             messages.success(request, 'Job updated')
             return redirect('update_job', pk=pk)
         if 'parts_attention' in request.POST:
+          
             if 'parts_dont_need_attention' in request.POST:
-                job.parts_need_attention = False
-                job.save(update_fields=['parts_need_attention','status'],request=request)
-
-            else:
+                data=model_to_dict(job)
+                data['parts_need_attention']=False
+                form = JobForm(data, instance=job)
+                if form.is_valid():
+                    form.save()
+                    messages.success(request,'Job updated')
+                    return redirect('update_job',pk=pk)
                 job.parts_need_attention = True
-                job.save(update_fields=['parts_need_attention','status'],request=request)
-            messages.success(request,'Job updated')
-            return redirect('update_job',pk=pk)
+                # context={'form': form,'job':job,'comments':comments,'items':items,'items_count':items_count,'job_status':job_status}
+
+    
+                # return render(request, 'inventory/job_update.html', context)
+                
+            else:   
+                data=model_to_dict(job)
+                data['parts_need_attention']=True
+                
+                form = JobForm(data, instance=job)
+                if form.is_valid():
+                    
+                    form.save()
+                    messages.success(request,'Job updated')
+                    return redirect('update_job',pk=pk)
+                job.parts_need_attention = False
+            # if 'parts_dont_need_attention' in request.POST:
+            #     print(22222)
+            #     job.parts_need_attention = False
+            #     job.save(update_fields=['parts_need_attention','status'],request=request)
+            #     print("DONNNT")
+            # else:
+            #     print(3333)
+
+            #     job.parts_need_attention = True
+            #     print("NEEEEED")
+            #     job.save(update_fields=['parts_need_attention','status'],request=request)
+            
+      
+            
         
         if  job.quoted :
             try:
@@ -625,7 +667,7 @@ def update_job(request, pk, cancel=0):
             if post_data:
                 form = JobForm(post_data, instance=job, updating=True)
                 if form.is_valid():
-                    obj.form.save(commit=False)
+                    obj=form.save(commit=False)
                     
                     obj.save(request=request)
                     for item in job.items.all():
@@ -1153,7 +1195,7 @@ def update_item(request, pk):
                         witem.save(request=request)
 
                     item.job_quantity = job_quantity
-                    item.save(update_fields=['job_quantity'], request=request)
+                    item.save(update_fields=['job_quantity',], request=request)
 
                     if item.job_quantity < 1:
                         jobid = item.job.job_id
@@ -1184,6 +1226,8 @@ def update_item(request, pk):
                 print("OOOOOOOOOOOOOOOOOOOOOOOOOO")
                 item = form.save(commit=False)
                 item.save(request=request)
+                print(item.ordered_date)
+                return redirect("update_item",item.id)
                 return render(request, 'inventory/update_item.html',
                             {'form': form,
                             'item': item,
@@ -1191,7 +1235,7 @@ def update_item(request, pk):
                             "comments": comments})
 
         # fallback context
-          
+        
         return render(request, 'inventory/update_item.html',
                 {'form': form,'item': item,
                 'comments_form': comments_form,
@@ -1631,18 +1675,93 @@ def warehouse(request, ):
 
 
 def review_ordered_items(request,):
-    items=JobItem.objects.filter(company=request.user.company,is_used=False,from_warehouse=False,ordered=True)
+    
+    sort=request.GET.get("sort",None)
+    q=request.GET.get("q",None)
+    items_status=request.GET.get("items_status",None)
+    ordered_from_date=request.GET.get("ordered_from_date",None)
+    ordered_to_date=request.GET.get("ordered_to_date",None)
+    if items_status=="arrived":
+        items=JobItem.objects.filter(company=request.user.company,is_used=False,from_warehouse=False,ordered=True,arrived=True)
+    elif items_status=="not_arrived":
+        items=JobItem.objects.filter(company=request.user.company,is_used=False,from_warehouse=False,ordered=True,arrived=False)
+    elif ordered_from_date or ordered_to_date:
 
-    if request.method=="POST":
+    # Convert the strings to date objects only once
+        from_date = datetime.strptime(ordered_from_date, '%Y-%m-%d').date() if ordered_from_date else None
+        to_date = datetime.strptime(ordered_to_date, '%Y-%m-%d').date() if ordered_to_date else None
+
+        # If both dates entered → validate range
+        if from_date and to_date:
+            if from_date > to_date:
+                messages.error(request, "The 'From' date cannot be later than the 'To' date.")
+                return redirect('review_ordered_items')
+
+            items = JobItem.objects.filter(
+                company=request.user.company,
+                is_used=False,
+                from_warehouse=False,
+                ordered=True,
+                ordered_date__gte=from_date,
+                ordered_date__lte=to_date
+            )
+
+        # If only from_date
+        elif from_date:
+            items = JobItem.objects.filter(
+                company=request.user.company,
+                is_used=False,
+                from_warehouse=False,
+                ordered=True,
+                ordered_date__gte=from_date
+            )
+
+        # If only to_date
+        elif to_date:
+            items = JobItem.objects.filter(
+                company=request.user.company,
+                is_used=False,
+                from_warehouse=False,
+                ordered=True,
+                ordered_date__lte=to_date
+            )
+
+            
+
+    else:
+        items=JobItem.objects.filter(company=request.user.company,is_used=False,from_warehouse=False,ordered=True)
+    if sort:
+
+        items=items.order_by(sort)
+    if q:
+        items=items.filter(Q(name__icontains=q)|Q(part_number__icontains=q))
+    
+
+    paginator=Paginator(items,30)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    params = request.GET.copy()
+
+    # Build querystring (without page)
+    no_page = params.copy()
+    no_page.pop("page", None)
+    querystring = '&' + urlencode({k: v.strip() for k, v in no_page.items() if v and v.strip()})
+
+    # Clean query (without sort)
+    no_sort = params.copy()
+    no_sort.pop("sort", None)
+    clean_query = no_sort.dict()
+    if request.method=="POST" :
         arrived=int(request.POST.get("arrived"))
         item_id=request.POST.get("item_id")
         item=JobItem.objects.get(company=request.user.company,id=item_id)
-        print(item)
         item.arrived_quantity=arrived
         item.save(request=request,update_fields=["arrived_quantity","arrived"])
         messages.info(request,f"{arrived} parts of {item} arrived for {item.job.address}")
         return redirect('review_ordered_items')
-    return render(request,'inventory/review_ordered_items.html',{'items':items})
+    
+    return render(request,'inventory/review_ordered_items.html',{'items':page_obj,"sort": sort,"clean_query": clean_query,'items_status':items_status,'querystring':querystring,'page_obj':page_obj})
 
 
 
@@ -1823,6 +1942,8 @@ def fetch_jobs(request,job_id=None):
                 'to_time': lambda d: datetime.strptime(d["visits"][0]["time_frame_promised_end"], "%H:%M").time(),
                 "engineer":lambda d:Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"])),
                 "sf_id":lambda d:int(d["id"]),
+                'comments':lambda d:d["notes"][0]
+
                 
                     }
             if job_id:
@@ -1837,7 +1958,8 @@ def fetch_jobs(request,job_id=None):
                 updated_count=0
                 new_count=0  
                 for d in data["items"]:
-                
+                    print("sssssssssssssssssssssss",d["notes"][0]["notes"])
+
                     if int(d["id"]):
                         engineer=Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"]))
                         try:
@@ -1937,12 +2059,13 @@ def scheduler(request):
             return redirect ("scheduler")
         # --- Step 2: Cache postcode coordinates ---
         for job in ready_jobs:
-            try:
-                postcode = job.post_code.strip().upper()
-                job.latitude, job.longitude = get_coords(postcode)
-            except:
-                job.latitude, job.longitude=None,None
-                pass
+            if not job.latitude or not job.longitude:
+                try:
+                    postcode = job.post_code.strip().upper().replace(" ", "")   
+                    job.latitude, job.longitude = get_coords(postcode)  
+                except:
+                    job.latitude, job.longitude=None,None
+                    pass
             # --- Step 3: Grouping Logic ---
         visited = set()
         wrong_list=[]
@@ -1974,7 +2097,7 @@ def scheduler(request):
                         print(job.post_code, ">>>" ,other.post_code, "dis", distance)
                         jobs_list.append(other)
                         visited.add(other.id)
-                postcodes = [j.post_code.strip() for j in jobs_list if j.post_code]
+                postcodes = [j.post_code.strip().upper().replace(" ", "") for j in jobs_list if j.post_code]
                 map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)
                 group_obj = SchedulerGroup.objects.create(
                 company=request.user.company,
@@ -2022,7 +2145,7 @@ def scheduler(request):
             
             # Attach coordinates (cached)
             for job in jobs:
-                postcode = job.post_code.strip().upper()
+                postcode = job.post_code.strip().upper().replace(" ", "") 
                 job.latitude, job.longitude = get_coords(postcode)
 
             # Optimize order
@@ -2031,7 +2154,7 @@ def scheduler(request):
             group.jobs.set(optimized_jobs, clear=True)
             group.job_order=[job.id for job in optimized_jobs] 
             # Generate map URL
-            postcodes = [j.post_code.strip() for j in optimized_jobs if j.post_code]
+            postcodes = [j.post_code.strip().upper().replace(" ", "") for j in optimized_jobs if j.post_code ]
             group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)
             print("Generated map URL:", group.map_url)
             # Mark optimization time
@@ -2048,9 +2171,10 @@ def scheduler(request):
         except:
 
             pass
-
+     
+    
     # Get the first SchedulerGroup with no map_url
-    return render(request, "inventory/scheduler.html", {"groups":  ex_sg,'ex_sg':ex_sg[0] if ex_sg else None ,'groupx':groupx})
+    return render(request, "inventory/scheduler.html", {"groups":  ex_sg,'ex_sg':ex_sg[0] if ex_sg else None ,'groupx':groupx,})
 
 #youssif_USF_SPY
 
@@ -2132,7 +2256,7 @@ def monthly_calendar(request, year=None, month=None):
             date_value = parse_date(date_str) if date_str else job.date
             from_time_value = parse_time(from_time_str) if from_time_str else job.from_time
             to_time_value = parse_time(to_time_str) if to_time_str else job.to_time
-            from django.forms.models import model_to_dict
+           
             data=model_to_dict(job)
             data["date"] = date_value.strftime("%Y-%m-%d") if date_value else None
             data["from_time"] = from_time_value.strftime("%H:%M:%S") if from_time_value else None

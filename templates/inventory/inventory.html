@@ -211,7 +211,7 @@ altFormat: 'F j, Y'
       onclick="localStorage.setItem('lastJob',{{job.job_id}});">{{ job.job_id }}</a> -{% if job.on_hold %}✋{% endif %}
     <span class="badge status-{{ job.status }}" >{{ job.get_status_display }}
       {% if job.quoted %}
-<span class="quote-box">Quoted: $<span class="quote-value">{{ job.quotation }}</span>
+<span class="quote-box">Quoted: {{request.user.company.settings.currency_symbol}}<span class="quote-value">{{ job.quotation }}</span>
 
   {% if job.quote_accepted %}
     <span class="quote-accepted">Quote accepted</span>
@@ -286,7 +286,7 @@ altFormat: 'F j, Y'
     <li>
       <a onclick="localStorage.setItem('lastJob',{{jobitem.job.job_id}});" href="{% url 'update_item' jobitem.id %}">{{ jobitem.name }}</a> 
       - Part Number: {{ jobitem.part_number }} 
-      - Price: ${{ jobitem.price }}
+      - Price: {{request.user.company.settings.currency_symbol}}{{ jobitem.price }}
 
       {% if jobitem.arrived and not jobitem.is_used and not jobitem.from_warehouse %}
         <span class="tag arrived">Arrived</span>
