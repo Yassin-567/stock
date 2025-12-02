@@ -209,7 +209,7 @@ class Job(models.Model):
     sf_id=models.PositiveIntegerField(blank=True,null=True)
     latitude=models.FloatField(blank=True,null=True)
     longitude=models.FloatField(blank=True,null=True)
-
+    scheduler=models.ForeignKey(CustomUser,on_delete=models.DO_NOTHING,related_name="scheduler_jobs", null=True,blank=True)
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
@@ -452,7 +452,7 @@ class SchedulerGroup(models.Model):
     optimized_at = models.DateTimeField(blank=True, null=True)
     wrong_postcodes=models.BooleanField(default=False)
     job_order = models.JSONField(default=list, blank=True)
-
+    scheduler=models.BooleanField(default=False)
     
     def get_jobs_coordinates(self):
         coordinates=[]

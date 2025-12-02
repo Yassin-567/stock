@@ -642,6 +642,8 @@ def _greedy_fallback(jobs):
 def move (request,ex_sg,) :
     from .models import Job
     from django.db import transaction
+    from django.shortcuts import redirect
+    from django.contrib import messages
     if request.method == "POST" :
         
         if "move_down" in request.POST:    
@@ -656,6 +658,7 @@ def move (request,ex_sg,) :
                 order = list(group.job_order)
             try:
                 index = order.index(job_id)
+
                 # Swap with the next job if possible
                 if index < len(order) - 1:
                     order[index], order[index + 1] = order[index + 1], order[index]
@@ -699,20 +702,41 @@ def move (request,ex_sg,) :
             
             job = Job.objects.get(company=request.user.company, id=job_id)
 
-            with transaction.atomic():
-                # Remove from old group
-                old_group.jobs.remove(job)
-                if job.id in old_group.job_order:
-                    old_group.job_order.remove(job.id)
-                    postcodes = [jobl.post_code.strip() for jobl in old_group.ordered_jobs() if jobl.post_code and jobl.id != job.id]
-                    old_group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)    
-                old_group.save(update_fields=["job_order","map_url"])
-
-                # Add to new group
-                new_group.jobs.add(job)
-                if job.id not in new_group.job_order:
-                    new_group.job_order.append(job.id)
-                new_group.map_url=new_group.map_url+"/"+str(job.post_code)
-                
-                new_group.save(update_fields=["job_order","map_url"])
-           
+            if job.scheduler and job.scheduler!=request.user:
+                messages.error(request,"Another user will schedule this job")
+                return redirect("scheduler")
+        
+            else:
+                with transaction.atomic():
+                    # Remove from old group
+                    old_group.jobs.remove(job)
+                    if job.id in old_group.job_order:
+                        old_group.job_order.remove(job.id)
+                        postcodes = [jobl.post_code.strip() for jobl in old_group.ordered_jobs() if jobl.post_code and jobl.id != job.id]
+                        old_group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)    
+                    old_group.save(update_fields=["job_order","map_url"])
+                    if new_group.scheduler:
+                        job.scheduler=new_group.user
+                        job.save(update_fields=['scheduler'])
+                    else:
+                        job.scheduler=None
+                        job.save(update_fields=['scheduler'])
+                    new_group.jobs.add(job)
+                    if job.id not in new_group.job_order:
+                        new_group.job_order.append(job.id)
+                    new_group.map_url=new_group.map_url+"/"+str(job.post_code)
+                    
+                    new_group.save(update_fields=["job_order","map_url"])
+        
+def remove_job_from_group(groups,job):
+    from django.db import transaction
+    with transaction.atomic():
+                                        # Remove from old group
+        if groups:
+            for x in groups:
+                x.jobs.remove(job)
+                if job.id in x.job_order:
+                    x.job_order.remove(job.id)
+                    postcodes = [job.post_code.strip() for job in x.ordered_jobs() if job.post_code and job.id != job.id]
+                    x.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)    
+                x.save(update_fields=["job_order","map_url"])

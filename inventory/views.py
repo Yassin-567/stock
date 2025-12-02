@@ -11,7 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func,haversine,get_coords,get_drive_time_ors,optimize_group_order,optimize_group_order2,_greedy_fallback,move,refresh_sf_token
+from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func,haversine,get_coords,get_drive_time_ors,optimize_group_order,optimize_group_order2,_greedy_fallback,move,refresh_sf_token , remove_job_from_group
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
@@ -2020,6 +2020,7 @@ def fetch_jobs(request,job_id=None):
     
 
 def scheduler(request):
+    
     import socket
     try:
         # Try to connect to a well-known DNS (Google)
@@ -2029,11 +2030,13 @@ def scheduler(request):
         internet_ok = False
 
     if not internet_ok:
+        
         return redirect("inventory")
     ex_sg = SchedulerGroup.objects.filter(
         company=request.user.company,
         user=request.user,
-        wrong_postcodes=False
+        wrong_postcodes=False,
+
     ).annotate(job_count=Count("jobs")).order_by("-job_count")
 
     groupx = SchedulerGroup.objects.filter(
@@ -2053,7 +2056,9 @@ def scheduler(request):
    
     # --- Helper: get coordinates from postcode ---
         # --- Step 1: Fetch all ready jobs ---
-        ready_jobs = list(Job.objects.filter(company=request.user.company,status="ready"))
+        base_jobs = Job.objects.filter(company=request.user.company,status="ready",)
+        ready_jobs=list(base_jobs.filter(Q(scheduler=None)|Q(scheduler=request.user)))
+        
         if not ready_jobs:
 
             return redirect ("scheduler")
@@ -2166,15 +2171,52 @@ def scheduler(request):
         try:
             if request.method == "POST" and ("move_up" in request.POST or "move_down" in request.POST or "new_group" in request.POST):           
                 move(request,ex_sg)
+               
+            def i_work_on_this(request,group_id):
+                group=SchedulerGroup.objects.get(company=request.user.company,id=group_id)
+                group.scheduler=True
+                group.save(update_fields=["scheduler"])
+                jobs=group.jobs.all()
+                for job in jobs:
+                    
+                    if not job.scheduler or job.scheduler==request.user:
+                        groups=job.job_groups.exclude(id=group.id)
+
+                        print("SSSSPPO")
+                        
+                        remove_job_from_group(groups,job)
+                        job.scheduler=request.user
+                        job.save(request=request,update_fields=["scheduler"])
+                        
+                    
                 
+            def i_donot_work_on_this(request,group_id):
+                group=SchedulerGroup.objects.get(company=request.user.company,id=group_id)
+                group.scheduler=False
+                group.save(update_fields=["scheduler"])
+                jobs=group.jobs.all()
+                for j in jobs:
+                    if  j.scheduler==request.user:
+                        
+                        j.scheduler=None    
+                        j.save(request=request,update_fields=["scheduler"])
+                                
+            if request.method == "POST" and('i_work_on_this' in request.POST):
+                
+                group_id=request.POST.get("i_work_on_this")
+                i_work_on_this(request,group_id)
+                return redirect("scheduler")
+            elif request.method == "POST" and('i_donot_work_on_this' in request.POST):
+                group_id=request.POST.get("i_donot_work_on_this")
+               
+                i_donot_work_on_this(request,group_id)
                 return redirect("scheduler")
         except:
 
             pass
-     
-    
+    other_jobs = Job.objects.filter(company=request.user.company,status="ready",latitude__isnull=False).exclude(scheduler=request.user).exclude(job_groups__in=ex_sg).distinct()
     # Get the first SchedulerGroup with no map_url
-    return render(request, "inventory/scheduler.html", {"groups":  ex_sg,'ex_sg':ex_sg[0] if ex_sg else None ,'groupx':groupx,})
+    return render(request, "inventory/scheduler.html", {"groups":  ex_sg,'ex_sg':ex_sg[0] if ex_sg else None ,'groupx':groupx,'other_jobs':other_jobs})
 
 #youssif_USF_SPY
 

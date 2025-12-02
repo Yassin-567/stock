@@ -5,7 +5,11 @@
   Scheduler - goEng
 {% endblock %}
 {% block body %}
-
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+  {% endfor %}
+{% endif %}
   <div class="d-flex justify-content-between align-items-center mb-4 ">
 
     <h1 class="h3 mb-0 text-gray-800 animated-logo me-0 d-inline-block align-text-top" style="
@@ -23,6 +27,7 @@
 Scheduler Assistant</h1>
     
 <style>
+
 .animated-logo {
   height: 40px;              /* Bigger size */
   width: auto;
@@ -77,7 +82,7 @@ Scheduler Assistant</h1>
   {% for group in groups %}
     {% if not group.wrong_postcodes %}
     <div class="d-flex flex-wrap mb-3" style="gap: 1rem;">
-
+{{group.scheduler}}
       <div style="flex: 2;">
         <div class="card shadow-sm border-0" id="{{ group.id }}" onclick="localStorage.setItem('lastJob',{{ group.id }});">
           <div class="card-header text-white fw-bold d-flex justify-content-between align-items-center" style="background-color: #404960ff;">
@@ -91,6 +96,19 @@ Scheduler Assistant</h1>
         text-shadow: 0 0 8px rgba(38, 172, 225, 0.54);
       ">Route Optimized at: {{ group.optimized_at }}</span>
             {% endif %}
+            <form action="" method="post">
+              {% csrf_token %}
+             
+              {% if group.scheduler %}
+                             <input type="hidden" name="i_donot_work_on_this" value="{{ group.id }}">
+
+              <button type="submit" name="" class="btn btn-light btn-sm fw-bold px-3 py-1 shadow-sm" style="border-radius: 20px;"><i class="bi bi-trash-fill me-1"></i> Not my work</button>
+              {% elif not group.scheduler %} 
+                             <input type="hidden" name="i_work_on_this" value="{{ group.id }}">
+
+              <button type="submit" name="" class="btn btn-light btn-sm fw-bold px-3 py-1 shadow-sm" style="border-radius: 20px;"><i class="bi bi-trash-fill me-1"></i> I will work on this</button> 
+ {% endif  %}
+            </form>
             {% if group.map_url %}
               <a href="{{ group.map_url }}" target="_blank" class="btn btn-light btn-sm fw-bold px-3 py-1 shadow-sm" style="border-radius: 20px;"><i class="bi bi-geo-alt-fill me-1"></i> View on maps</a>
             {% endif %}
@@ -104,7 +122,7 @@ Scheduler Assistant</h1>
                   <span class="text-muted">— {{ job.address }}-{{ job.post_code }}</span>
                 </div>
                 <div>{% if forloop.first %}<span style="background: linear-gradient(90deg, #139391ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600; text-shadow: 0 0 10px rgba(220, 230, 32, 0.54);">Start</span>{% endif %}</div>
-                <div>
+                {{job.scheduler}}<div>
                   <form action="" method="post" class="d-inline-flex align-items-center gap-1 m-0 p-0" style="font-size: 0.85rem;">
                     {% csrf_token %}
                     <input type="hidden" name="group_id" value="{{ group.id }}">
@@ -134,6 +152,25 @@ Scheduler Assistant</h1>
     <div class="alert alert-warning text-center shadow-sm mt-4">No ready jobs found.</div>
   {% endfor %}
 
+  {% if other_jobs %}
+    <div class="card my-3 shadow-sm border-0">
+      <div class="card-header text-white fw-bold d-flex justify-content-between align-items-center" style="background-color: #c67a00ff;">
+        <span>Other — {{ other_jobs|length }} job{{ other_jobs|length|pluralize }}</span>
+      </div>
+      <ul class="list-group list-group-flush">
+        {% for job in other_jobs%}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              {{ job.id }}
+              <a href="{% url 'update_job' job.job_id %}" class="fw-bold text-decoration-none text-primary">{{ job.job_id }}</a>
+              <span class="text-muted">— {{ job.address }}-{{ job.post_code }}</span>
+            </div>
+            <div>{{job.scheduler}}</div>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
   {% if groupx %}
     <div class="card my-3 shadow-sm border-0">
       <div class="card-header text-white fw-bold d-flex justify-content-between align-items-center" style="background-color: #ff0000ff;">
