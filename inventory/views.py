@@ -2171,7 +2171,7 @@ def scheduler(request):
         try:
             if request.method == "POST" and ("move_up" in request.POST or "move_down" in request.POST or "new_group" in request.POST):           
                 move(request,ex_sg)
-               
+                return redirect("scheduler")
             def i_work_on_this(request,group_id):
                 group=SchedulerGroup.objects.get(company=request.user.company,id=group_id)
                 group.scheduler=True
@@ -2181,15 +2181,9 @@ def scheduler(request):
                     
                     if not job.scheduler or job.scheduler==request.user:
                         groups=job.job_groups.exclude(id=group.id)
-
-                        print("SSSSPPO")
-                        
                         remove_job_from_group(groups,job)
                         job.scheduler=request.user
                         job.save(request=request,update_fields=["scheduler"])
-                        
-                    
-                
             def i_donot_work_on_this(request,group_id):
                 group=SchedulerGroup.objects.get(company=request.user.company,id=group_id)
                 group.scheduler=False
@@ -2197,7 +2191,6 @@ def scheduler(request):
                 jobs=group.jobs.all()
                 for j in jobs:
                     if  j.scheduler==request.user:
-                        
                         j.scheduler=None    
                         j.save(request=request,update_fields=["scheduler"])
                                 
