@@ -13,10 +13,7 @@ class GuestCleanupMiddleware:
         
         now = timezone.now()
         try :
-            jobs=Job.objects.all()
-            for j in jobs:
-                j.post_code=j.post_code+" "
-                j.save(update_fields=['post_code','latitude','longitude'])
+            
             Company.objects.filter(is_guest=True, expiry_date__lt=now).delete()
         except:
             pass
