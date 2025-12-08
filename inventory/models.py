@@ -453,7 +453,9 @@ class SchedulerGroup(models.Model):
     wrong_postcodes=models.BooleanField(default=False)
     job_order = models.JSONField(default=list, blank=True)
     scheduler=models.BooleanField(default=False)
-    
+    engineer=models.ForeignKey(Engineer,on_delete=models.SET_NULL,null=True,blank=True)
+    date=models.DateField( auto_now=False, auto_now_add=False,blank=True,null=True)
+
     def get_jobs_coordinates(self):
         coordinates=[]
         for job in self.ordered_jobs():

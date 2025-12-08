@@ -11,7 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func,haversine,get_coords,get_drive_time_ors,optimize_group_order,optimize_group_order2,_greedy_fallback,move,refresh_sf_token , remove_job_from_group
+from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func,haversine,get_coords,get_drive_time_ors,optimize_group_order,optimize_group_order2,_greedy_fallback,move,refresh_sf_token , remove_job_from_group,i_donot_work_on_this,i_work_on_this
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
@@ -2046,7 +2046,9 @@ def scheduler(request):
     ).first()
 
     # Safe handling
+  
     if  (request.POST and "regenerate" in request.POST):
+        
         if ex_sg.exists():
             ex_sg.delete()
 
@@ -2114,7 +2116,7 @@ def scheduler(request):
                 group_obj.jobs.set(jobs_list)
                 group_obj.job_order=[job.id for job in jobs_list] 
                 group_obj.save()
-                print("corr",group_obj.id)
+                
             else:
                 if job.id in visited :
                     continue
@@ -2167,49 +2169,112 @@ def scheduler(request):
             # ✅ Save only normal fields (no M2M)
             group.save()
         return redirect('scheduler')
-    else:
-        try:
-            if request.method == "POST" and ("move_up" in request.POST or "move_down" in request.POST or "new_group" in request.POST):           
+    
+               
+    elif request.method == "POST" and ("move_up" in request.POST or "move_down" in request.POST ):
+            print(request.POST  )
+            try:
+                    
                 move(request,ex_sg)
                 return redirect("scheduler")
-            def i_work_on_this(request,group_id):
-                group=SchedulerGroup.objects.get(company=request.user.company,id=group_id)
-                group.scheduler=True
-                group.save(update_fields=["scheduler"])
-                jobs=group.jobs.all()
-                for job in jobs:
-                    
-                    if not job.scheduler or job.scheduler==request.user:
-                        groups=job.job_groups.exclude(id=group.id)
-                        remove_job_from_group(groups,job)
-                        job.scheduler=request.user
-                        job.save(request=request,update_fields=["scheduler"])
-            def i_donot_work_on_this(request,group_id):
-                group=SchedulerGroup.objects.get(company=request.user.company,id=group_id)
-                group.scheduler=False
-                group.save(update_fields=["scheduler"])
-                jobs=group.jobs.all()
-                for j in jobs:
-                    if  j.scheduler==request.user:
-                        j.scheduler=None    
-                        j.save(request=request,update_fields=["scheduler"])
-                                
-            if request.method == "POST" and('i_work_on_this' in request.POST):
                 
-                group_id=request.POST.get("i_work_on_this")
-                i_work_on_this(request,group_id)
+            except:
+                messages.error(request,"An error ocurried, try again ")
                 return redirect("scheduler")
-            elif request.method == "POST" and('i_donot_work_on_this' in request.POST):
-                group_id=request.POST.get("i_donot_work_on_this")
-               
-                i_donot_work_on_this(request,group_id)
-                return redirect("scheduler")
-        except:
+            #     pass
+    elif   request.method == "POST" and('i_work_on_this' in request.POST):
+        
+        group_id=request.POST.get("i_work_on_this")
+        i_work_on_this(request,group_id)
+        return redirect("scheduler")
+    elif request.method == "POST" and('i_donot_work_on_this' in request.POST):
+        group_id=request.POST.get("group_id")
+    
+        i_donot_work_on_this(request,group_id)
+        return redirect("scheduler")
+    
+        
+    form = JobForm()
+   
+    
+    if any(k in request.POST for k in ["change_from_date", "change_from_time", "change_to_time",]):
+            
+            job_id=request.POST.get("job_id")
+            job=Job.objects.filter(company=request.user.company,id=job_id).first()
+            date_str = request.POST.get("change_from_date",None)
+            from_time_str = request.POST.get("change_from_time",None)  # corrected name
+            to_time_str = request.POST.get("change_to_time",None)
+            date_value = parse_date(date_str) if date_str else job.date
+            from_time_value = parse_time(from_time_str) if from_time_str else job.from_time
+            to_time_value = parse_time(to_time_str) if to_time_str else job.to_time
+        
+            data=model_to_dict(job)
+            data["date"] = date_value.strftime("%Y-%m-%d") if date_value else None
+            data["from_time"] = from_time_value.strftime("%H:%M:%S") if from_time_value else None
+            data["to_time"] = to_time_value.strftime("%H:%M:%S") if to_time_value else None
 
-            pass
+            form = JobForm(data, instance=job)
+            
+            if form.is_valid():
+                
+                job = form.save(commit=False)
+                
+                job.save(update_fields=["date", "from_time", "to_time"], request=request)
+              
+                if 'date' in form.changed_data:
+                    
+                    messages.info(request,f"job {job.address} moved to {job.date} ")
+                return redirect('scheduler') 
+    elif "change_engineer" in request.POST:
+        print("---------------",request.POST)
+        eng_id=request.POST.get("change_engineer",None)
+        group_id=request.POST.get("group_id")
+
+        group=SchedulerGroup.objects.filter(company=request.user.company,user=request.user,id=group_id).first()
+        
+        if eng_id:
+            print(eng_id)
+            eng=Engineer.objects.filter(company=request.user.company,id=eng_id).first()
+        else :
+            eng=None
+        if group :
+            print(group)
+            group.engineer=eng
+            group.save(update_fields=['engineer'])
+            for j in group.jobs.all():
+                print(j)
+                j.engineer=eng
+                print(j.engineer)
+                j.save(update_fields=['engineer'])
+        return redirect('scheduler') 
+    elif "change_group_date" in request.POST:
+        group_id=request.POST.get("group_id")
+
+        group=SchedulerGroup.objects.filter(company=request.user.company,user=request.user,id=group_id).first()
+        if group:
+            date_str = request.POST.get("change_group_date",None)
+            date_value = parse_date(date_str) if date_str else group.date
+            job_example=group.jobs.all().first()
+            data=model_to_dict(job_example)
+            data["date"] = date_value.strftime("%Y-%m-%d") if date_value else None
+            
+            form = JobForm(data, instance=job_example)
+            
+            if form.is_valid():
+                group.date=date_value
+                group.save(update_fields=["date"])
+                print("HEEEY",date_value)
+                print("hey20", data['date'])
+                for j in group.jobs.all():
+                    j.date=date_value
+                    j.save(update_fields=["date"])
+            
+        return redirect('scheduler') 
+
+        
     other_jobs = Job.objects.filter(company=request.user.company,status="ready",latitude__isnull=False).exclude(scheduler=request.user).exclude(job_groups__in=ex_sg).distinct()
     # Get the first SchedulerGroup with no map_url
-    return render(request, "inventory/scheduler.html", {"groups":  ex_sg,'ex_sg':ex_sg[0] if ex_sg else None ,'groupx':groupx,'other_jobs':other_jobs})
+    return render(request, "inventory/scheduler.html", {"groups":  ex_sg,'ex_sg':ex_sg[0] if ex_sg else None ,'groupx':groupx,'other_jobs':other_jobs,'form':form,'form_job_id':form.instance.job_id})
 
 #youssif_USF_SPY
 
@@ -2280,7 +2345,7 @@ def monthly_calendar(request, year=None, month=None):
         'next_month_url': next_month_url,
     }
     if request.method=='POST':
-        print(request.POST)
+      
         if any(k in request.POST for k in ["change_from_date", "change_from_time", "change_to_time"]):            
             job_id=request.POST.get("job_id")
             job=jobs_qs.filter(job_id=job_id).first()

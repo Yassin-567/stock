@@ -96,45 +96,128 @@ Scheduler Assistant</h1>
         text-shadow: 0 0 8px rgba(38, 172, 225, 0.54);
       ">Route Optimized at: {{ group.optimized_at }}</span>
             {% endif %}
+            {% if  group.scheduler  %}
+            <form action="" method="post">
+{% csrf_token %}
+
+ <input type="hidden" name="group_id" value="{{ group.id }}">
+            
+ <div class="input-with-clear">
+                                      <input type="text" id="added_from_date" name="change_group_date" class="form-control form-control-sm flatpickr_date" placeholder="{{ group.date|default:'Select date' }}" value="{{ group.date|date:'Y-m-d' }}" onchange="this.form.submit();"/>
+                                      <button type="submit" name="delete_date"  class="clear-btn" aria-label="Clear date" onclick="event.preventDefault(); ">×</button>
+                                    </div>
+            </form>
+            
+            {% endif %}
             <form action="" method="post">
               {% csrf_token %}
              
-              {% if group.scheduler %}
-                             <input type="hidden" name="i_donot_work_on_this" value="{{ group.id }}">
+              {% if group.scheduler %} <input type="hidden" name="group_id" value="{{ group.id }}">
+            
 
-              <button type="submit" name="" class="btn btn-light btn-sm fw-bold px-3 py-1 shadow-sm" style="border-radius: 20px;"><i class="bi bi-trash-fill me-1"></i> Not my work</button>
+
+              <select name="change_engineer" id="" onchange="this.form.submit();">
+                            
+
+                <option value="" {% if not group.engineer %}selected{% endif %}>None</option>
+                {% for eng in request.user.company.engineers_company.all %} 
+                  
+                    <option value="{{ eng.id }}" {% if group.engineer.id == eng.id %}selected{% endif %}>{{ eng }}</option>
+                  
+                {% endfor %}
+              </select>
+                           
+
+              <button type="submit" name="i_donot_work_on_this" class="btn btn-light btn-sm fw-bold px-3 py-1 shadow-sm" style="border-radius: 20px;"><i class="bi bi-trash-fill me-1"></i> Not my work</button>
               {% elif not group.scheduler %} 
                              <input type="hidden" name="i_work_on_this" value="{{ group.id }}">
 
               <button type="submit" name="" class="btn btn-light btn-sm fw-bold px-3 py-1 shadow-sm" style="border-radius: 20px;"><i class="bi bi-trash-fill me-1"></i> I will work on this</button> 
  {% endif  %}
             </form>
+
+
+
             {% if group.map_url %}
               <a href="{{ group.map_url }}" target="_blank" class="btn btn-light btn-sm fw-bold px-3 py-1 shadow-sm" style="border-radius: 20px;"><i class="bi bi-geo-alt-fill me-1"></i> View on maps</a>
             {% endif %}
           </div>
           <ul class="list-group list-group-flush">
             {% for job in group.ordered_jobs %}
+            
               <li class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
+                
+                <div><div>{{job.scheduler}}</div>
                   {{ job.id }}
                   <a href="{% url 'update_job' job.job_id %}" class="fw-bold text-decoration-none text-primary">{{ job.job_id }}</a>
                   <span class="text-muted">— {{ job.address }}-{{ job.post_code }}</span>
                 </div>
                 <div>{% if forloop.first %}<span style="background: linear-gradient(90deg, #139391ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600; text-shadow: 0 0 10px rgba(220, 230, 32, 0.54);">Start</span>{% endif %}</div>
-                {{job.scheduler}}<div>
-                  <form action="" method="post" class="d-inline-flex align-items-center gap-1 m-0 p-0" style="font-size: 0.85rem;">
+                <div>
+                {% if group.scheduler %}
+
+
+                  <form action="" name="" method="post" class="d-inline-flex align-items-center gap-1 m-0 p-0" style="font-size: 0.85rem;">
                     {% csrf_token %}
-                    <input type="hidden" name="group_id" value="{{ group.id }}">
-                    <input type="hidden" name="job_id" value="{{ job.id }}">
-                    <button type="submit" name="move_up" value="{{ job.id }}" class="btn btn-light btn-sm p-0 px-1 border-0" title="Move Up" style="color: #16a34a;">▲</button>
-                    <button type="submit" name="move_down" value="{{ job.id }}" class="btn btn-light btn-sm p-0 px-1 border-0" title="Move Down" style="color: red;">▼</button>
-                    <select name="new_group" onchange="this.form.submit()" style="font-size: 0.8rem;">
-                      {% for group_options in groups %}
-                        <option value="{{ group_options.id }}" {% if group_options.id == group.id %}selected{% endif %}>Group-{{ forloop.counter }}</option>
-                      {% endfor %}
-                    </select>
+                    <input type="hidden" name="change_datetime" id="">
+                            {% if not job.scheduler or job.scheduler == request.user%}
+                              <input type="hidden" name="job_id" value="{{job.id}}" id="">
+                                      
+                                  <div class="input-with-clear">
+                                      <input type="text" id="added_from_date" name="change_from_date" class="form-control form-control-sm flatpickr_date" placeholder="{{ job.date|default:'Select date' }}" value="{{ job.date|date:'Y-m-d' }}" />
+                                      <button type="submit" name="delete_date"  class="clear-btn" aria-label="Clear date" onclick="event.preventDefault(); ">×</button>
+                                    </div>
+
+
+                                <div class="input-with-clear">
+                                          <input type="text" id="change_from_time" name="change_from_time"
+                                          class="form-control form-control-sm flatpickr_time"
+                                          style="width: 120px;"
+                                          placeholder="From"
+                                          value="{{ job.from_time|time:'H:i' }}" />      
+                                          <button type="submit" name="delete_from_time"  class="clear-btn" aria-label="Clear from time" onclick="event.preventDefault(); ">×</button>
+                                 </div>
+
+
+                                      <div class="input-with-clear">
+                                                              <input type="text" id="change_to_time" name="change_to_time"
+                                                class="form-control form-control-sm flatpickr_time"
+                                                style="width: 120px;"
+                                                placeholder="To"
+                                                value="{{ job.to_time|time:'H:i' }}" />                      
+                                                  <button type="submit" name="delete_to_time"  class="clear-btn" aria-label="Clear to time" onclick="event.preventDefault(); ">×</button>
+                                       </div>
+
+
+
+                                                            
+                                                  <div class="d-flex flex-column">
+                                                    <button type="submit" class="btn btn-sm btn-primary mt-1 w-100">
+                                                      <i class="bi bi-funnel"></i> Apply
+                                                    </button>
+                                                    {% if form_job_id == job.job_id %}
+                                                      <div class="text-danger small mt-1">
+                                                        {{ form.to_time.errors }}
+                                                      </div>
+                                                    {% endif %}
+                                                  </div>
+
+
+                        {% endif %}
+
+                                    <input type="hidden" name="group_id" value="{{ group.id }}">
+                                    <input type="hidden" name="job_id" value="{{ job.id }}">
+                                    <button type="submit" name="move_up" value="{{ job.id }}" class="btn btn-light btn-sm p-0 px-1 border-0" title="Move Up" style="color: #16a34a;">▲</button>
+                                    <button type="submit" name="move_down" value="{{ job.id }}" class="btn btn-light btn-sm p-0 px-1 border-0" title="Move Down" style="color: red;">▼</button>
+                                    <select name="new_group" onchange="this.form.submit()" style="font-size: 0.8rem;">
+                                                                            <option value="0" {% if not job.job_groups %}{% endif %}>Other</option>
+
+                                      {% for group_options in groups %}
+                                        <option value="{{ group_options.id }}" {% if group_options.id == group.id %}selected{% endif %}>Group-{{ forloop.counter }}</option>
+                                      {% endfor %}
+                                    </select>
                   </form>
+{% endif %}
                 </div>
               </li>
             {% endfor %}
@@ -166,6 +249,66 @@ Scheduler Assistant</h1>
               <span class="text-muted">— {{ job.address }}-{{ job.post_code }}</span>
             </div>
             <div>{{job.scheduler}}</div>
+            
+                  <form action="" name="" method="post" class="d-inline-flex align-items-center gap-1 m-0 p-0" style="font-size: 0.85rem;">
+                    {% csrf_token %}
+                    <input type="hidden" name="change_datetime" id="">
+                            {% if not job.scheduler or job.scheduler == request.user%}
+                              <input type="hidden" name="job_id" value="{{job.id}}" id="">
+                                      
+                                  <div class="input-with-clear">
+                                      <input type="text" id="added_from_date" name="change_from_date" class="form-control form-control-sm flatpickr_date" placeholder="{{ job.date|default:'Select date' }}" value="{{ job.date|date:'Y-m-d' }}" />
+                                      <button type="submit" name="delete_date"  class="clear-btn" aria-label="Clear date" onclick="event.preventDefault(); ">×</button>
+                                    </div>
+
+
+                                <div class="input-with-clear">
+                                          <input type="text" id="change_from_time" name="change_from_time"
+                                          class="form-control form-control-sm flatpickr_time"
+                                          style="width: 120px;"
+                                          placeholder="From"
+                                          value="{{ job.from_time|time:'H:i' }}" />      
+                                          <button type="submit" name="delete_from_time"  class="clear-btn" aria-label="Clear from time" onclick="event.preventDefault(); ">×</button>
+                                 </div>
+
+
+                                      <div class="input-with-clear">
+                                                              <input type="text" id="change_to_time" name="change_to_time"
+                                                class="form-control form-control-sm flatpickr_time"
+                                                style="width: 120px;"
+                                                placeholder="To"
+                                                value="{{ job.to_time|time:'H:i' }}" />                      
+                                                  <button type="submit" name="delete_to_time"  class="clear-btn" aria-label="Clear to time" onclick="event.preventDefault(); ">×</button>
+                                       </div>
+
+
+
+                                                            
+                                                  <div class="d-flex flex-column">
+                                                    <button type="submit" class="btn btn-sm btn-primary mt-1 w-100">
+                                                      <i class="bi bi-funnel"></i> Apply
+                                                    </button>
+                                                    {% if form_job_id == job.job_id %}
+                                                      <div class="text-danger small mt-1">
+                                                        {{ form.to_time.errors }}
+                                                      </div>
+                                                    {% endif %}
+                                                  </div>
+
+
+                        {% endif %}
+
+                                    <input type="hidden" name="group_id" value="{{ group.id }}">
+                                    <input type="hidden" name="job_id" value="{{ job.id }}">
+                                    <button type="submit" name="move_up" value="{{ job.id }}" class="btn btn-light btn-sm p-0 px-1 border-0" title="Move Up" style="color: #16a34a;">▲</button>
+                                    <button type="submit" name="move_down" value="{{ job.id }}" class="btn btn-light btn-sm p-0 px-1 border-0" title="Move Down" style="color: red;">▼</button>
+                                    <select name="new_group" onchange="this.form.submit()" style="font-size: 0.8rem;">
+                                      <option value="0" {% if not job.job_groups %}{% endif %}>Other</option>
+                                      {% for group_options in groups %}
+                                        <option value="{{ group_options.id }}" {% if group_options.id == group.id %}selected{% endif %}>Group-{{ forloop.counter }}</option>
+                                      {% endfor %}
+                                    </select>
+                  </form>
           </li>
         {% endfor %}
       </ul>
@@ -232,5 +375,85 @@ localStorage.removeItem('lastJob');
 }
 });
 </script>
+
+
+
+
+
+
+                  <script>
+    function clearInputAndSubmit(button) {
+      const input = button.parentElement.querySelector('input')
+        if (!input || input.value.trim() === '') {
+        return;
+    }
+      if (input ) {
+        input.value = 'None'
+      }
+      button.form.submit()
+    }
+    
+    // Attach event listeners dynamically on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.input-with-clear button.clear-btn').forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+          event.preventDefault()
+          clearInputAndSubmit(event.currentTarget)
+        })
+      })
+    })
+  </script>
+  
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+flatpickr('.flatpickr_date', {
+enableTime: false,
+dateFormat: 'Y-m-d',
+altInput: true,
+altFormat: 'F j, Y'
+
+})
+
+    flatpickr('.flatpickr_time', {
+      enableTime: true,
+      noCalendar: true,
+      dateFormat: 'H:i',
+      altInput: true,
+      altFormat: 'h:i K',
+      allowInput: true,
+      
+    })
+</script>
+
+
+<style>
+                             .input-with-clear {
+                               position: relative;
+                               display: inline-block;
+                               max-width: 220px; /* adjust as needed */
+                             }
+                             .input-with-clear input {
+                               padding-right: 2rem; /* space for the clear button */
+                             }
+                             .input-with-clear button.clear-btn {
+                               position: absolute;
+                               right: 0.25rem;
+                               top: 50%;
+                               transform: translateY(-50%);
+                               border: none;
+                               background: transparent;
+                               color: #999;
+                               cursor: pointer;
+                               font-weight: bold;
+                               font-size: 1rem;
+                               padding: 0;
+                               line-height: 1;
+                             }
+                             .input-with-clear button.clear-btn:hover {
+                               color: #d33;
+                             }
+                           </style>
 
 {% endblock %}

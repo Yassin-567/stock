@@ -663,7 +663,7 @@ def move (request,ex_sg,) :
                 if index < len(order) - 1:
                     order[index], order[index + 1] = order[index + 1], order[index]
                     group.job_order=order
-                    postcodes = [job.post_code.strip() for job in group.ordered_jobs() if job.post_code]
+                    postcodes = [job.post_code.upper().replace(" ", "")  for job in group.ordered_jobs() if job.post_code]
                     group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)    
                     group.save(update_fields=["job_order","map_url"])
             except ValueError:
@@ -684,7 +684,7 @@ def move (request,ex_sg,) :
                 if index > 0:
                     order[index], order[index - 1] = order[index - 1], order[index]
                     group.job_order=order
-                    postcodes = [job.post_code.strip() for job in group.ordered_jobs() if job.post_code]
+                    postcodes = [job.post_code.upper().replace(" ", "")  for job in group.ordered_jobs() if job.post_code]
                     group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)    
                     group.save(update_fields=["job_order","map_url"])
             except ValueError:
@@ -692,40 +692,60 @@ def move (request,ex_sg,) :
             
         elif "new_group" in request.POST:
             
-            old_group_id = int(request.POST.get("group_id"))
+            
             new_group_id = int(request.POST.get("new_group"))
             job_id = int(request.POST.get("job_id"))
-            old_group = ex_sg.get(id=old_group_id)
-            new_group = ex_sg.get(id=new_group_id)
-
-            old_group.save()
+            try:
+                old_group_id = int(request.POST.get("group_id"))
+                old_group = ex_sg.get(id=old_group_id)
+                # old_group.save()
+            except:
+                old_group=None  
+            if new_group_id==0:
+                new_group=None
+            else:
+                new_group = ex_sg.get(id=new_group_id)
+      
             
             job = Job.objects.get(company=request.user.company, id=job_id)
 
             if job.scheduler and job.scheduler!=request.user:
                 messages.error(request,"Another user will schedule this job")
                 return redirect("scheduler")
-        
+            elif not new_group:
+                print("NOT NEW")
+                groups = job.job_groups.filter(user=request.user)
+                job.scheduler=None
+                job.save(update_fields=['scheduler'])
+                remove_job_from_group(groups,job)
+                
+                return redirect("scheduler")
             else:
                 with transaction.atomic():
                     # Remove from old group
-                    old_group.jobs.remove(job)
-                    if job.id in old_group.job_order:
-                        old_group.job_order.remove(job.id)
-                        postcodes = [jobl.post_code.strip() for jobl in old_group.ordered_jobs() if jobl.post_code and jobl.id != job.id]
-                        old_group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)    
-                    old_group.save(update_fields=["job_order","map_url"])
+                    if old_group:
+                        print("Fuck")
+                        old_group.jobs.remove(job)
+                        if job.id in old_group.job_order:
+                            old_group.job_order.remove(job.id)
+                            postcodes = [jobl.post_code.upper().replace(" ", "")  for jobl in old_group.ordered_jobs() if jobl.post_code and jobl.id != job.id]
+                            print(postcodes)
+                            old_group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)    
+                        old_group.save(update_fields=["job_order","map_url"])
                     if new_group.scheduler:
                         job.scheduler=new_group.user
+                        print("78999990000",new_group.user)
                         job.save(update_fields=['scheduler'])
+                        groups=job.job_groups.exclude(user=request.user)
+                        remove_job_from_group(groups,job)
                     else:
+                        print(9999)
                         job.scheduler=None
                         job.save(update_fields=['scheduler'])
                     new_group.jobs.add(job)
                     if job.id not in new_group.job_order:
                         new_group.job_order.append(job.id)
-                    new_group.map_url=new_group.map_url+"/"+str(job.post_code)
-                    
+                    new_group.map_url=new_group.map_url+"/"+str(job.post_code.upper().replace(" ", "") )
                     new_group.save(update_fields=["job_order","map_url"])
         
 def remove_job_from_group(groups,job):
@@ -733,10 +753,37 @@ def remove_job_from_group(groups,job):
     with transaction.atomic():
                                         # Remove from old group
         if groups:
+            
             for x in groups:
                 x.jobs.remove(job)
                 if job.id in x.job_order:
                     x.job_order.remove(job.id)
-                    postcodes = [job.post_code.strip() for job in x.ordered_jobs() if job.post_code and job.id != job.id]
-                    x.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)    
-                x.save(update_fields=["job_order","map_url"])
+                    postcodes = [job1.post_code.upper().replace(" ", "") for job1 in x.ordered_jobs() if job1.post_code.upper().replace(" ", "") and job1.id != job.id]
+                    x.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)   
+                x.save(update_fields=["job_order","map_url","scheduler"])
+
+def i_work_on_this(request,group_id):
+    from .models import SchedulerGroup
+    group=SchedulerGroup.objects.get(company=request.user.company,id=group_id)
+    group.scheduler=True
+    group.save(update_fields=["scheduler"])
+    jobs=group.jobs.all()
+    for job in jobs:
+        
+        if not job.scheduler or job.scheduler==request.user:
+            groups=job.job_groups.exclude(id=group.id)
+            remove_job_from_group(groups,job)
+            job.scheduler=request.user
+            job.save(request=request,update_fields=["scheduler"])
+def i_donot_work_on_this(request,group_id):
+    from .models import SchedulerGroup
+
+    group=SchedulerGroup.objects.get(company=request.user.company,id=group_id)
+    group.scheduler=False
+    group.save(update_fields=["scheduler"])
+    jobs=group.jobs.all()
+    for j in jobs:
+        if  j.scheduler==request.user:
+            j.scheduler=None    
+            j.save(request=request,update_fields=["scheduler"])
+                
