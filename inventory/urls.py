@@ -30,7 +30,9 @@ urlpatterns=[
     path('adpanelc//',views.update_company,name='update_company'),
     path('adpaneleng/',views.engineer,name='add_eng'),
     path('updateeng/<int:pk>',views.update_engineer,name='update_engineer'),
+
     path('scheduler/',views.scheduler,name='scheduler'),
+    path('delete_all_jobs/',views.delete_all_jobs,name='delete_all_jobs'),
     
    
     
@@ -38,8 +40,13 @@ urlpatterns=[
 
     path('add_cat/',views.add_category,name='add_category'),
     path('batch_entry',views.batch_entry,name='batch_entry'),
+    path('jobs_batch_entry',views.impot_jobs,name='jobs_batch_entry'),
+
     path('clear_batch',views.clear_batch,name='clear_batch'),
     path('create_batch_items/', views.create_batch_items, name='create_batch_items'),
+    path('create_batch_jobs/', views.create_batch_jobs, name='create_batch_jobs'),
+
+
 
     path('get_jobs_from_sf/', views.fetch_jobs, name='get_jobs_from_sf'),
     path('get_jobs_from_sf/<int:job_id>/', views.fetch_jobs, name='get_jobs_from_sf'),

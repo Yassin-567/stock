@@ -1280,7 +1280,14 @@ def history(request):
         except:
             pass
     models_filter=['job','warehouseitem','jobitem','customuser','company']
-    return render(request,'inventory/history.html',{'history':history,'model':model,'users':users,'selected_user_id':selected_user_id,'models_filter':models_filter})
+
+    
+    paginator=Paginator(history.order_by('-changed_at'),25)
+    page_number = request.GET.get('page')
+    print(page_number)
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request,'inventory/history.html',{'history':page_obj,'page_obj':page_obj,'model':model,'users':users,'selected_user_id':selected_user_id,'models_filter':models_filter})
 
 
 @login_required
@@ -1834,7 +1841,6 @@ def create_batch_items(request):
             except Category.DoesNotExist:
                 cat_obj=Category(company=request.user.company,category='Others')
                 cat_obj.save(request=request)
-        print("nnnn",request.POST)
         item_data = {
             'name': request.POST['name'],
             'part_number': request.POST['part_number'],
@@ -1845,13 +1851,6 @@ def create_batch_items(request):
             'company':request.user.company,
             'category': cat_obj,
         }
-        
-        
-        # Save to database
-        
-        
-
-
         wi=WarehouseItem(name=item_data['name'],
                          part_number=item_data['part_number'],
                          reference=item_data['reference'],
@@ -1893,6 +1892,175 @@ def batch_entry(request):
 def clear_batch(request):
     request.session['batch_items'] =[]
     return redirect('batch_entry')
+
+
+
+def impot_jobs(request):
+    if request.method == 'POST' and request.FILES.get('jobs_sheet'):
+        excel_file = request.FILES['jobs_sheet']
+
+        COLUMNS = {
+            'Job#': 'job_id',
+            'Date': 'date',
+            'Time': 'from_time',
+            'Status': 'status',
+            'Parent Customer': 'parent_account',
+            'Service Location Address 1': 'address',
+            'Service Location Zip': 'postcode',
+            'Tech(s) Assigned': 'engineer',
+            'Completion Notes':'notes',
+            'Job Created At': 'birthday',
+
+        }
+
+        df = pd.read_excel(excel_file, usecols=COLUMNS.keys())
+        df.rename(columns=COLUMNS, inplace=True)
+
+        # --- NORMALIZATION (CRITICAL PART) ---
+
+        # Dates / timestamps → string
+        for col in ['date', 'birthday']:
+            if col in df.columns:
+                df[col] = df[col].apply(
+                    lambda x: (
+                        None
+                        if pd.isna(x)
+                        else x.strftime('%Y-%m-%d %H:%M:%S')
+                        if isinstance(x, (pd.Timestamp, datetime))
+                        else str(x)
+                    )
+                )
+        # Time columns → string
+        if 'from_time' in df.columns:
+            df['from_time'] = df['from_time'].apply(
+            lambda x: x.strftime('%H:%M:%S') if pd.notnull(x) else None
+                )
+
+
+        # NaN / NaT → None (JSON safe)
+        df = df.where(pd.notnull(df), None)
+        data=df.to_dict(orient='records')
+        # # ------------------------------------
+
+        request.session['batch_jobs'] = data
+        request.session.set_expiry(30* 60) 
+        return redirect('jobs_batch_entry')
+
+    # Load current items from session
+    data = request.session.get('batch_jobs', [])
+    return render(request, 'inventory/jobs_batch_entry.html', {'data': data})
+
+def create_batch_jobs(request):
+    
+        
+                
+        
+        INVALID_VALUES = {None, '', 'None', 'nan', 'NaN'}
+
+        def parse_time(value):
+            if value in INVALID_VALUES:
+                return None
+
+            # Already a time object (pandas sometimes does this)
+            # if isinstance(value, time):
+            #     return value
+
+            value = str(value).strip()
+
+            for fmt in ('%H:%M', '%H:%M:%S', '%Y-%m-%d %H:%M:%S'):
+                try:
+                    return datetime.strptime(value, fmt).time()
+                except ValueError:
+                    continue
+
+            return None  # silently ignore invalid formats
+        def parse_this_date(value):
+            if value in INVALID_VALUES:
+                return None
+
+            value = str(value).strip()
+
+            # Try multiple date formats (add more if needed)
+            for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%Y-%m-%d %H:%M:%S'):
+                try:
+                    return datetime.strptime(value, fmt).date()
+                except ValueError:
+                    continue
+
+            return None
+        job_data = {
+            'job_id': request.POST.get('job_id'),
+
+            'date': parse_this_date(request.POST.get('date')),
+            'from_time': parse_time(request.POST.get('from_time')),
+
+            'status': request.POST.get('status'),
+            'parent_account': request.POST.get('parent_account'),
+            'address': request.POST.get('address'),
+            'postcode': request.POST.get('postcode'),
+
+            'engineer': request.POST.get('engineer'),
+            'notes': request.POST.get('notes'),
+
+            'birthday': request.POST.get('birthday'),
+
+            'company': request.user.company,
+        }
+        engineer=Engineer.objects.filter(company=request.user.company,name__icontains=job_data['engineer']).first()
+        job_status={
+            'Paused':'paused',
+            'Unscheduled':'ready',
+            'Scheduled':'ready',
+            'Cancelled':'cancelled',
+            'Completed':'completed'
+
+        }
+       
+        try:
+            
+            x=Job.objects.get(company=request.user.company,job_id=job_data['job_id'])
+            items = request.session.get('batch_jobs', [])
+        
+
+            items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
+            request.session['batch_jobs'] = items
+            messages.error(request,f"Job {x.job_id} already exists")
+            return redirect('jobs_batch_entry')
+        except:
+            pass
+        job=Job(
+                        company=request.user.company,
+                        job_id=job_data['job_id'],
+                        date=job_data['date'],
+                        from_time=job_data['from_time'],
+                        post_code=job_data['postcode'],
+                        parent_account=job_data['parent_account'],
+                        address=job_data['address'],
+                        engineer=engineer,
+                        birthday=job_data['birthday'],
+                        imported_from_sheet=True,
+                            )
+        job.status = job_status.get(job_data['status'], 'ready')
+        if job.status=='paused':
+            job.parts_need_attention=True
+        job.save(request=request)
+        if job_data['notes']  != "None":
+            comment=Comment(
+                company=request.user.company,
+                content_type=ContentType.objects.get_for_model(Job), object_id=job.id, 
+                comment=job_data['notes'],
+                added_by=request.user,
+            )
+            comment.save()
+        
+        messages.success(request,f'job #{job_data['job_id']} added')
+        # Remove this item from session
+        items = request.session.get('batch_jobs', [])
+        
+
+        items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
+        request.session['batch_jobs'] = items
+        return redirect('jobs_batch_entry')
 
 
 def fetch_api_data(request):
@@ -2030,12 +2198,13 @@ def scheduler(request):
         internet_ok = False
 
     if not internet_ok:
-        
-        return redirect("inventory")
+        messages.error(request,"Internet issue")
+        # return redirect("scheduler")
     ex_sg = SchedulerGroup.objects.filter(
         company=request.user.company,
         user=request.user,
         wrong_postcodes=False,
+        
 
     ).annotate(job_count=Count("jobs")).order_by("-job_count")
 
@@ -2043,14 +2212,14 @@ def scheduler(request):
         company=request.user.company,
         user=request.user,
         wrong_postcodes=True
-    ).first()
+    ).first()   
 
     # Safe handling
   
     if  (request.POST and "regenerate" in request.POST):
         
         if ex_sg.exists():
-            ex_sg.delete()
+            ex_sg.exclude(scheduler=True).delete()
 
         if groupx:  # check it’s not None before calling delete
             groupx.delete()
@@ -2059,7 +2228,7 @@ def scheduler(request):
     # --- Helper: get coordinates from postcode ---
         # --- Step 1: Fetch all ready jobs ---
         base_jobs = Job.objects.filter(company=request.user.company,status="ready",)
-        ready_jobs=list(base_jobs.filter(Q(scheduler=None)|Q(scheduler=request.user)))
+        ready_jobs=list(base_jobs.exclude(scheduler=request.user))
         
         if not ready_jobs:
 
@@ -2101,7 +2270,6 @@ def scheduler(request):
                     if (distance <= 15    and len(jobs_list) < 9) or (
                         job.post_code.strip() == other.post_code.strip()
                     ):
-                        print(job.post_code, ">>>" ,other.post_code, "dis", distance)
                         jobs_list.append(other)
                         visited.add(other.id)
                 postcodes = [j.post_code.strip().upper().replace(" ", "") for j in jobs_list if j.post_code]
@@ -2139,7 +2307,7 @@ def scheduler(request):
                 )
             wrong_group_obj.jobs.set(wrong_list)
             wrong_group_obj.save()
-            print("WROO",wrong_group_obj)
+        messages.success(request,"Groups regenerated")
         return redirect('scheduler')
     elif "optimize" in request.POST:
         # 🔄 Optimize every SchedulerGroup
@@ -2171,8 +2339,8 @@ def scheduler(request):
         return redirect('scheduler')
     
                
-    elif request.method == "POST" and ("move_up" in request.POST or "move_down" in request.POST ):
-            print(request.POST  )
+    elif request.method == "POST" and ("move_up" in request.POST or "move_down" in request.POST or "new_group" in request.POST ):
+        
             try:
                     
                 move(request,ex_sg)
@@ -2231,9 +2399,9 @@ def scheduler(request):
         group_id=request.POST.get("group_id")
 
         group=SchedulerGroup.objects.filter(company=request.user.company,user=request.user,id=group_id).first()
-        
+
         if eng_id:
-            print(eng_id)
+            
             eng=Engineer.objects.filter(company=request.user.company,id=eng_id).first()
         else :
             eng=None
@@ -2382,8 +2550,20 @@ def monthly_calendar(request, year=None, month=None):
         
     return render(request, 'inventory/calendar.html', context)
 
-
 @login_required
+
+def delete_all_jobs(request):
+    from django.contrib.admin.utils import get_deleted_objects
+    jobs = Job.objects.filter(company=request.user.company)
+    count = jobs.count()
+
+    for job in jobs:
+        job.delete()   # committed immediately
+
+    messages.success(request, f"{count} jobs deleted")
+    return redirect("inventory")
+
+
 @require_POST
 def move_job_to_date(request):
     """

@@ -210,6 +210,7 @@ class Job(models.Model):
     latitude=models.FloatField(blank=True,null=True)
     longitude=models.FloatField(blank=True,null=True)
     scheduler=models.ForeignKey(CustomUser,on_delete=models.DO_NOTHING,related_name="scheduler_jobs", null=True,blank=True)
+    imported_from_sheet=models.BooleanField(default=False, )
     class Meta:
         unique_together = ('job_id', 'company')  # Enforce uniqueness at the company level
         ordering=['-added_date']
@@ -267,6 +268,8 @@ class Comment(models.Model):
     added_date = models.DateTimeField(default=timezone.now)
     added_by = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=False, blank=False, related_name="added_by")
     from_sf=models.BooleanField(default=False)
+    imported_from_sheet=models.BooleanField(default=False, )
+    
     class Meta:
         ordering = ['-added_date']
     def __str__(self):
@@ -320,7 +323,7 @@ class JobItem(models.Model):
 
     ###
     company=models.ForeignKey(Company,on_delete=models.CASCADE,)
-    job = models.ForeignKey(Job, on_delete=models.DO_NOTHING, related_name="items")
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="items")
     job_quantity = models.PositiveSmallIntegerField(default=0)  # How many needed for this job
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
     reference=models.TextField(blank=True,null=True,max_length=40)
@@ -332,7 +335,7 @@ class JobItem(models.Model):
     from_warehouse=models.BooleanField(default=False)
     added_by_batch_entry=models.BooleanField(default=False)
     was_it_used=models.BooleanField(default=False)
-    was_for_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="moveditems")
+    was_for_job=models.ForeignKey(Job, on_delete=models.CASCADE,null=True,blank=True, related_name="moveditems")
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="jobitem_category", null=True, )
     def delete(self, request=None):
         self.request = request  
@@ -382,7 +385,7 @@ class WarehouseItem(models.Model):
     warehouse_quantity = models.PositiveSmallIntegerField(default=0)  
     reference=models.TextField(blank=True,null=True,max_length=40)
     is_used=models.BooleanField(default=False)
-    is_moved_from_job=models.ForeignKey(Job, on_delete=models.DO_NOTHING,null=True,blank=True, related_name="warehousemoveditems")
+    is_moved_from_job=models.ForeignKey(Job, on_delete=models.CASCADE,null=True,blank=True, related_name="warehousemoveditems")
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="warehouse_category", null=True, )
     added_by_batch_entry=models.BooleanField(default=False)
     def save(self, *args, dont_save_history=False,request=None,**kwargs):
@@ -406,7 +409,7 @@ class Email(models.Model):
         BATCH = "batch", _("Batch")
     type=models.CharField(choices=EmailType.choices,null=False,blank=False)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="company_emails")
-    user=models.ForeignKey(CustomUser,on_delete=models.DO_NOTHING,related_name="user_emails")
+    user=models.ForeignKey(CustomUser,on_delete=models.CASCADE,related_name="user_emails")
     to=models.TextField(null=False, blank=False)
     subject=models.TextField(null=True, blank=True)
     body=models.TextField(null=True, blank=True)
@@ -422,7 +425,7 @@ class History(models.Model):
     old_value = models.TextField(null=True, blank=True)
     new_value = models.TextField(null=True, blank=True)
     changed_at = models.DateTimeField(auto_now_add=True)
-    user=models.ForeignKey(CustomUser,on_delete=models.DO_NOTHING,related_name="user_history")
+    user=models.ForeignKey(CustomUser,on_delete=models.CASCADE,related_name="user_history")
     created=models.BooleanField(default=False)
     created_by_syncing=models.BooleanField(default=False)
     updated_by_syncing=models.BooleanField(default=False)
@@ -468,4 +471,7 @@ class SchedulerGroup(models.Model):
         ordered = [job_dict[jid] for jid in self.job_order if jid in job_dict]
         return ordered
 
-    
+    def create_maps_url(self):
+        postcodes = [j.post_code.strip().upper().replace(" ", "") for j in self.ordered_jobs() if j.post_code]
+        map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)
+       
