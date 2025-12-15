@@ -2103,7 +2103,8 @@ def create_all_batch_jobs(request):
             items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
             request.session['batch_jobs'] = items
             messages.error(request,f"Job {x.job_id} already exists")
-            pass
+
+            continue
         except:
             pass
         job=Job(
