@@ -15,7 +15,7 @@
   </form>
 
   {% if data %}
-    <h2>Review & Submit Jobs</h2>
+    <h2>Review & Submit Jobs</h2> <a href="{% url 'create_all_batch_jobs' %}">Add job</a>
 
     {% for item in data %}
       <form method="POST" action="{% url 'create_batch_jobs' %}">

@@ -1949,45 +1949,45 @@ def impot_jobs(request):
     # Load current items from session
     data = request.session.get('batch_jobs', [])
     return render(request, 'inventory/jobs_batch_entry.html', {'data': data})
+   
 
+INVALID_VALUES = {None, '', 'None', 'nan', 'NaN'}
+
+def parse_time(value):
+    if value in INVALID_VALUES:
+        return None
+
+    # Already a time object (pandas sometimes does this)
+    # if isinstance(value, time):
+    #     return value
+
+    value = str(value).strip()
+
+    for fmt in ('%H:%M', '%H:%M:%S', '%Y-%m-%d %H:%M:%S'):
+        try:
+            return datetime.strptime(value, fmt).time()
+        except ValueError:
+            continue
+
+    return None  # silently ignore invalid formats
+def parse_this_date(value):
+    if value in INVALID_VALUES:
+        return None
+
+    value = str(value).strip()
+
+    # Try multiple date formats (add more if needed)
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%Y-%m-%d %H:%M:%S'):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+
+    return None
 def create_batch_jobs(request):
     
         
-                
-        
-        INVALID_VALUES = {None, '', 'None', 'nan', 'NaN'}
-
-        def parse_time(value):
-            if value in INVALID_VALUES:
-                return None
-
-            # Already a time object (pandas sometimes does this)
-            # if isinstance(value, time):
-            #     return value
-
-            value = str(value).strip()
-
-            for fmt in ('%H:%M', '%H:%M:%S', '%Y-%m-%d %H:%M:%S'):
-                try:
-                    return datetime.strptime(value, fmt).time()
-                except ValueError:
-                    continue
-
-            return None  # silently ignore invalid formats
-        def parse_this_date(value):
-            if value in INVALID_VALUES:
-                return None
-
-            value = str(value).strip()
-
-            # Try multiple date formats (add more if needed)
-            for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%Y-%m-%d %H:%M:%S'):
-                try:
-                    return datetime.strptime(value, fmt).date()
-                except ValueError:
-                    continue
-
-            return None
+             
         job_data = {
             'job_id': request.POST.get('job_id'),
 
@@ -2034,7 +2034,7 @@ def create_batch_jobs(request):
                         date=job_data['date'],
                         from_time=job_data['from_time'],
                         post_code=job_data['postcode'],
-                        parent_account=job_data['parent_account'],
+                        parent_account=job_data['parent_account'] if job_data['parent_account']  else "Unknonw ",
                         address=job_data['address'],
                         engineer=engineer,
                         birthday=job_data['birthday'],
@@ -2044,14 +2044,14 @@ def create_batch_jobs(request):
         if job.status=='paused':
             job.parts_need_attention=True
         job.save(request=request)
-        if job_data['notes']  != "None":
-            comment=Comment(
-                company=request.user.company,
-                content_type=ContentType.objects.get_for_model(Job), object_id=job.id, 
-                comment=job_data['notes'],
-                added_by=request.user,
-            )
-            comment.save()
+        # if job_data['notes']  != "None":
+        #     comment=Comment(
+        #         company=request.user.company,
+        #         content_type=ContentType.objects.get_for_model(Job), object_id=job.id, 
+        #         comment=job_data['notes'],
+        #         added_by=request.user,
+        #     )
+        #     comment.save()
         
         messages.success(request,f'job #{job_data['job_id']} added')
         # Remove this item from session
@@ -2062,7 +2062,87 @@ def create_batch_jobs(request):
         request.session['batch_jobs'] = items
         return redirect('jobs_batch_entry')
 
+def create_all_batch_jobs(request):
+    count=0
+    for  batch_job in request.session.get('batch_jobs', []):
 
+        job_data = {
+            'job_id': batch_job['job_id'],
+
+            'date': parse_this_date(batch_job['date']),
+            'from_time': parse_time(batch_job['from_time']),
+
+            'status': batch_job['status'],
+            'parent_account': batch_job['parent_account'],
+            'address': batch_job['address'],
+            'postcode': batch_job['postcode'],
+
+            'engineer': batch_job['engineer'],
+            'notes': batch_job['notes'],
+
+            'birthday': batch_job['birthday'],
+
+            'company': request.user.company,
+        }
+        engineer=Engineer.objects.filter(company=request.user.company,name__icontains=job_data['engineer']).first()
+        job_status={
+            'Paused':'paused',
+            'Unscheduled':'ready',
+            'Scheduled':'ready',
+            'Cancelled':'cancelled',
+            'Completed':'completed'
+
+        }
+       
+        try:
+            
+            x=Job.objects.get(company=request.user.company,job_id=job_data['job_id'])
+            items = request.session.get('batch_jobs', [])
+        
+
+            items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
+            request.session['batch_jobs'] = items
+            messages.error(request,f"Job {x.job_id} already exists")
+            pass
+        except:
+            pass
+        job=Job(
+                        company=request.user.company,
+                        job_id=job_data['job_id'],
+                        date=job_data['date'],
+                        from_time=job_data['from_time'],
+                        post_code=job_data['postcode'],
+                        parent_account=job_data['parent_account'] if job_data['parent_account']  else "Unknonw ",
+                        address=job_data['address'],
+                        engineer=engineer,
+                        birthday=job_data['birthday'],
+                        imported_from_sheet=True,
+                            )
+        job.status = job_status.get(job_data['status'], 'ready')
+        if job.status=='paused':
+            job.parts_need_attention=True
+        job.save(request=request)
+        # if job_data['notes']  != "None":
+        #     comment=Comment(
+        #         company=request.user.company,
+        #         content_type=ContentType.objects.get_for_model(Job), object_id=job.id, 
+        #         comment=job_data['notes'],
+        #         added_by=request.user,
+        #     )
+        #     comment.save()
+        
+       
+        # Remove this item from session
+        items = request.session.get('batch_jobs', [])
+        
+
+        items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
+        request.session['batch_jobs'] = items
+        count=count+1
+    messages.success(request,f"{count} Jobs added")
+    return redirect('jobs_batch_entry')
+
+    
 def fetch_api_data(request):
     url = "https://jsonplaceholder.typicode.com/posts"
     response = requests.get(url)
