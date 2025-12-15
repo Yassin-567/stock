@@ -1935,11 +1935,14 @@ def impot_jobs(request):
                     )
                 )
         # Time columns → string
-        if 'from_time' in df.columns:
-            df['from_time'] = df['from_time'].apply(
-            lambda x: x.strftime('%H:%M:%S') if pd.notnull(x) else None
-                )
-
+        try:
+            if 'from_time' in df.columns and df['from_time']  != "NaN":
+                print(df['from_time'] )
+                df['from_time'] = df['from_time'].apply(
+                lambda x: x.strftime('%H:%M') if pd.notnull(x) else None
+                    )
+        except:
+            pass
 
         # NaN / NaT → None (JSON safe)
         df = df.where(pd.notnull(df), None)
@@ -2088,7 +2091,16 @@ def create_all_batch_jobs(request):
 
             'company': request.user.company,
         }
-        engineer=Engineer.objects.filter(company=request.user.company,name__icontains=job_data['engineer']).first()
+
+        engineer = None
+        engineer_name = job_data.get('engineer')
+
+        if engineer_name:
+            engineer = Engineer.objects.filter(
+                company=request.user.company,
+                name__icontains=engineer_name
+            ).first()
+        
         job_status={
             'Paused':'paused',
             'Unscheduled':'ready',
