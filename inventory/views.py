@@ -2351,7 +2351,7 @@ def scheduler(request):
                 visited.add(job.id)
                 distances = []
                 for other in ready_jobs:
-                    if other.id in visited or not other.latitude:
+                    if other.id in visited or not other.latitude or not other.longitude:
                         continue     
                     d = haversine(job.latitude, job.longitude, other.latitude, other.longitude)
                     distances.append({"other": other, "distance": d})
@@ -2359,15 +2359,25 @@ def scheduler(request):
                     distances.sort(key=lambda x: x["distance"])
 
                 # Step 3: pick closest ones up to limit
-                for entry in distances:
-                    other = entry["other"]
-                    distance = entry["distance"]
+                print(distances)
+                for item in distances[:8]:
+                    
+                    item['other']
+                    jobs_list.append(item['other'])
+                    visited.add(item['other'].id)
+                    print(item['other'])
 
-                    if (distance <= 15    and len(jobs_list) < 9) or (
-                        job.post_code.strip() == other.post_code.strip()
-                    ):
-                        jobs_list.append(other)
-                        visited.add(other.id)
+
+                # for entry in distances:
+                #     other = entry["other"]
+                #     distance = entry["distance"]
+                    
+                #     if (distance <= 13    and len(jobs_list) < 9) or (
+                #         job.post_code.strip() == other.post_code.strip()
+                #     ):
+                    
+                #         jobs_list.append(other)
+                #         visited.add(other.id)
                 postcodes = [j.post_code.strip().upper().replace(" ", "") for j in jobs_list if j.post_code]
                 map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)
                 group_obj = SchedulerGroup.objects.create(
