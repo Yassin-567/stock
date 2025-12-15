@@ -1892,7 +1892,11 @@ def batch_entry(request):
 def clear_batch(request):
     request.session['batch_items'] =[]
     return redirect('batch_entry')
+def clear_batch_jobs(request):
+    request.session['batch_jobs'] =[]
 
+    return redirect('jobs_batch_entry')
+    
 
 
 def impot_jobs(request):
@@ -2143,7 +2147,6 @@ def create_all_batch_jobs(request):
     messages.success(request,f"{count} Jobs added")
     return redirect('jobs_batch_entry')
 
-    
 def fetch_api_data(request):
     url = "https://jsonplaceholder.typicode.com/posts"
     response = requests.get(url)
