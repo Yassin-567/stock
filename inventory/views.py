@@ -864,7 +864,7 @@ def item_add(request,pk=None,):
                             item.save(update_fields=['warehouse_quantity'],request=request)#
                             if item.warehouse_quantity==0:
                                 item.delete()
-                              
+                            
                     else:
                         messages.error(request,"Not enough stock")
                         form=JobItemForm()
@@ -896,7 +896,6 @@ def item_add(request,pk=None,):
                             jobitem.job=job
                             jobitem.was_for_job=job
                             jobitem.save(request=request)
-                       
                             form=JobItemForm()
                             warehouse_items=warehouse_items
                             messages.success(request, f'{jobitem}-is added to job {job}')
@@ -2350,23 +2349,49 @@ def scheduler(request):
                 jobs_list.append(job)
                 visited.add(job.id)
                 distances = []
-                for other in ready_jobs:
-                    if other.id in visited or not other.latitude or not other.longitude:
-                        continue     
-                    d = haversine(job.latitude, job.longitude, other.latitude, other.longitude)
-                    distances.append({"other": other, "distance": d})
+                
+                while len(jobs_list) < 15:
+                    last_job = jobs_list[-1]
 
+                    # Calculate distances from last_job to all unvisited jobs with coords
+                    distances = []
+                    for other in ready_jobs:
+                        if other.id in visited:
+                            continue
+                        if not (other.latitude and other.longitude):
+                            continue
+
+                        d = haversine(
+                            last_job.latitude,
+                            last_job.longitude,
+                            other.latitude,
+                            other.longitude,
+                        )
+                        distances.append({"other": other, "distance": d})
+
+                    if not distances:
+                        # No more jobs to add
+                        break
+
+                    # Sort distances to find the closest job
                     distances.sort(key=lambda x: x["distance"])
 
-                # Step 3: pick closest ones up to limit
-                print(distances)
-                for item in distances[:8]:
+                    # Add closest job to the list and visited
                     
-                    item['other']
-                    jobs_list.append(item['other'])
-                    visited.add(item['other'].id)
-                    print(item['other'])
+                    closest_job = distances[0]["other"]
+                    jobs_list.append(closest_job)
+                    visited.add(closest_job.id)
 
+                # Step 3: pick closest ones up to limit
+                #-------------
+                # print(distances)
+                # for item in distances[:8]:
+                    
+                #     item['other']
+                #     jobs_list.append(item['other'])
+                #     visited.add(item['other'].id)
+                #     print(item['other'])
+#----------------------
 
                 # for entry in distances:
                 #     other = entry["other"]

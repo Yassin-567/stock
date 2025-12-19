@@ -343,13 +343,16 @@ class JobItem(models.Model):
     def save(self,*args, dont_move_used=False,no_recursion=False,request,**kwargs):
         self.request=request
         item_arrived(self)
-        
-        i=JobItem.objects.get(company=request.user.company,id=self.id)
-        if not i.ordered and self.ordered:
-            print("KLKL")
+        if self.ordered:
             self.ordered_date=timezone.now().date()
-        elif i.ordered and not self.ordered:
+        else:
             self.ordered_date=None
+        # i=JobItem.objects.get(company=request.user.company,id=self.id)
+        # if not i.ordered and self.ordered:
+        #     print("KLKL")
+        #     self.ordered_date=timezone.now().date()
+        # elif i.ordered and not self.ordered:
+        #     self.ordered_date=None
         if self.job_quantity==self.arrived_quantity:
             self.arrived_date=timezone.now().date()
         else:

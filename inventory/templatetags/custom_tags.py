@@ -206,52 +206,56 @@ from folium.features import DivIcon
 
 @register.simple_tag
 def get_map(ex_sg):
+    try:
+        
+        x=ex_sg.ordered_jobs()
+        if len(x)<1:    
+            return
 
-    x=ex_sg.ordered_jobs()
-    if len(x)<1:    
-        return
+        m = folium.Map(location=[x[0].latitude,x[0].longitude], zoom_start=11)
 
-   
-    m = folium.Map(location=[x[0].latitude,x[0].longitude], zoom_start=11)
+        trail_coordinates = ex_sg.get_jobs_coordinates()
 
-    trail_coordinates = ex_sg.get_jobs_coordinates()
-
-    folium.Marker(
-    (x[0].latitude, x[0].longitude),
-    icon=folium.Icon("green"),
-    tooltip=f"{x[0].post_code} \n {x[0].address} ",
-).add_to(m)
-
-    folium.Marker((x[len(x)-1].latitude,x[len(x)-1].longitude,), icon=folium.Icon("red"),tooltip=f"{x[len(x)-1].post_code} \n {x[len(x)-1].address} ",).add_to(m)
-    folium.Marker(
-            location=[x[0].latitude, x[0].longitude],
-            icon=DivIcon(
-                icon_size=(150, 36),
-                icon_anchor=(0, 0),
-                html=f'<div style="font-size: 20px; color: green;  font-weight: bold;">{x[0].post_code}</div>',
-            )
-        ).add_to(m)
-    folium.Marker(
-            location=[x[len(x)-1].latitude, x[len(x)-1].longitude],
-            icon=DivIcon(
-                icon_size=(150, 36),
-                icon_anchor=(0, 0),
-                html=f'<div style="font-size: 20px; color: red; font-weight: bold; ">{x[len(x)-1].post_code}</div>',
-            )
-        ).add_to(m)
-    for i in range(2,len(x)-1):
-        folium.Marker((x[i].latitude,x[i].longitude), icon=folium.Icon("orange"),tooltip=x[i].post_code).add_to(m)
         folium.Marker(
-            location=[x[i].latitude, x[i].longitude],   
-            icon=DivIcon(
-                icon_size=(150, 36),
-                icon_anchor=(0, 0),
-                html=f'<div class="map-pointer" style="font-size: 12px; color: blue; font-weight: bold;  ">{x[i].post_code}</div>',
-            )
-        ).add_to(m)
+        (x[0].latitude, x[0].longitude),
+        icon=folium.Icon("green"),
+        tooltip=f"{x[0].post_code} \n {x[0].address} ",
+    ).add_to(m)
+        
 
-    folium.PolyLine(trail_coordinates, tooltip="Coast").add_to(m)
-    
-    # Convert map to HTML string
-    map_html = m._repr_html_() 
+        folium.Marker((x[len(x)-1].latitude,x[len(x)-1].longitude,), icon=folium.Icon("red"),tooltip=f"{x[len(x)-1].post_code} \n {x[len(x)-1].address} ",).add_to(m)
+        folium.Marker(
+                location=[x[0].latitude, x[0].longitude],
+                icon=DivIcon(
+                    icon_size=(150, 36),
+                    icon_anchor=(0, 0),
+                    html=f'<div style="font-size: 20px; color: green;  font-weight: bold;">{x[0].post_code}</div>',
+                )
+            ).add_to(m)
+        folium.Marker(
+                location=[x[len(x)-1].latitude, x[len(x)-1].longitude],
+                icon=DivIcon(
+                    icon_size=(150, 36),
+                    icon_anchor=(0, 0),
+                    html=f'<div style="font-size: 20px; color: red; font-weight: bold; ">{x[len(x)-1].post_code}</div>',
+                )
+            ).add_to(m)
+        for i in range(2,len(x)-1):
+            folium.Marker((x[i].latitude,x[i].longitude), icon=folium.Icon("orange"),tooltip=x[i].post_code).add_to(m)
+            folium.Marker(
+                location=[x[i].latitude, x[i].longitude],   
+                icon=DivIcon(
+                    icon_size=(150, 36),
+                    icon_anchor=(0, 0),
+                    html=f'<div class="map-pointer" style="font-size: 12px; color: blue; font-weight: bold;  ">{x[i].post_code}</div>',
+                )
+            ).add_to(m)
+
+        folium.PolyLine(trail_coordinates, tooltip="Coast").add_to(m)
+        
+        # Convert map to HTML string
+        map_html = m._repr_html_() 
+    except:
+        map_html="ERORR"
+        pass
     return mark_safe(map_html)
