@@ -45,7 +45,6 @@ def create_guest_request(request):
     return render(request,'auths/confirm.html',{'form':form})
 
 def create_guest_account(request,email):
-    print(email)
     
     # Create guest company
     company = Company(
@@ -124,7 +123,6 @@ def forgot_password(request):
     except:
         allow_password_change=False
     if allow_password_change :
-        print(allow_password_change)
         email=request.session['register_email']
         user=CustomUser.objects.get(email=email)
         form=registerworker(instance=user,enable_edit=True,updating=True,changing_password=True)
@@ -145,7 +143,6 @@ def login_user(request):
         email=request.POST['email']
         password=request.POST['password']
         user = authenticate(email=email, password=password)
-        print(user)
         if user is not None and user.company is not None :
             login(request, user)
             return redirect('inventory')
@@ -628,10 +625,7 @@ def update_job(request, pk, cancel=0):
             #     job.parts_need_attention = True
             #     print("NEEEEED")
             #     job.save(update_fields=['parts_need_attention','status'],request=request)
-            
-      
-            
-        
+
         if  job.quoted :
             try:
                 quote_status=request.POST.get('quote_status')
@@ -640,21 +634,18 @@ def update_job(request, pk, cancel=0):
             
             if quote_status :
                 if quote_status== 'quote_accepted' and not job.quote_accepted:
-                    print("accepted")
                     job.quote_declined=False
                     job.quote_accepted=True
                     job.quoted=True
                     job.save(update_fields=['quote_declined','quote_accepted','quoted','status'],request=request)
                     messages.success(request,'Quote accepted')
                 elif quote_status=='quote_declined' and not job.quote_declined:
-                    print("PPP")
                     job.quote_declined=True
                     job.quote_accepted=False
                     job.quoted=True
                     job.save(update_fields=['quote_declined','quote_accepted','quoted','status'],request=request)
                     messages.success(request,'Quote declined')
                 elif quote_status=='quote_unknown':
-                    print(8980)
                     job.quote_declined=False
                     job.quote_accepted=False
                     job.quoted=True
@@ -827,7 +818,6 @@ def item_add(request,pk=None,):
             form=JobItemForm(request.POST,)
             item_id = request.POST.get('selected_item_id')
             required_quantity = int(request.POST.get('required_quantity'))
-            print(item_id)
             
             item=WarehouseItem.objects.get(Q(company=request.user.company)&Q(id=item_id))
             
@@ -1015,7 +1005,6 @@ def update_item(request, pk):
             except JobItem.DoesNotExist:
                 messages.error(request,"Moving failed")
             if next_url:
-                print(next_url)
                 return redirect(next_url)
             
                 return redirect('update_job' ,pk=job)
@@ -1107,9 +1096,7 @@ def update_item(request, pk):
         prevq=item.job_quantity
         
         if form.is_valid() and 'edit' in request.POST  :
-            print("SSS")
             job_quantity=form.cleaned_data['job_quantity']
-            print(job_quantity)
             if item.from_warehouse:
                 job_quantity=form.cleaned_data['job_quantity']
 
@@ -1222,10 +1209,8 @@ def update_item(request, pk):
 
         # -------- CASE: not from warehouse --------
             else:
-                print("OOOOOOOOOOOOOOOOOOOOOOOOOO")
                 item = form.save(commit=False)
                 item.save(request=request)
-                print(item.ordered_date)
                 return redirect("update_item",item.id)
                 return render(request, 'inventory/update_item.html',
                             {'form': form,
@@ -1283,7 +1268,6 @@ def history(request):
     
     paginator=Paginator(history.order_by('-changed_at'),25)
     page_number = request.GET.get('page')
-    print(page_number)
     page_obj = paginator.get_page(page_number)
     
     return render(request,'inventory/history.html',{'history':page_obj,'page_obj':page_obj,'model':model,'users':users,'selected_user_id':selected_user_id,'models_filter':models_filter})
@@ -1412,7 +1396,6 @@ def update_user(request, pk):
         form=registerworker(instance=worker,request=request,enable_edit=True,updating=True,changing_password=True)
         return render(request, 'inventory/update_user.html',{'form':form,'editing':True,'changing_password':True})
     if request.method=='POST' and 'confirm_new_password' in request.POST:
-        print("PP")
         form=registerworker(request.POST,instance=worker,enable_edit=True,updating=True,changing_password=True)
         if form.is_valid():
             x=form.save(commit=False)
@@ -1432,7 +1415,6 @@ def update_user(request, pk):
 
             form.save(commit=False)
             email=form.cleaned_data['email']
-            print(email,worker_email)
             if email!=worker_email:
                 request.session['verifying']="updating_user"
                 request.session['username'] = form.cleaned_data['username']
@@ -1564,7 +1546,6 @@ def verify_otp(request) :
     if request.method == 'POST' and 'updating_company' in request.POST:
         input_company_otp=request.POST.get('company_otp')
         company_session_otp = request.session.get('company_updating_otp')
-        print(company_session_otp)
         if (
                     input_company_otp==company_session_otp and
                     otp_generated_at is not None and
@@ -1872,7 +1853,6 @@ def create_batch_items(request):
 import pandas as pd
 def batch_entry(request):
     c=Category.objects.filter(company=request.user.company)
-    print(c)
     if request.method == 'POST' and request.FILES.get('excel_file'):
         excel_file = request.FILES['excel_file']
         df = pd.read_excel(excel_file)
@@ -1898,7 +1878,7 @@ def clear_batch_jobs(request):
     
 
 
-def impot_jobs(request):
+def import_jobs(request):
     if request.method == 'POST' and request.FILES.get('jobs_sheet'):
         excel_file = request.FILES['jobs_sheet']
 
@@ -1922,6 +1902,7 @@ def impot_jobs(request):
         # --- NORMALIZATION (CRITICAL PART) ---
 
         # Dates / timestamps → string
+        from datetime import datetime, time
         for col in ['date', 'birthday']:
             if col in df.columns:
                 df[col] = df[col].apply(
@@ -1935,25 +1916,55 @@ def impot_jobs(request):
                 )
         # Time columns → string
         try:
-            if 'from_time' in df.columns and df['from_time']  != "NaN":
-                print(df['from_time'] )
+            
+            if 'from_time' in df.columns:
                 df['from_time'] = df['from_time'].apply(
-                lambda x: x.strftime('%H:%M') if pd.notnull(x) else None
+                    lambda x: (
+                        x.strftime('%H:%M')
+                        if isinstance(x, time)
+                        else None
                     )
+                )
         except:
             pass
+        
 
-        # NaN / NaT → None (JSON safe)
+        def normalize(v):
+            if isinstance(v, time):
+                return v.strftime('%H:%M')
+            if isinstance(v, (datetime, pd.Timestamp)):
+                return v.strftime('%Y-%m-%d %H:%M:%S')
+            return v
+
+        df = df.applymap(normalize)
         df = df.where(pd.notnull(df), None)
-        data=df.to_dict(orient='records')
+        data = df.to_dict(orient='records')
+
+        # # NaN / NaT → None (JSON safe)
+        # df = df.where(pd.notnull(df), None)
+        # data=df.to_dict(orient='records')
         # # ------------------------------------
+        import json
+
+        try:
+            json.dumps(data)
+        except TypeError as e:
+            print("❌ JSON ERROR:", e)
+            for row in data:
+                for k, v in row.items():
+                    if hasattr(v, 'isoformat'):
+                        print("BAD FIELD:", k, type(v), v)
+            raise
 
         request.session['batch_jobs'] = data
         request.session.set_expiry(30* 60) 
         return redirect('jobs_batch_entry')
 
     # Load current items from session
+
+
     data = request.session.get('batch_jobs', [])
+
     return render(request, 'inventory/jobs_batch_entry.html', {'data': data})
    
 
@@ -2180,7 +2191,6 @@ def fetch_jobs(request,job_id=None):
             sync_engineers_func(request)
             headers = {"Authorization": f"Bearer {request.user.company.settings.sf_access_token }"}
             if job_id:
-                print()
                 # response = requests.get(f"https://api.servicefusion.com/v1/jobs/{job_id}", headers=headers) #for production
                 response = requests.get(f"https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs/{job_id}", headers=headers) #for testing
                 
@@ -2221,7 +2231,6 @@ def fetch_jobs(request,job_id=None):
                 updated_count=0
                 new_count=0  
                 for d in data["items"]:
-                    print("sssssssssssssssssssssss",d["notes"][0]["notes"])
 
                     if int(d["id"]):
                         engineer=Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=d["visits"][0]["techs_assigned"][0]["id"]))
@@ -2310,7 +2319,9 @@ def scheduler(request):
     ).first()   
 
     # Safe handling
-  
+    base_jobs = Job.objects.filter(company=request.user.company,status="ready",)
+    ready_jobs=list(base_jobs.exclude(scheduler=request.user))
+   
     if  (request.POST and "regenerate" in request.POST):
         
         if ex_sg.exists():
@@ -2318,117 +2329,186 @@ def scheduler(request):
 
         if groupx:  # check it’s not None before calling delete
             groupx.delete()
-
+        GROUP_SIZE=int(request.POST.get("group_size",9))
+        if GROUP_SIZE:
+            request.user.settings.group_size=GROUP_SIZE
+            request.user.settings.save()
    
     # --- Helper: get coordinates from postcode ---
         # --- Step 1: Fetch all ready jobs ---
-        base_jobs = Job.objects.filter(company=request.user.company,status="ready",)
-        ready_jobs=list(base_jobs.exclude(scheduler=request.user))
+        
         
         if not ready_jobs:
 
             return redirect ("scheduler")
         # --- Step 2: Cache postcode coordinates ---
-        for job in ready_jobs:
-            if not job.latitude or not job.longitude:
-                try:
-                    postcode = job.post_code.strip().upper().replace(" ", "")   
-                    job.latitude, job.longitude = get_coords(postcode)  
-                except:
-                    job.latitude, job.longitude=None,None
-                    pass
-            # --- Step 3: Grouping Logic ---
         visited = set()
         wrong_list=[]
+        valid_jobs=[]
+
         for job in ready_jobs:
-            if job.id in visited:
-                continue
-            
             if job.latitude and job.longitude:
-                jobs_list=[]
-                jobs_list.append(job)
-                visited.add(job.id)
-                distances = []
+                valid_jobs.append(job)     
+                continue
+
+            try:
+                postcode = job.post_code.strip().upper().replace(" ", "")
+                lat, lng = get_coords(postcode)
+
+                if lat and lng:
+                    job.latitude = lat                       
+                    job.longitude = lng
+                    valid_jobs.append(job)
+                else:
+                    wrong_list.append(job)
+
+            except Exception:
+                wrong_list.append(job)
+
+            # --- Step 3: Grouping Logic ---
+        
+        
+        # visited.add(job.id)
+        STARTING=request.POST.getlist("groupsstart") if request.POST.getlist("groupsstart") else None
+        if STARTING:
+            startin_jobs = Job.objects.filter(id__in=STARTING)
+            
+            remaining = set(valid_jobs)
+            for job in startin_jobs:
+                if job in valid_jobs:
+                    remaining.remove(job)
+                else:
+                    startin_jobs=startin_jobs.exclude(id=job.id)
                 
-                while len(jobs_list) < 15:
-                    last_job = jobs_list[-1]
-
-                    # Calculate distances from last_job to all unvisited jobs with coords
-                    distances = []
-                    for other in ready_jobs:
-                        if other.id in visited:
-                            continue
-                        if not (other.latitude and other.longitude):
-                            continue
-
-                        d = haversine(
-                            last_job.latitude,
-                            last_job.longitude,
-                            other.latitude,
-                            other.longitude,
-                        )
-                        distances.append({"other": other, "distance": d})
-
-                    if not distances:
-                        # No more jobs to add
-                        break
-
-                    # Sort distances to find the closest job
-                    distances.sort(key=lambda x: x["distance"])
-
-                    # Add closest job to the list and visited
+            starting_groups={}
+            for start in startin_jobs:
+                starting_groups[start.id]=[start]
+            for group in starting_groups.values():
+                attempts = 0
+             
+                while len(group)<GROUP_SIZE+4 and  remaining:#
+                   
                     
-                    closest_job = distances[0]["other"]
-                    jobs_list.append(closest_job)
-                    visited.add(closest_job.id)
 
-                # Step 3: pick closest ones up to limit
-                #-------------
-                # print(distances)
-                # for item in distances[:8]:
+                    if attempts > len(remaining)+1:
+                        break  
+ 
+                    closest_job=min(
+                                    remaining,
+                                key=lambda j: haversine(
+                                    group[-1].latitude,
+                                    group[-1].longitude,
+                                    j.latitude,
+                                    j.longitude,
+                                )
+                    )
+                
+                    closest_group = min(
+                                starting_groups.values(),
+                                key=lambda j: haversine(
+                                    closest_job.latitude,
+                                    closest_job.longitude,
+                                    j[-1].latitude,
+                                    j[-1].longitude,
+                                )
+                            )
                     
-                #     item['other']
-                #     jobs_list.append(item['other'])
-                #     visited.add(item['other'].id)
-                #     print(item['other'])
-#----------------------
+                    if group[-1].id == closest_group[-1].id and len(group)<GROUP_SIZE:
+                        group.append(closest_job)
+                        remaining.remove(closest_job)
+                    elif group[-1].id != closest_group[-1].id :
+                        if len(closest_group)<9 or ( haversine(closest_group[-1].latitude,closest_group[-1].longitude,closest_job.latitude, closest_job.longitude)<4 and len(closest_group)<GROUP_SIZE+4 ):
+                            closest_group.append(closest_job)
+                            remaining.remove(closest_job)
+                        else:
+                            
+                            group.append(closest_job)
+                            remaining.remove(closest_job)
 
-                # for entry in distances:
-                #     other = entry["other"]
-                #     distance = entry["distance"]
-                    
-                #     if (distance <= 13    and len(jobs_list) < 9) or (
-                #         job.post_code.strip() == other.post_code.strip()
-                #     ):
-                    
-                #         jobs_list.append(other)
-                #         visited.add(other.id)
+                    elif group[-1].id == closest_group[-1].id and len(group)<GROUP_SIZE+4:
+                        attempts+=1
+                        if haversine(group[-1].latitude,group[-1].longitude,closest_job.latitude, closest_job.longitude)<4:
+                            group.append(closest_job)
+                            remaining.remove(closest_job)
+
+                
+            for jobb in startin_jobs:
+                preparing_list=starting_groups[jobb.id]
+                postcodes = [j.post_code.strip().upper().replace(" ", "") for j in preparing_list if j.post_code]
+                map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)
+                group_obj = SchedulerGroup.objects.create(
+                company=request.user.company,
+                user=request.user,
+                map_url=map_url,
+                )
+                group_obj.jobs.set([item.id for item in preparing_list])
+                group_obj.job_order=[job.id for job in preparing_list] 
+                group_obj.save()
+
+        else:
+            north = max(valid_jobs, key=lambda j: j.latitude)
+            south = min(valid_jobs, key=lambda j: j.latitude)
+
+            east  = max(valid_jobs, key=lambda j: j.longitude)
+            west  = min(valid_jobs, key=lambda j: j.longitude)
+
+            candidates = {north, south, east, west}
+
+            max_distance = 0
+            job_a = job_b = None
+
+            candidates = list(candidates)
+
+            for i in range(len(candidates)):
+                for j in range(i + 1, len(candidates)):
+                    d = haversine(
+                        candidates[i].latitude,
+                        candidates[i].longitude,
+                        candidates[j].latitude,
+                        candidates[j].longitude,
+                    )
+                    if d > max_distance:
+                        max_distance = d
+                        job_a = candidates[i]
+                        job_b = candidates[j]
+            if job_a.latitude >= job_b.latitude:
+                
+                preparing_list = [job_a]
+                remaining = set(valid_jobs)
+                remaining.remove(job_a)
+            else:
+                preparing_list = [job_b]
+                remaining = set(valid_jobs)
+                remaining.remove(job_b)
+            while remaining:
+                last_job = preparing_list[-1]
+                closest = min(
+                    remaining,
+                    key=lambda j: haversine(
+                        last_job.latitude,
+                        last_job.longitude,
+                        j.latitude,
+                        j.longitude,
+                    )
+                )
+                preparing_list.append(closest)
+                remaining.remove(closest)
+            while preparing_list:
+                jobs_list = preparing_list[:GROUP_SIZE]
+                del preparing_list[:GROUP_SIZE]
                 postcodes = [j.post_code.strip().upper().replace(" ", "") for j in jobs_list if j.post_code]
                 map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)
                 group_obj = SchedulerGroup.objects.create(
                 company=request.user.company,
                 user=request.user,
                 map_url=map_url,
-
-                
                 )
-                group_obj.jobs.set(jobs_list)
+                group_obj.jobs.set([item.id for item in jobs_list])
                 group_obj.job_order=[job.id for job in jobs_list] 
                 group_obj.save()
                 
-            else:
-                if job.id in visited :
-                    continue
-             
-                wrong_list.append(job)
-                visited.add(job.id)
-                for other in ready_jobs:
-                    if other.id in visited or  other.latitude or other.longitude:
-                        continue    
-                    if not other.longitude and not other.latitude:
-                        wrong_list.append(other)
-                        visited.add(other.id)  
                 
+           
         if wrong_list:
             wrong_group_obj = SchedulerGroup.objects.create(
                 company=request.user.company,
@@ -2462,7 +2542,6 @@ def scheduler(request):
             # Generate map URL
             postcodes = [j.post_code.strip().upper().replace(" ", "") for j in optimized_jobs if j.post_code ]
             group.map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)
-            print("Generated map URL:", group.map_url)
             # Mark optimization time
             group.optimized_at = timezone.now()
             # ✅ Save only normal fields (no M2M)
@@ -2525,7 +2604,6 @@ def scheduler(request):
                     messages.info(request,f"job {job.address} moved to {job.date} ")
                 return redirect('scheduler') 
     elif "change_engineer" in request.POST:
-        print("---------------",request.POST)
         eng_id=request.POST.get("change_engineer",None)
         group_id=request.POST.get("group_id")
 
@@ -2537,13 +2615,10 @@ def scheduler(request):
         else :
             eng=None
         if group :
-            print(group)
             group.engineer=eng
             group.save(update_fields=['engineer'])
             for j in group.jobs.all():
-                print(j)
                 j.engineer=eng
-                print(j.engineer)
                 j.save(update_fields=['engineer'])
         return redirect('scheduler') 
     elif "change_group_date" in request.POST:
@@ -2562,8 +2637,6 @@ def scheduler(request):
             if form.is_valid():
                 group.date=date_value
                 group.save(update_fields=["date"])
-                print("HEEEY",date_value)
-                print("hey20", data['date'])
                 for j in group.jobs.all():
                     j.date=date_value
                     j.save(update_fields=["date"])
@@ -2573,7 +2646,7 @@ def scheduler(request):
         
     other_jobs = Job.objects.filter(company=request.user.company,status="ready",latitude__isnull=False).exclude(scheduler=request.user).exclude(job_groups__in=ex_sg).distinct()
     # Get the first SchedulerGroup with no map_url
-    return render(request, "inventory/scheduler.html", {"groups":  ex_sg,'ex_sg':ex_sg[0] if ex_sg else None ,'groupx':groupx,'other_jobs':other_jobs,'form':form,'form_job_id':form.instance.job_id})
+    return render(request, "inventory/scheduler.html", {"groups":  ex_sg,'ex_sg':ex_sg[0] if ex_sg else None ,'groupx':groupx,'other_jobs':other_jobs,'form':form,'form_job_id':form.instance.job_id,'ready_jobs':ready_jobs})
 
 #youssif_USF_SPY
 
@@ -2649,7 +2722,6 @@ def monthly_calendar(request, year=None, month=None):
             job_id=request.POST.get("job_id")
             job=jobs_qs.filter(job_id=job_id).first()
             date_str = request.POST.get("change_from_date",None)
-            print("datestrr",date_str)
             from_time_str = request.POST.get("change_from_time",None)  # corrected name
             to_time_str = request.POST.get("change_to_time",None)
             date_value = parse_date(date_str) if date_str else job.date
@@ -2667,7 +2739,6 @@ def monthly_calendar(request, year=None, month=None):
                 job = form.save(commit=False)
                 
                 job.save(update_fields=["date", "from_time", "to_time"], request=request)
-                print(form.changed_data)
                 if 'date' in form.changed_data:
                     
                     messages.info(request,f"job {job.address} moved to {job.date} ")

@@ -25,7 +25,7 @@
   />
   
 Scheduler Assistant</h1>
-    
+
 <style>
 
 .animated-logo {
@@ -56,16 +56,12 @@ Scheduler Assistant</h1>
   </div>
   <form action="" method="post" class="d-flex gap-3 align-items-center mt-3">
     {% csrf_token %}
-<input type="number" name="preferred_group_size" id="">
 
-<select name="preferred_distance" id="">
-  <option value="5">>5Km</option>
-  <option value="10">>10Km</option>
-  <option value="15">>15Km</option>
-  <option value="20">>20Km</option>
 
-</select>
-    <button name="regenerate" type="submit" class="btn fw-bold shadow-sm px-4 py-2 rounded-pill" style="background: linear-gradient(90deg, #007bff, #22434eff); color: white; border: none;">🔄 Regenerate</button>
+
+    {% comment %} <button type="reset"  onclick="openModal()">Select Job</button> {% endcomment %}
+
+    <button name="regenerate" type="reset" class="btn fw-bold shadow-sm px-4 py-2 rounded-pill" style="background: linear-gradient(90deg, #007bff, #22434eff); color: white; border: none; " onclick="openModal()">🔄 Regenerate</button>
 
     <button name="optimize" type="submit" class="btn fw-bold shadow-sm px-4 py-2 rounded-pill" style="background: linear-gradient(90deg, #28a745, #5d866eff); color: white; border: none;">⚙️ Optimize</button>
   </form>
@@ -456,4 +452,174 @@ altFormat: 'F j, Y'
                              }
                            </style>
 
+
+<div id="jobModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+
+        <h3>Select your starting points</h3>
+
+        <form method="post">
+            {% csrf_token %}
+            
+<input
+    type="number"
+    name="group_size"
+    placeholder="Enter group size"
+    min="2"
+    value="{{ request.user.settings.group_size|default:9 }}"
+    required
+>
+            
+
+            <div class="job-list">
+                {% for job in ready_jobs  %}
+                    <label class="job-item">
+                        <input type="checkbox" name="groupsstart" value="{{ job.id}}" >
+                        <small> {{job.job_id}}-{{job.address}}-{{ job.post_code }}</small>
+                    </label>
+                {% endfor %}
+            </div>
+
+            <button type="submit" name="regenerate" >Confirm</button>
+        </form>
+    </div>
+</div>
+<style>
+/* Modal backdrop */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+}
+
+/* Modal box */
+.modal-content {
+    background: #ffffff;
+    width: 550px;
+    max-width: 90%;
+    margin: 8% auto;
+    padding: 20px 22px;
+    border-radius: 10px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    position: relative;
+    animation: modalFade 0.25s ease;
+}
+
+/* Close button */
+.modal .close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    font-size: 22px;
+    font-weight: bold;
+    color: #a40f0fff;
+    cursor: pointer;
+}
+
+.modal .close:hover {
+    color: #ff2828ff;
+}
+
+/* Title */
+.modal-content h3 {
+    margin: 0 0 14px;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Group size input */
+.modal-content input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+}
+
+.modal-content input[type="number"]:focus {
+    outline: none;
+    border-color: #4f46e5;
+}
+
+/* Job list container */
+.job-list {
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 6px;
+    margin-bottom: 14px;
+}
+
+/* Job item */
+.job-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.job-item:hover {
+    background: #bcd0f8ff;
+}
+
+.job-item input {
+    cursor: pointer;
+}
+
+.job-item small {
+    color: #374151;
+    font-size: 13px;
+}
+
+/* Submit button */
+.modal-content button[type="submit"] {
+    width: 100%;
+    padding: 9px;
+    border-radius: 6px;
+    border: none;
+    background: #4f46e5;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.modal-content button[type="submit"]:hover {
+    background: #4338ca;
+}
+
+/* Animation */
+@keyframes modalFade {
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+</style>
+
+<script>
+function openModal() {
+    document.getElementById("jobModal").style.display = "block";
+}
+
+function closeModal() {
+    document.getElementById("jobModal").style.display = "none";
+}
+</script>
+
+                           
 {% endblock %}

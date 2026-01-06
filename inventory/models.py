@@ -150,9 +150,9 @@ class CustomUser(AbstractUser):
 
         
 class UserSettings(models.Model):
-    company = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True, related_name="user_settings")
-    preferred_scheduler_distance=models.PositiveSmallIntegerField(null=True,blank=True)
-    preferred_scheduler_group_size=models.PositiveSmallIntegerField(null=True,blank=True)
+    company= models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True,)
+    user = models.OneToOneField(CustomUser,on_delete=models.CASCADE,related_name="settings",)    
+    group_size=models.PositiveIntegerField(default=22)
 
 ################################## Items, engineers and Jobs ######################################
 class Engineer(models.Model):

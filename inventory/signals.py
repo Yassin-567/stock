@@ -3,8 +3,16 @@
 from django.db.models.signals import pre_save,post_save,post_delete
 from django.dispatch import receiver
 from django.contrib.contenttypes.models import ContentType
-from .models import History,Company,CustomUser,Job,Category,JobItem,WarehouseItem,Engineer,SchedulerGroup
+from .models import History,Company,CustomUser,Job,Category,JobItem,WarehouseItem,Engineer,SchedulerGroup,UserSettings
 from django.contrib.sessions.models import Session
+
+@receiver(post_save, sender=CustomUser)
+def create_user_settings(sender, instance, created, **kwargs):
+    if created:
+        UserSettings.objects.create(
+            user=instance,
+            company=instance.company  # if user has a company field
+        )
 @receiver(pre_save)
 def log_model_changes(sender, instance,**kwargs):
     
@@ -16,6 +24,9 @@ def log_model_changes(sender, instance,**kwargs):
 
         return
     if sender==SchedulerGroup:
+
+        return
+    if sender==UserSettings:
 
         return
     # Skip models without a company field (customize if needed)
@@ -85,6 +96,9 @@ def log_model_creation(sender, created,instance, **kwargs):
     if sender not in allowed_models :
         return
     if not created:
+        return
+    if sender==UserSettings:
+
         return
     try:
         x=instance.request

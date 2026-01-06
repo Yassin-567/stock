@@ -40,7 +40,7 @@ urlpatterns=[
 
     path('add_cat/',views.add_category,name='add_category'),
     path('batch_entry',views.batch_entry,name='batch_entry'),
-    path('jobs_batch_entry',views.impot_jobs,name='jobs_batch_entry'),
+    path('jobs_batch_entry',views.import_jobs,name='jobs_batch_entry'),
 
     path('clear_batch',views.clear_batch,name='clear_batch'),
     path('clear_batch_jobs',views.clear_batch_jobs,name='clear_batch_jobs'),
