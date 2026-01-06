@@ -1,5 +1,5 @@
 from django.shortcuts import render,redirect,HttpResponse, get_object_or_404
-from .models import CustomUser,Company,Job,Comment,JobItem,WarehouseItem,Engineer,Category,CompanySettings,Email,History,SchedulerGroup
+from .models import CustomUser,Company,Job,Comment,JobItem,WarehouseItem,Engineer,Category,CompanySettings,Email,History,SchedulerGroup,UserSettings
 from .forms import SearchForm,registerForm,loginForm,companyregisterForm,JobForm,CommentForm,JobItemForm,WarehouseitemForm,EngineerForm,registerworker,CategoriesForm,CompanySettingsForm,ForgotPasswordForm,GuestEmail
 from django.contrib.auth import authenticate, login, logout , update_session_auth_hash
 from django.contrib import messages
@@ -2331,9 +2331,12 @@ def scheduler(request):
             groupx.delete()
         GROUP_SIZE=int(request.POST.get("group_size",9))
         if GROUP_SIZE:
-            request.user.settings.group_size=GROUP_SIZE
-            request.user.settings.save()
-   
+            try:
+                request.user.settings.group_size=GROUP_SIZE
+                request.user.settings.save()
+            except:
+                settings=UserSettings(user=request.user,company=request.user.company,group_size=GROUP_SIZE)
+                settings.save()
     # --- Helper: get coordinates from postcode ---
         # --- Step 1: Fetch all ready jobs ---
         
