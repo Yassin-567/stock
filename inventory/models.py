@@ -153,6 +153,9 @@ class UserSettings(models.Model):
     company= models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True,)
     user = models.OneToOneField(CustomUser,on_delete=models.CASCADE,related_name="settings",)    
     group_size=models.PositiveIntegerField(default=22)
+    calendar_status_filter=models.CharField(max_length=20,default="all")
+    calendar_engineer_filter=models.PositiveBigIntegerField(default=0)
+    calendar_parts_filter=models.CharField(max_length=20,default="all")
 
 ################################## Items, engineers and Jobs ######################################
 class Engineer(models.Model):
@@ -181,7 +184,7 @@ class Job(models.Model):
         ('cancelled', 'Cancelled'),
         ('quoted', 'Quoted and waiting')
     ]
-    address = models.CharField(max_length=70)
+    address = models.CharField(max_length=150)
     job_id=models.BigIntegerField()
     status=models.CharField(choices=status_chouces, max_length=20)
     quotation=models.DecimalField(max_digits=10, decimal_places=2,blank=True,null=True)
@@ -190,7 +193,7 @@ class Job(models.Model):
     added_date=models.DateField(auto_now_add=True)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="job_company")
     items_arrived=models.BooleanField(default=False, )
-    post_code=models.CharField(max_length=10, null=True, blank=True)
+    post_code=models.CharField(max_length=25, null=True, blank=True)
     quote_accepted=models.BooleanField(default=False)
     quote_declined=models.BooleanField(default=False)
     quoted=models.BooleanField(default=False)

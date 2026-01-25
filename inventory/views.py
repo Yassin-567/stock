@@ -1936,7 +1936,7 @@ def import_jobs(request):
                 return v.strftime('%Y-%m-%d %H:%M:%S')
             return v
 
-        df = df.applymap(normalize)
+        df = df.map(normalize)
         df = df.where(pd.notnull(df), None)
         data = df.to_dict(orient='records')
 
@@ -1944,17 +1944,17 @@ def import_jobs(request):
         # df = df.where(pd.notnull(df), None)
         # data=df.to_dict(orient='records')
         # # ------------------------------------
-        import json
+        # import json
 
-        try:
-            json.dumps(data)
-        except TypeError as e:
-            print("❌ JSON ERROR:", e)
-            for row in data:
-                for k, v in row.items():
-                    if hasattr(v, 'isoformat'):
-                        print("BAD FIELD:", k, type(v), v)
-            raise
+        # try:
+        #     json.dumps(data)
+        # except TypeError as e:
+        #     print("❌ JSON ERROR:", e)
+        #     for row in data:
+        #         for k, v in row.items():
+        #             if hasattr(v, 'isoformat'):
+        #                 print("BAD FIELD:", k, type(v), v)
+        #     raise
 
         request.session['batch_jobs'] = data
         request.session.set_expiry(30* 60) 
@@ -2012,9 +2012,9 @@ def create_batch_jobs(request):
             'from_time': parse_time(request.POST.get('from_time')),
 
             'status': request.POST.get('status'),
-            'parent_account': request.POST.get('parent_account'),
-            'address': request.POST.get('address'),
-            'postcode': request.POST.get('postcode'),
+            'parent_account': request.POST.get('parent_account',) ,
+            'address': request.POST.get('address',),
+            'postcode': request.POST.get('postcode',),
 
             'engineer': request.POST.get('engineer'),
             'notes': request.POST.get('notes'),
@@ -2672,6 +2672,12 @@ from .models import Job  # adjust import as needed
 @login_required
 def monthly_calendar(request, year=None, month=None):
     # Defaults to current month
+
+    STATUS=request.user.settings.calendar_status_filter
+    ENGINEER=request.user.settings.calendar_engineer_filter
+    PARTS=request.user.settings.calendar_parts_filter
+    print(STATUS,ENGINEER,PARTS)
+
     today = timezone.localdate()
     if year and month:
         try:
@@ -2691,10 +2697,36 @@ def monthly_calendar(request, year=None, month=None):
     if not user_company:
         jobs_qs = Job.objects.none()
     else:
+        engineers=Engineer.objects.filter(company=request.user.company)
+
         first_day = month_days[0][0]
         last_day = month_days[-1][-1]
-        jobs_qs = Job.objects.filter(company=user_company, date__range=(first_day, last_day)).order_by('date', 'from_time')
-        
+
+       
+        jobs_qs = (
+            Job.objects
+            .filter(company=user_company, date__range=(first_day, last_day))
+            .order_by("date", "from_time")
+        )
+
+        # STATUS filter
+        if STATUS != "all":
+            jobs_qs = jobs_qs.filter(status=STATUS)
+
+        # ENGINEER filter
+        if ENGINEER != 0:
+            jobs_qs = jobs_qs.filter(engineer_id=ENGINEER)
+
+        # PARTS filter
+        if PARTS != "all":
+            jobs_qs = jobs_qs.annotate(
+                items_count=Count("items", distinct=True)
+            )
+
+            if PARTS == "parts":
+                jobs_qs = jobs_qs.filter(items_count__gt=0)
+            else:  # no_parts
+                jobs_qs = jobs_qs.filter(items_count=0)
     # Group jobs by date
     jobs_by_date = {}
     for job in jobs_qs:
@@ -2706,21 +2738,47 @@ def monthly_calendar(request, year=None, month=None):
     next_month = (current.replace(day=28) + timedelta(days=4)).replace(day=1)  # safe next-month calc
     prev_month_url = reverse('calendar_month', args=[prev_month.year, prev_month.month])
     next_month_url = reverse('calendar_month', args=[next_month.year, next_month.month])
-    
-
-    
-
 
     context = {
-        'month_weeks': month_days,           # list of weeks -> each week is list of 7 date objects
-        'current_month': current,
-        'today': today,
-        'jobs_by_date': jobs_by_date,
-        'prev_month_url': prev_month_url,
-        'next_month_url': next_month_url,
-    }
+
+                'month_weeks': month_days,           # list of weeks -> each week is list of 7 date objects
+                'current_month': current,
+                'today': today,
+                'jobs_by_date': jobs_by_date,
+                'prev_month_url': prev_month_url,
+                'next_month_url': next_month_url,
+                'engineers':engineers,
+                "STATUS":STATUS, 
+                "PARTS":PARTS,
+                "ENGINEER":ENGINEER,
+
+                }
+
+
     if request.method=='POST':
-      
+        print(request.POST)
+        if "filter" in request.POST:
+            status=request.POST.get("status") 
+            parts=request.POST.get("parts")            
+            engineer=request.POST.get("engineer_filter") 
+            print(request.POST)
+            if status!=STATUS:
+                request.user.settings.calendar_status_filter=status          
+            if parts!=PARTS:
+                request.user.settings.calendar_parts_filter=parts    
+            if engineer!=ENGINEER:
+                request.user.settings.calendar_engineer_filter=engineer   
+            print(request.user.settings.calendar_parts_filter) 
+            print(request.user.settings.calendar_status_filter) 
+            print(request.user.settings.calendar_engineer_filter) 
+            request.user.settings.save(update_fields=["calendar_status_filter","calendar_parts_filter","calendar_engineer_filter"])
+            return redirect(request.path) 
+            
+
+
+
+
+        
         if any(k in request.POST for k in ["change_from_date", "change_from_time", "change_to_time"]):            
             job_id=request.POST.get("job_id")
             job=jobs_qs.filter(job_id=job_id).first()
@@ -2730,20 +2788,15 @@ def monthly_calendar(request, year=None, month=None):
             date_value = parse_date(date_str) if date_str else job.date
             from_time_value = parse_time(from_time_str) if from_time_str else job.from_time
             to_time_value = parse_time(to_time_str) if to_time_str else job.to_time
-           
             data=model_to_dict(job)
             data["date"] = date_value.strftime("%Y-%m-%d") if date_value else None
             data["from_time"] = from_time_value.strftime("%H:%M:%S") if from_time_value else None
             data["to_time"] = to_time_value.strftime("%H:%M:%S") if to_time_value else None
-
             form = JobForm(data, instance=job)
-            
             if form.is_valid():
                 job = form.save(commit=False)
-                
                 job.save(update_fields=["date", "from_time", "to_time"], request=request)
                 if 'date' in form.changed_data:
-                    
                     messages.info(request,f"job {job.address} moved to {job.date} ")
                 return redirect(request.path) 
             else:
@@ -2751,12 +2804,12 @@ def monthly_calendar(request, year=None, month=None):
                 context["form_job_id"] = form.instance.job_id
                 return render(request, 'inventory/calendar.html', context)
             # context["form"]=form
-            
-        
     return render(request, 'inventory/calendar.html', context)
 
-@login_required
 
+
+
+@login_required
 def delete_all_jobs(request):
     from django.contrib.admin.utils import get_deleted_objects
     jobs = Job.objects.filter(company=request.user.company)
