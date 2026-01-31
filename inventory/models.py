@@ -481,3 +481,26 @@ class SchedulerGroup(models.Model):
         postcodes = [j.post_code.strip().upper().replace(" ", "") for j in self.ordered_jobs() if j.post_code]
         map_url = "https://www.google.com/maps/dir/" + "/".join(postcodes)
        
+class Conversation(models.Model):
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    related_object = GenericForeignKey('content_type', 'object_id')
+    participants = models.ManyToManyField("CustomUser")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Conversation for {self.content_type} #{self.object_id}"
+
+class Message(models.Model):
+    conversation = models.ForeignKey(
+        Conversation,
+        on_delete=models.CASCADE,
+        related_name="messages"
+    )
+    sender = models.ForeignKey("CustomUser", on_delete=models.CASCADE)
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+    is_sorted=models.BooleanField(default=False)
+    def __str__(self):
+        return f"{self.sender} - {self.created_at}"
