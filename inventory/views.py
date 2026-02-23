@@ -814,7 +814,6 @@ def item_add(request,pk=None,):
                 return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'query':query,'show_stock':True})
 
         if 'adding_from_stock' in request.POST:
-            
             form=JobItemForm(request.POST,)
             item_id = request.POST.get('selected_item_id')
             required_quantity = int(request.POST.get('required_quantity'))
@@ -863,12 +862,14 @@ def item_add(request,pk=None,):
             except IntegrityError:
                 messages.error(request,"Failed")
                 form=JobItemForm()
-                warehouse_items=warehouse_items
-                return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'show_stock':True})
 
+                warehouse_items=warehouse_items
+                
+                return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'show_stock':True})
             messages.success(request, 'Item added from stock successfully')
             form=JobItemForm()
             warehouse_items=warehouse_items
+            return redirect(request.path)
             return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items,'show_stock':True})
         elif 'adding_new' in request.POST:
             form=JobItemForm(request.POST)
@@ -1658,7 +1659,19 @@ def warehouse(request, ):
         used_warehouse_items=used_warehouse_items.filter(Q(name__icontains=q) | Q(part_number__icontains=q) | Q(reference__icontains=q) | Q(supplier__icontains=q) | Q(category__category__icontains=q))
         taken_warehouse_items=taken_warehouse_items.filter(Q(name__icontains=q) | Q(part_number__icontains=q) | Q(reference__icontains=q) | Q(supplier__icontains=q) | Q(category__category__icontains=q))
     entry_method=request.GET.get("entry_method")
-    return render(request,'inventory/warehouse.html',{'warehouse_items':warehouse_items,'used_warehouse_items':used_warehouse_items,'taken_warehouse_items':taken_warehouse_items,'entry_method':entry_method,'items_status':items_status})
+    warehouse_items_count=warehouse_items.count()
+    warehouse_items_sum=warehouse_items.aggregate(
+    total=Sum("warehouse_quantity")
+)["total"] or 0
+    used_warehouse_items_count=used_warehouse_items.count()
+    used_warehouse_items_sum=used_warehouse_items.aggregate(
+    total=Sum("job_quantity")
+)["total"] or 0
+    taken_warehouse_items_count=taken_warehouse_items.count()
+    taken_warehouse_items_sum=taken_warehouse_items.aggregate(
+    total=Sum("job_quantity")
+)["total"] or 0
+    return render(request,'inventory/warehouse.html',{'used_warehouse_items_count':used_warehouse_items_count,'used_warehouse_items_sum':used_warehouse_items_sum,'taken_warehouse_items_count':taken_warehouse_items_count,'taken_warehouse_items_sum':taken_warehouse_items_sum,'warehouse_items_sum':warehouse_items_sum,'warehouse_items_count':warehouse_items_count,'warehouse_items':warehouse_items,'used_warehouse_items':used_warehouse_items,'taken_warehouse_items':taken_warehouse_items,'entry_method':entry_method,'items_status':items_status})
 
 
 def review_ordered_items(request,):
@@ -1747,8 +1760,14 @@ def review_ordered_items(request,):
         item.save(request=request,update_fields=["arrived_quantity","arrived"])
         messages.info(request,f"{arrived} parts of {item} arrived for {item.job.address}")
         return redirect('review_ordered_items')
-    
-    return render(request,'inventory/review_ordered_items.html',{'items':page_obj,"sort": sort,"clean_query": clean_query,'items_status':items_status,'querystring':querystring,'page_obj':page_obj})
+    items_count=items.count()
+    items_sum=items.aggregate(
+    total=Sum("job_quantity")
+)["total"] or 0
+    items_arrived=items.aggregate(
+        total=Sum("arrived_quantity")
+    )["total"] or 0
+    return render(request,'inventory/review_ordered_items.html',{'items_arrived':items_arrived,'items_sum':items_sum,'items_count':items_count,'items':page_obj,"sort": sort,"clean_query": clean_query,'items_status':items_status,'querystring':querystring,'page_obj':page_obj})
 
 
 
@@ -2091,7 +2110,7 @@ def create_all_batch_jobs(request):
 
             'status': batch_job['status'],
             'parent_account': batch_job['parent_account'],
-            'address': batch_job['address'],
+            'address': batch_job['address'] or " ",
             'postcode': batch_job['postcode'],
 
             'engineer': batch_job['engineer'],
@@ -2321,7 +2340,7 @@ def scheduler(request):
     # Safe handling
     base_jobs = Job.objects.filter(company=request.user.company,status="ready",)
     ready_jobs=list(base_jobs.exclude(scheduler=request.user))
-   
+    
     if  (request.POST and "regenerate" in request.POST):
         
         if ex_sg.exists():
@@ -2524,6 +2543,7 @@ def scheduler(request):
         messages.success(request,"Groups regenerated")
         return redirect('scheduler')
     elif "optimize" in request.POST:
+        print("ooo2",request.POST)
         # 🔄 Optimize every SchedulerGroup
         for group in ex_sg:
             if group.optimized_at:
@@ -2551,18 +2571,8 @@ def scheduler(request):
             group.save()
         return redirect('scheduler')
     
-               
-    elif request.method == "POST" and ("move_up" in request.POST or "move_down" in request.POST or "new_group" in request.POST ):
-        
-            try:
-                    
-                move(request,ex_sg)
-                return redirect("scheduler")
-                
-            except:
-                messages.error(request,"An error ocurried, try again ")
-                return redirect("scheduler")
-            #     pass
+    
+    
     elif   request.method == "POST" and('i_work_on_this' in request.POST):
         
         group_id=request.POST.get("i_work_on_this")
@@ -2577,12 +2587,17 @@ def scheduler(request):
         
     form = JobForm()
    
-    
-    if any(k in request.POST for k in ["change_from_date", "change_from_time", "change_to_time",]):
-            
+
+    group_id=request.POST.get("group_id")
+    new_group_id=request.POST.get("new_group")
+
+    if any(k in request.POST for k in ["change_from_date", "change_from_time", "change_to_time",]) and not ("move_up" in request.POST or "move_down" in request.POST or group_id!=new_group_id ) :
+            print(request.POST)
             job_id=request.POST.get("job_id")
             job=Job.objects.filter(company=request.user.company,id=job_id).first()
             date_str = request.POST.get("change_from_date",None)
+
+            print(date_str)
             from_time_str = request.POST.get("change_from_time",None)  # corrected name
             to_time_str = request.POST.get("change_to_time",None)
             date_value = parse_date(date_str) if date_str else job.date
@@ -2606,6 +2621,17 @@ def scheduler(request):
                     
                     messages.info(request,f"job {job.address} moved to {job.date} ")
                 return redirect('scheduler') 
+    elif request.method == "POST" and ("move_up" in request.POST or "move_down" in request.POST or "new_group" in request.POST ):
+            print("ooo3",request.POST)
+            try:
+                    
+                move(request,ex_sg)
+                return redirect("scheduler")
+                
+            except:
+                messages.error(request,"An error ocurried, try again ")
+                return redirect("scheduler")
+            #     pass
     elif "change_engineer" in request.POST:
         eng_id=request.POST.get("change_engineer",None)
         group_id=request.POST.get("group_id")

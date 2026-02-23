@@ -138,6 +138,7 @@ a:hover {
 
 
 {% if items_status == "available" %}
+
     <div class="accordion">
       <!-- 1. Warehouse Items -->
       <div class="accordion-item">
@@ -154,8 +155,8 @@ a:hover {
         border: 1px solid #ddd;
         border-radius: 5px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      "> Following items are available<span >
-        </h2>
+      "> Following items are available<span > 
+        </h2><h3>{{warehouse_items_count}} Items({{warehouse_items_sum}})</h3>
         <div >
           <div class="accordion-body">
             {% if warehouse_items %}
@@ -210,7 +211,7 @@ a:hover {
         border-radius: 5px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       "> Following items are used<span >
-
+<h3>{{used_warehouse_items_count}} Items({{used_warehouse_items_sum}})</h3>
        </h2>
         <div >
           <div class="accordion-body">
@@ -279,7 +280,7 @@ a:hover {
         border-radius: 5px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       "> Following items are linked with jobs
-      <span ></h2>
+      <span ></h2><h3>{{taken_warehouse_items_sum}} Items({{taken_warehouse_items_sum}})</h3>
         <div  >
           <div class="accordion-body">
             {% if taken_warehouse_items %}

@@ -121,7 +121,7 @@ altFormat: 'F j, Y'
         border-radius: 5px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       "> Following items are Ordered for certain jobs and they haven't been used yet.<span >
-        </h2>
+        </h2><h3>{{items_count}} Ordered Items({{items_sum}}) Arrived Items ({{items_arrived}}) </h3>
         <div >
 
 
@@ -191,7 +191,11 @@ altFormat: 'F j, Y'
                       
                       
                       </td>
-                      <td><a href="{% url "update_job" item.job.job_id %}">{{item.job.address}}</a></td>
+                      <td><a href="{% url "update_job" item.job.job_id %}"> {% if item.job.address|trim %}
+            {{ item.job.address }}
+        {% else %}
+              {{ item.job.job_id }}
+        {% endif %}</a></td>
                       
                     </tr>
                   {% endfor %}

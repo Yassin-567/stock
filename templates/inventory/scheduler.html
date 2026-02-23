@@ -141,7 +141,7 @@ Scheduler Assistant</h1>
           <ul class="list-group list-group-flush">
             {% for job in group.ordered_jobs %}
             
-              <li class="list-group-item d-flex justify-content-between align-items-center">
+              <li class="list-group-item d-flex justify-content-between align-items-center" style="{% if job.items.all%}background-color: #adcdff;{% endif %}" >
                 
                 <div><div>{{job.scheduler}}</div>
                   {{ job.id }}
@@ -172,7 +172,7 @@ Scheduler Assistant</h1>
                                           placeholder="From"
                                           value="{{ job.from_time|time:'H:i' }}" />      
                                           <button type="submit" name="delete_from_time"  class="clear-btn" aria-label="Clear from time" onclick="event.preventDefault(); ">×</button>
-                                 </div>
+                                  </div>
 
 
                                       <div class="input-with-clear">
@@ -182,7 +182,7 @@ Scheduler Assistant</h1>
                                                 placeholder="To"
                                                 value="{{ job.to_time|time:'H:i' }}" />                      
                                                   <button type="submit" name="delete_to_time"  class="clear-btn" aria-label="Clear to time" onclick="event.preventDefault(); ">×</button>
-                                       </div>
+                                  </div>
 
 
 
@@ -238,7 +238,7 @@ Scheduler Assistant</h1>
       </div>
       <ul class="list-group list-group-flush">
         {% for job in other_jobs%}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
+          <li class="list-group-item d-flex justify-content-between align-items-center" >
             <div>
               {{ job.id }}
               <a href="{% url 'update_job' job.job_id %}" class="fw-bold text-decoration-none text-primary">{{ job.job_id }}</a>
