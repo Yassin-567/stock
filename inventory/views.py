@@ -22,6 +22,8 @@ from urllib.parse import urlencode
 import requests
 from django.utils.dateparse import parse_date, parse_time
 from django.forms.models import model_to_dict
+from datetime import datetime, time
+
 
 def create_guest_request(request):
     form=GuestEmail()
@@ -153,6 +155,8 @@ def login_user(request):
     return render(request, 'auths/login.html', {'form': form})
 
 @admins_only
+@login_required(login_url='login', redirect_field_name='inventory')
+
 def register_user(request):
     
     if request.method == "POST":
@@ -405,7 +409,7 @@ def inventory(request,pk=None):
             elif quote_status == "declined":
                 job.quote_accepted=False
                 job.quote_declined=True
-
+    
             else:
                 job.quote_accepted=False
                 job.quote_declined=False
@@ -467,6 +471,8 @@ def inventory(request,pk=None):
     else:
         return render(request,'inventory/inventory.html',context)
     
+@login_required(login_url='login', redirect_field_name='inventory')
+
 def show_sent_emails(request):
     # ✅ Retrieve from session
     job_ids = request.session.get('sent_jobs', [])
@@ -481,6 +487,7 @@ def show_sent_emails(request):
     request.session.pop('sent_date', None)
 
     return render(request, 'inventory/show_sent_emails.html', {"date": date, "jobs": jobs,"jobs_count":jobs.count()})
+@login_required(login_url='login', redirect_field_name='inventory')
 
 def add_category(request):
     form=CategoriesForm()
@@ -898,6 +905,8 @@ def item_add(request,pk=None,):
                     return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items})
     warehouse_items=warehouse_items
     return render(request, 'inventory/add_item.html', {'form': form,'job':job,'warehouse_items':warehouse_items})
+@login_required(login_url='login', redirect_field_name='inventory')
+
 def add_warehouseitem(request):
     
     form=WarehouseitemForm()
@@ -1239,6 +1248,8 @@ def update_item(request, pk):
     return render(request, 'inventory/update_item.html', context)
 ########################
 @owner_only
+@login_required(login_url='login', redirect_field_name='inventory')
+
 def history(request):
     company=request.user.company    
     selected_user_id = request.GET.get('user_id', 'all')
@@ -1378,6 +1389,8 @@ def update_company(request,):
 
 
 @owner_only
+@login_required(login_url='login', redirect_field_name='inventory')
+
 def admin_panel(request): 
         if request.user.company.owner==request.user:
             
@@ -1390,6 +1403,8 @@ def admin_panel(request):
         else:
             return HttpResponse("You are not authorized to view this page")
 # @owner_only
+@login_required(login_url='login', redirect_field_name='inventory')
+
 def update_user(request, pk):
     worker=CustomUser.objects.get(Q(company=request.user.company) & Q(pk=pk))
     form=registerworker(instance=worker,enable_edit=False,updating=True)
@@ -1620,6 +1635,8 @@ def verify_otp(request) :
     left_time=left_time if left_time>0 else "Expired"
     return render(request, 'auths/otp.html', {'email':email,'company_email':company_email,'left_time':left_time})
 @owner_only
+@login_required(login_url='login', redirect_field_name='inventory')
+
 def company_settings(request):
     company = request.user.company  # assuming each user belongs to a company
     settings, created = CompanySettings.objects.get_or_create(company=company)
@@ -1638,6 +1655,7 @@ def company_settings(request):
     return render(request, 'inventory/company_settings.html', {'form': form})
 
 
+@login_required(login_url='login', redirect_field_name='inventory')
 
 def warehouse(request, ):
     
@@ -1673,6 +1691,7 @@ def warehouse(request, ):
 )["total"] or 0
     return render(request,'inventory/warehouse.html',{'used_warehouse_items_count':used_warehouse_items_count,'used_warehouse_items_sum':used_warehouse_items_sum,'taken_warehouse_items_count':taken_warehouse_items_count,'taken_warehouse_items_sum':taken_warehouse_items_sum,'warehouse_items_sum':warehouse_items_sum,'warehouse_items_count':warehouse_items_count,'warehouse_items':warehouse_items,'used_warehouse_items':used_warehouse_items,'taken_warehouse_items':taken_warehouse_items,'entry_method':entry_method,'items_status':items_status})
 
+@login_required(login_url='login', redirect_field_name='inventory')
 
 def review_ordered_items(request,):
     
@@ -1771,9 +1790,10 @@ def review_ordered_items(request,):
 
 
 
-
+@login_required(login_url='login', redirect_field_name='inventory')
+@admins_only
 def engineer(request):
-    form=EngineerForm()
+    form=EngineerForm(enable_editing=True)
     if request.method=="POST":
        form=EngineerForm(request.POST)
        if form.is_valid:
@@ -1792,6 +1812,8 @@ def engineer(request):
                 messages.error(request,"Engineer with the same name exists")
             return render(request,'inventory/eng.html',{'form':form})
     return render(request,'inventory/eng.html',{'form':form})
+@login_required(login_url='login', redirect_field_name='inventory')
+
 def update_engineer(request,pk):
     eng=Engineer.objects.get(Q(company=request.user.company) & Q(pk=pk))
     form=EngineerForm(instance=eng,updating=True)
@@ -1818,6 +1840,8 @@ def update_engineer(request,pk):
                 messages.error(request,"Engineer with the same name exists")
             return render(request,'inventory/update_eng.html',{'form':form,'eng':eng,'enable_editing':enable_editing})
     return render(request,'inventory/update_eng.html',{'form':form,'eng':eng,'enable_editing':enable_editing})
+@login_required(login_url='login', redirect_field_name='inventory')
+    
 def search_view(request):
     form=SearchForm()
     return render(request,'inventory/inventory.html',{'form':form})
@@ -1870,6 +1894,8 @@ def create_batch_items(request):
         return redirect('batch_entry')
 
 import pandas as pd
+
+@login_required(login_url='login', redirect_field_name='inventory')
 def batch_entry(request):
     c=Category.objects.filter(company=request.user.company)
     if request.method == 'POST' and request.FILES.get('excel_file'):
@@ -1886,19 +1912,32 @@ def batch_entry(request):
     # Load current items from session
     data = request.session.get('batch_items', [])
     return render(request, 'inventory/batch_entry.html', {'data': data})
+@login_required(login_url='login', redirect_field_name='inventory')
 
 def clear_batch(request):
     request.session['batch_items'] =[]
+    request.session['batch_paused_jobs'] = []
+    request.session['invalid_jobs'] = []
+
     return redirect('batch_entry')
+@login_required(login_url='login', redirect_field_name='inventory')
+
 def clear_batch_jobs(request):
     request.session['batch_jobs'] =[]
+    request.session['batch_paused_jobs'] = []
+    request.session['invalid_jobs'] = []
 
     return redirect('jobs_batch_entry')
     
 
+@login_required(login_url='login', redirect_field_name='inventory')
 
 def import_jobs(request):
-    if request.method == 'POST' and request.FILES.get('jobs_sheet'):
+    # request.session['batch_paused_jobs'] = []
+    # request.session['batch_jobs'] = []
+    print('1')
+    if request.method == 'POST' and request.FILES.get('jobs_sheet') and "upload_unscheduled" in request.POST:
+        print("upload_unscheduled")
         excel_file = request.FILES['jobs_sheet']
 
         COLUMNS = {
@@ -1921,19 +1960,19 @@ def import_jobs(request):
         # --- NORMALIZATION (CRITICAL PART) ---
 
         # Dates / timestamps → string
-        from datetime import datetime, time
-        for col in ['date', 'birthday']:
+        for col in ['date', 'birthday',]:
+            
             if col in df.columns:
                 df[col] = df[col].apply(
                     lambda x: (
                         None
                         if pd.isna(x)
-                        else x.strftime('%Y-%m-%d %H:%M:%S')
+                        else x.strftime('%Y-%m-%d')
                         if isinstance(x, (pd.Timestamp, datetime))
                         else str(x)
                     )
                 )
-        # Time columns → string
+ 
         try:
             
             if 'from_time' in df.columns:
@@ -1944,6 +1983,7 @@ def import_jobs(request):
                         else None
                     )
                 )
+                
         except:
             pass
         
@@ -1957,34 +1997,125 @@ def import_jobs(request):
 
         df = df.map(normalize)
         df = df.where(pd.notnull(df), None)
+        df['job_id'] = df['job_id'].apply(lambda x: str(int(x)) if pd.notna(x) else None)
         data = df.to_dict(orient='records')
 
-        # # NaN / NaT → None (JSON safe)
-        # df = df.where(pd.notnull(df), None)
-        # data=df.to_dict(orient='records')
-        # # ------------------------------------
-        # import json
 
-        # try:
-        #     json.dumps(data)
-        # except TypeError as e:
-        #     print("❌ JSON ERROR:", e)
-        #     for row in data:
-        #         for k, v in row.items():
-        #             if hasattr(v, 'isoformat'):
-        #                 print("BAD FIELD:", k, type(v), v)
-        #     raise
+        valid_jobs = []
+        invalid_jobs = []
+        job_status_map = {
+    'Paused': 'paused',
+    'Unscheduled': 'ready',
+    'Scheduled': 'ready',
+    'Cancelled': 'cancelled',
+    'Completed': 'completed'
+}
+        for row in data:
+            mapped_status = job_status_map.get(row.get('status'), 'ready')
 
-        request.session['batch_jobs'] = data
+            # 🔧 Map fields to match your form/model
+            
+            
+                
+            form_data = {
+                'job_id': row.get('job_id'),
+                'date': row.get('date'),
+                'from_time': row.get('from_time'),
+                'status': mapped_status,
+                'parent_account': row.get('parent_account'),
+                'address': row.get('address'),
+                'post_code': row.get('postcode'),  # ⚠️ FIX name
+                'engineer': None, #Always none bec i am gonana query eeng when creating job not when importing from sheet and bec the form only accept ids not names
+                'birthday': row.get('birthday'),
+                'company' : request.user.company,
+                'notes' : row.get('notes')
+            }
+            form = JobForm(data=form_data)
+            exists = Job.objects.filter(
+            company=request.user.company,
+            job_id=row.get('job_id')
+            ).exists()
+
+            if exists:
+                valid_jobs.append(row)
+
+                continue
+            if form.is_valid():
+                valid_jobs.append(row)
+            else:
+                invalid_jobs.append({
+                    "data": row,
+                    "errors": form.errors,
+                    
+                })
+        request.session['batch_jobs'] = valid_jobs
+        request.session['invalid_jobs'] = invalid_jobs
+
+        request.session.set_expiry(30* 60) 
+        return redirect('jobs_batch_entry')
+    elif request.method == 'POST' and request.FILES.get('jobs_sheet') and "upload_paused" in request.POST:
+        excel_file = request.FILES['jobs_sheet']
+
+        COLUMNS = {
+            'job_id': 'job_id',
+            'name': 'name',
+            'price':'price',
+            'part_number': 'part_number',
+            'supplier': 'supplier',
+            'job_quantity': 'job_quantity',
+            'arrived_quantity': 'arrived_quantity',
+            'ordered?': 'ordered',
+            'ordered_date': 'ordered_date',
+            'arrived_date':'arrived_date',
+            'category': 'category',
+
+        }
+
+        df = pd.read_excel(excel_file, usecols=COLUMNS.keys())
+        df.rename(columns=COLUMNS, inplace=True)
+        # df['job_id'] = df['job_id'].astype('Int64').astype(str)
+        for col in ['job_quantity', 'arrived_quantity']:
+            if col in df.columns:
+                df[col] = df[col].fillna(0).astype(int)
+        for col in ['ordered_date', 'arrived_date']:
+            
+            if col in df.columns:
+                df[col] = df[col].apply(
+                    lambda x: (
+                        None
+                        if pd.isna(x)
+                        else x.strftime('%Y-%m-%d %H:%M:%S')
+                        if isinstance(x, (pd.Timestamp, datetime))
+                        else str(x)
+                    )
+                )
+        def normalize(v):
+            if isinstance(v, time):
+                return v.strftime('%H:%M')
+            if isinstance(v, (datetime, pd.Timestamp)):
+                return v.strftime('%Y-%m-%d %H:%M:%S')
+            return v
+        
+        df = df.map(normalize)
+        df = df.where(pd.notnull(df), None)
+        data = df.to_dict(orient='records')
+        
+        request.session['batch_paused_jobs'] = data
+        
+
         request.session.set_expiry(30* 60) 
         return redirect('jobs_batch_entry')
 
+#CONtinuEEEEEEEEEEEEEEEEEE
+
     # Load current items from session
 
-
     data = request.session.get('batch_jobs', [])
-
-    return render(request, 'inventory/jobs_batch_entry.html', {'data': data})
+    
+    parts_with_no_job = Job.objects.filter(company=request.user.company).values_list('job_id', flat=True)
+    invalid_jobs=request.session.get('invalid_jobs', [])
+    paused_data = request.session.get('batch_paused_jobs', [])
+    return render(request, 'inventory/jobs_batch_entry.html', {'data': data,'paused_data':paused_data,'parts_with_no_job':parts_with_no_job,'invalid_jobs':invalid_jobs})
    
 
 INVALID_VALUES = {None, '', 'None', 'nan', 'NaN'}
@@ -2020,10 +2151,11 @@ def parse_this_date(value):
             continue
 
     return None
+@login_required(login_url='login', redirect_field_name='inventory')
+
 def create_batch_jobs(request):
     
         
-             
         job_data = {
             'job_id': request.POST.get('job_id'),
 
@@ -2042,7 +2174,8 @@ def create_batch_jobs(request):
 
             'company': request.user.company,
         }
-        engineer=Engineer.objects.filter(company=request.user.company,name__icontains=job_data['engineer']).first()
+        
+
         job_status={
             'Paused':'paused',
             'Unscheduled':'ready',
@@ -2051,19 +2184,30 @@ def create_batch_jobs(request):
             'Completed':'completed'
 
         }
-       
         try:
             
             x=Job.objects.get(company=request.user.company,job_id=job_data['job_id'])
             items = request.session.get('batch_jobs', [])
-        
 
-            items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
+            items = [item for item in items if str(item['job_id']) != str(job_data['job_id'])]
+
             request.session['batch_jobs'] = items
             messages.error(request,f"Job {x.job_id} already exists")
             return redirect('jobs_batch_entry')
         except:
             pass
+        engineer_name = job_data.get('engineer')
+        engineer = None
+        if engineer_name not in INVALID_VALUES:
+            try:
+                engineer = Engineer.objects.get(
+                    company=request.user.company,
+                    name__icontains=engineer_name.split()[0]
+                )
+                # job_data['engineer'] = engineer.id
+            except:
+                engineer = None
+
         job=Job(
                         company=request.user.company,
                         job_id=job_data['job_id'],
@@ -2072,22 +2216,24 @@ def create_batch_jobs(request):
                         post_code=job_data['postcode'],
                         parent_account=job_data['parent_account'] if job_data['parent_account']  else "Unknonw ",
                         address=job_data['address'],
-                        engineer=engineer,
+                        engineer=engineer ,
                         birthday=job_data['birthday'],
                         imported_from_sheet=True,
                             )
         job.status = job_status.get(job_data['status'], 'ready')
         if job.status=='paused':
             job.parts_need_attention=True
+
         job.save(request=request)
-        # if job_data['notes']  != "None":
-        #     comment=Comment(
-        #         company=request.user.company,
-        #         content_type=ContentType.objects.get_for_model(Job), object_id=job.id, 
-        #         comment=job_data['notes'],
-        #         added_by=request.user,
-        #     )
-        #     comment.save()
+        if job_data['notes']  not in INVALID_VALUES:
+            comment=Comment(
+                company=request.user.company,
+                content_type=ContentType.objects.get_for_model(Job), object_id=job.id, 
+                comment=job_data['notes'],
+                added_by=request.user,
+                imported_from_sheet=True
+            )
+            comment.save()
         
         messages.success(request,f'job #{job_data['job_id']} added')
         # Remove this item from session
@@ -2096,7 +2242,126 @@ def create_batch_jobs(request):
 
         items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
         request.session['batch_jobs'] = items
+
         return redirect('jobs_batch_entry')
+
+
+def create_batch_paused_parts(request):
+        ordered_raw = request.POST.get('ordered', '')
+        ordered_status = str(ordered_raw).lower() in ['true', '1',"1.0", 'yes']
+        print(ordered_raw)
+        print(ordered_status)
+
+        part_data = {
+                'job_id': request.POST.get('job_id'),
+                'part_number': request.POST.get('part_number'),
+                'name': request.POST.get('name'),
+                'price':request.POST.get('price'),
+                'supplier': request.POST.get('supplier'),
+                'job_quantity': request.POST.get('job_quantity'),
+                'arrived_quantity': request.POST.get('arrived_quantity'),
+                'ordered_status': ordered_status, 
+                'ordered_date': parse_this_date(request.POST.get('ordered_date')),
+                'arrived_date': parse_this_date(request.POST.get('arrived_date')),
+                'category': request.POST.get('category'),
+
+              
+            }
+        try:
+            print(request.POST)
+            job=Job.objects.filter(company=request.user.company,job_id=part_data['job_id'])
+            print("Ordereding ", part_data['ordered_status'])
+            try:
+                                    
+                exist_cat = Category.objects.get(Q(company=request.user.company), Q(category__icontains=part_data['category']))
+            except:
+            
+                exist_cat=Category.objects.get(Q(company=request.user.company), Q(category="Others"))
+                    
+            job=Job.objects.get(company=request.user.company,job_id=part_data['job_id'])
+            item=JobItem(
+                company=request.user.company,
+                job=job,
+                name=part_data['name'],
+                price=part_data['price'],
+
+                part_number=part_data['part_number'],
+
+                supplier=part_data['supplier'],
+                job_quantity=part_data['job_quantity'],
+                arrived_quantity=part_data['arrived_quantity'],
+                ordered=part_data['ordered_status'],
+                ordered_date=part_data['ordered_date'],
+                category=exist_cat,
+                added_by_batch_entry=True,
+                reference=job.address
+
+
+
+            )
+            item.save(request=request)
+        except:
+
+        #     # parts_with_no_job = request.session.get("parts_with_no_job", [])
+        #     # parts_with_no_job.append(int(part_data['job_id']))
+        #     # request.session["parts_with_no_job"] = parts_with_no_job
+            messages.error(request,f'part with no job')
+            return redirect('jobs_batch_entry')
+
+            pass
+       
+        messages.success(request,f'part #{part_data['name']} added to job {job}')
+        # Remove this item from session
+        # items = request.session.get('batch_jobs', [])
+        
+
+        # items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
+        # request.session['batch_jobs'] = items
+        return redirect('jobs_batch_entry')
+from django.http import JsonResponse
+from django.core import serializers
+
+def get_job_data(request):
+    job_id = request.GET.get('job_id')
+    part_number=request.GET.get('part_number')
+    print(part_number)
+    try:
+        job = Job.objects.get(company=request.user.company, job_id=job_id)
+    except Job.DoesNotExist:
+        return JsonResponse({'error': 'Job not found'}, status=404)
+    items=job.items.all()
+    part_exists = items.filter(part_number=part_number).exists()
+    part_exists_count = items.aggregate(total=Sum('job_quantity'))['total'] or 0
+    print(part_exists,part_exists_count)
+    if not part_exists:
+            
+            return JsonResponse({'no_part': 'Part not found' }, status=404)
+
+    items = list(items.values(
+        'name',
+        'supplier',
+        'part_number',
+        
+        'price',
+        'job_quantity',
+        'arrived_quantity',
+    ))
+    
+    data = {
+        'part_exists_count':part_exists_count,
+        'items':items,
+        'job_id': job.job_id,
+        'address': job.address,
+        # add anything you want
+    }
+    
+    return JsonResponse(data)
+    
+    
+
+
+
+@login_required(login_url='login', redirect_field_name='inventory')
 
 def create_all_batch_jobs(request):
     count=0
@@ -2111,7 +2376,7 @@ def create_all_batch_jobs(request):
             'status': batch_job['status'],
             'parent_account': batch_job['parent_account'],
             'address': batch_job['address'] or " ",
-            'postcode': batch_job['postcode'],
+            'postcode': batch_job['postcode'] or "None",
 
             'engineer': batch_job['engineer'],
             'notes': batch_job['notes'],
@@ -2121,14 +2386,7 @@ def create_all_batch_jobs(request):
             'company': request.user.company,
         }
 
-        engineer = None
-        engineer_name = job_data.get('engineer')
-
-        if engineer_name:
-            engineer = Engineer.objects.filter(
-                company=request.user.company,
-                name__icontains=engineer_name
-            ).first()
+    
         
         job_status={
             'Paused':'paused',
@@ -2152,6 +2410,18 @@ def create_all_batch_jobs(request):
             continue
         except:
             pass
+        engineer_name = job_data.get('engineer')
+        engineer = None
+        if engineer_name not in INVALID_VALUES:
+            try:
+                engineer = Engineer.objects.get(
+                    company=request.user.company,
+                    name__icontains=engineer_name.split()[0]
+                )
+                # job_data['engineer'] = engineer.id
+            except:
+                engineer = None
+
         job=Job(
                         company=request.user.company,
                         job_id=job_data['job_id'],
@@ -2167,15 +2437,17 @@ def create_all_batch_jobs(request):
         job.status = job_status.get(job_data['status'], 'ready')
         if job.status=='paused':
             job.parts_need_attention=True
+        print(job.job_id)
         job.save(request=request)
-        # if job_data['notes']  != "None":
-        #     comment=Comment(
-        #         company=request.user.company,
-        #         content_type=ContentType.objects.get_for_model(Job), object_id=job.id, 
-        #         comment=job_data['notes'],
-        #         added_by=request.user,
-        #     )
-        #     comment.save()
+        if job_data['notes']  not in INVALID_VALUES:
+            comment=Comment(
+                company=request.user.company,
+                content_type=ContentType.objects.get_for_model(Job), object_id=job.id, 
+                comment=job_data['notes'],
+                added_by=request.user,
+                imported_from_sheet=True
+            )
+            comment.save()
         
        
         # Remove this item from session
@@ -2187,12 +2459,14 @@ def create_all_batch_jobs(request):
         count=count+1
     messages.success(request,f"{count} Jobs added")
     return redirect('jobs_batch_entry')
+@login_required(login_url='login', redirect_field_name='inventory')
 
 def fetch_api_data(request):
     url = "https://jsonplaceholder.typicode.com/posts"
     response = requests.get(url)
     data = response.json()  # Convert to dict
     return render(request, 'inventory/api_data.html',{'data':data})
+@login_required(login_url='login', redirect_field_name='inventory')
 
 def sync_engineers_view(request):
     try:
@@ -2203,6 +2477,7 @@ def sync_engineers_view(request):
     messages.success(request,"Engineers synced.")
     return redirect('admin_panel')
 
+@login_required(login_url='login', redirect_field_name='inventory')
 
 def fetch_jobs(request,job_id=None):
     # try:
@@ -2309,6 +2584,7 @@ def fetch_jobs(request,job_id=None):
     #     messages.error(request,"Synicng failed")
     #     return redirect("inventory")
     
+@login_required(login_url='login', redirect_field_name='inventory')
 
 def scheduler(request):
     
@@ -2847,6 +3123,7 @@ def delete_all_jobs(request):
     messages.success(request, f"{count} jobs deleted")
     return redirect("inventory")
 
+@login_required(login_url='login', redirect_field_name='inventory')
 
 @require_POST
 def move_job_to_date(request):

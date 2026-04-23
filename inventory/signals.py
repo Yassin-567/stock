@@ -15,7 +15,6 @@ def create_user_settings(sender, instance, created, **kwargs):
         )
 @receiver(pre_save)
 def log_model_changes(sender, instance,**kwargs):
-    
     # Avoid logging History model changes to prevent recursion
     if sender == Session:
         
@@ -53,7 +52,6 @@ def log_model_changes(sender, instance,**kwargs):
         
     except sender.DoesNotExist:
         return  # Object doesn't exist yet, skip
-    
     changed_fields = []
     old_values = []
     new_values = []
@@ -119,12 +117,15 @@ def log_model_creation(sender, created,instance, **kwargs):
             return
     except:
         pass
+
     if sender==Company:
         user=instance.owner
     else :
         user=instance.request.user
 
     if  instance.request :
+        
+
         History.objects.create(
             content_type=ContentType.objects.get_for_model(instance),
             object_id=instance.pk,  # now PK is available

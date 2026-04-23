@@ -33,7 +33,7 @@ urlpatterns=[
 
     path('scheduler/',views.scheduler,name='scheduler'),
     path('delete_all_jobs/',views.delete_all_jobs,name='delete_all_jobs'),
-    
+    path('get-job-data/', views.get_job_data, name='get_job_data'),
    
     
 
@@ -47,8 +47,8 @@ urlpatterns=[
 
     path('create_batch_items/', views.create_batch_items, name='create_batch_items'),
     path('create_batch_jobs/', views.create_batch_jobs, name='create_batch_jobs'),
+    path('create_batch_paused_parts/', views.create_batch_paused_parts, name='create_batch_paused_parts'),
     path('create_all_batch_jobs/', views.create_all_batch_jobs, name='create_all_batch_jobs'),
-
 
 
 

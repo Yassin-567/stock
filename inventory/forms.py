@@ -274,6 +274,20 @@ class JobForm(forms.ModelForm):
             elif status=='ready' and job.items.exclude(is_used=False).exists():
                 raise forms.ValidationError("There is a used item")
             return cleaned_data
+    def clean_address(self):
+        address = self.cleaned_data.get('address')
+        
+        if not address or address in['', 'None', 'nan', 'NaN']:
+            raise forms.ValidationError("Address is required")
+        
+        return address
+    def clean_parent_account(self):
+        parent_account = self.cleaned_data.get('parent_account')
+        
+        if not parent_account or parent_account in['', 'None', 'nan', 'NaN']:
+            raise forms.ValidationError("Address is required")
+        
+        return parent_account
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
@@ -396,8 +410,9 @@ class JobItemForm(forms.ModelForm):
         # elif job  and job_quantity < arrived_quantity:
         #     raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
         
-        if job_quantity == arrived_quantity and not ordered and not self.instance.from_warehouse:
-            raise forms.ValidationError("Items can't arrive without ordering")
+        if not ordered :
+            if (job_quantity == arrived_quantity   and not self.instance.from_warehouse) or (0 < arrived_quantity):
+                raise forms.ValidationError("Items can't arrive without ordering")
         elif not  self.instance.from_warehouse and job_quantity<arrived_quantity  :
             raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
         elif self.instance.from_warehouse and job_quantity<arrived_quantity   :

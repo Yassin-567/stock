@@ -329,7 +329,6 @@ class JobItem(models.Model):
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="items")
     job_quantity = models.PositiveSmallIntegerField(default=0)  # How many needed for this job
     arrived_quantity=models.PositiveSmallIntegerField(default=0)
-    reference=models.TextField(blank=True,null=True,max_length=40)
     ordered=models.BooleanField(default=False)
     ordered_date=models.DateField(null=True,blank=True)
     arrived=models.BooleanField(default=False)

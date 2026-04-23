@@ -1,0 +1,64 @@
+ $files = Import-Csv "C:\future_files.csv"
+  $now = Get-Date
+ 
+  foreach ($row in $files) {
+      try {
+          $file = Get-Item -Path $row.FullName -ErrorAction Stop
+ 
+          # Check if any of the three main timestamps are in the future
+          if ($file.CreationTime -gt $now -or $file.LastWriteTime -gt $now -or $file.LastAccessTime -gt $now) {
+ 
+              # 1. Take ownership and reset permissions to ensure access
+              takeown /f $file.FullName
+              icacls "$($file.FullName)" /grant "${env:USERNAME}:F"
+ 
+              # 2. Reset the dates to the current time
+              # You can also set a specific past date if preferred
+              $file.CreationTime = $now
+              $file.LastWriteTime = $now
+              $file.LastAccessTime = $now
+ 
+              Write-Host "Reset future dates for: $($file.Name)" -ForegroundColor Cyan
+          }
+      } catch {
+          Write-Warning "Could not process $($row.FullName). Error: $($_.Exception.Message)"
+      }
+  }
+
+
+
+---------------
+
+
+ $now = Get-Date
+ 
+  Get-ChildItem C:\ -Recurse -File -ErrorAction SilentlyContinue |
+  Where-Object {
+      $_.CreationTime -gt $now -or $_.LastWriteTime -gt $now -or $_.LastAccessTime -gt $now
+  } | Select-Object FullName, CreationTime, LastWriteTime, LastAccessTime |
+  Export-Csv "C:\future_files.csv" -NoTypeInformation
+-------------TO REVERSE
+$files = Import-Csv "C:\future_files.csv"
+
+foreach ($file in $files) {
+    try {
+        if (Test-Path $file.FullName) {
+
+            # Restore owner to TrustedInstaller
+            icacls "$($file.FullName)" /setowner "NT SERVICE\TrustedInstaller" /c
+
+            # Reset permissions to default
+            icacls "$($file.FullName)" /reset /c
+
+            Write-Host "Reverted:" $file.FullName
+        }
+    } catch {
+        Write-Host "Skipped:" $file.FullName
+    }
+}
+
+
+
+
+
+
