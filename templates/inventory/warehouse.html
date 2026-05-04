@@ -168,6 +168,8 @@ a:hover {
                     <th>Price</th>
                     <th>Quantity</th>
                     <th>Origin</th>
+                    <th>Where is the part</th>
+
                   </tr>
                 </thead>
                 <tbody>
@@ -182,6 +184,10 @@ a:hover {
                       {% if item.is_moved_from_job %}<td>Was moved from: <a href="{% url "update_job" item.is_moved_from_job.job_id %}">{{item.is_moved_from_job}}</a></td>{% else %}
                       <td>Originally from warehouse</td>
                       {% endif %}
+                      {% if item.who_has_part %}<td>with <a href="{% url 'update_engineer' item.who_has_part.pk %}">{{item.who_has_part}}</a></td>
+                      {% else %}
+                      <td>In warehouse <td>
+                    {% endif %}
                       
                     </tr>
                   {% endfor %}

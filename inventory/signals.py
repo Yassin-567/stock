@@ -124,7 +124,6 @@ def log_model_creation(sender, created,instance, **kwargs):
         user=instance.request.user
 
     if  instance.request :
-        
 
         History.objects.create(
             content_type=ContentType.objects.get_for_model(instance),

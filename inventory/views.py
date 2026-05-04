@@ -11,7 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from .myfunc import generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func,haversine,get_coords,get_drive_time_ors,optimize_group_order,optimize_group_order2,_greedy_fallback,move,refresh_sf_token , remove_job_from_group,i_donot_work_on_this,i_work_on_this
+from .myfunc import remove_item_from_session, generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func,haversine,get_coords,get_drive_time_ors,optimize_group_order,optimize_group_order2,_greedy_fallback,move,refresh_sf_token , remove_job_from_group,i_donot_work_on_this,i_work_on_this
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
@@ -849,6 +849,7 @@ def item_add(request,pk=None,):
                             added_by_batch_entry=item.added_by_batch_entry,
                             company=request.user.company,
                             arrived=True,
+                            who_has_part=item.who_has_part,
                             job_quantity=+required_quantity,
                             arrived_quantity=+required_quantity,
                             category=item.category,
@@ -1079,7 +1080,7 @@ def update_item(request, pk):
                     added_by=request.user,
                     warehouse_quantity=job_item.arrived_quantity,
                     reference=job_item.reference,
-                    
+                    who_has_part=item.who_has_part,
                     category=job_item.category,
                     #is_used=job_item.is_used,
                     is_moved_from_job=job if job_item.was_for_job else None  ,   
@@ -2048,6 +2049,10 @@ def import_jobs(request):
                     "errors": form.errors,
                     
                 })
+        for i, row in enumerate(valid_jobs, start=1):
+            row['id'] = i
+           
+        
         request.session['batch_jobs'] = valid_jobs
         request.session['invalid_jobs'] = invalid_jobs
 
@@ -2055,7 +2060,6 @@ def import_jobs(request):
         return redirect('jobs_batch_entry')
     elif request.method == 'POST' and request.FILES.get('jobs_sheet') and "upload_paused" in request.POST:
         excel_file = request.FILES['jobs_sheet']
-
         COLUMNS = {
             'job_id': 'job_id',
             'name': 'name',
@@ -2068,9 +2072,13 @@ def import_jobs(request):
             'ordered_date': 'ordered_date',
             'arrived_date':'arrived_date',
             'category': 'category',
+            'who_has_part':'who_has_part',
 
         }
-
+        df2 = pd.read_excel(excel_file,usecols="A:B",sheet_name=1 )
+        df2.columns = ['engineer_name', 'engineer_email']
+        engineers_data = df2.to_dict(orient='records')
+        request.session['engineers_data'] = engineers_data
         df = pd.read_excel(excel_file, usecols=COLUMNS.keys())
         df.rename(columns=COLUMNS, inplace=True)
         # df['job_id'] = df['job_id'].astype('Int64').astype(str)
@@ -2099,9 +2107,15 @@ def import_jobs(request):
         df = df.map(normalize)
         df = df.where(pd.notnull(df), None)
         data = df.to_dict(orient='records')
+
+        for i, row in enumerate(data, start=1):
+            row['id'] = i
+           
         
+
+        request.session['engineers_data'] = engineers_data
         request.session['batch_paused_jobs'] = data
-        
+        print("data",request.session.get('engineers_data', []))
 
         request.session.set_expiry(30* 60) 
         return redirect('jobs_batch_entry')
@@ -2112,10 +2126,10 @@ def import_jobs(request):
 
     data = request.session.get('batch_jobs', [])
     
-    parts_with_no_job = Job.objects.filter(company=request.user.company).values_list('job_id', flat=True)
+    available_jobs = Job.objects.filter(company=request.user.company).values_list('job_id', flat=True)
     invalid_jobs=request.session.get('invalid_jobs', [])
     paused_data = request.session.get('batch_paused_jobs', [])
-    return render(request, 'inventory/jobs_batch_entry.html', {'data': data,'paused_data':paused_data,'parts_with_no_job':parts_with_no_job,'invalid_jobs':invalid_jobs})
+    return render(request, 'inventory/jobs_batch_entry.html', {'data': data,'paused_data':paused_data,'available_jobs':available_jobs,'invalid_jobs':invalid_jobs,})
    
 
 INVALID_VALUES = {None, '', 'None', 'nan', 'NaN'}
@@ -2172,6 +2186,7 @@ def create_batch_jobs(request):
 
             'birthday': request.POST.get('birthday'),
 
+
             'company': request.user.company,
         }
         
@@ -2207,7 +2222,6 @@ def create_batch_jobs(request):
                 # job_data['engineer'] = engineer.id
             except:
                 engineer = None
-
         job=Job(
                         company=request.user.company,
                         job_id=job_data['job_id'],
@@ -2237,11 +2251,12 @@ def create_batch_jobs(request):
         
         messages.success(request,f'job #{job_data['job_id']} added')
         # Remove this item from session
-        items = request.session.get('batch_jobs', [])
-        
+        # items = request.session.get('batch_jobs', [])
+        job_session_id=request.POST.get('job_session_id')
+        remove_item_from_session(request=request,session_id=job_session_id,session_name='batch_jobs')
 
-        items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
-        request.session['batch_jobs'] = items
+        # items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
+        # request.session['batch_jobs'] = items
 
         return redirect('jobs_batch_entry')
 
@@ -2249,8 +2264,7 @@ def create_batch_jobs(request):
 def create_batch_paused_parts(request):
         ordered_raw = request.POST.get('ordered', '')
         ordered_status = str(ordered_raw).lower() in ['true', '1',"1.0", 'yes']
-        print(ordered_raw)
-        print(ordered_status)
+        engineers_data = request.session.get('engineers_data', [])
 
         part_data = {
                 'job_id': request.POST.get('job_id'),
@@ -2264,26 +2278,44 @@ def create_batch_paused_parts(request):
                 'ordered_date': parse_this_date(request.POST.get('ordered_date')),
                 'arrived_date': parse_this_date(request.POST.get('arrived_date')),
                 'category': request.POST.get('category'),
+            'who_has_part': request.POST.get('who_has_part'),
+
 
               
             }
+        part_session_id= request.POST.get('part_session_id')
+        eng_name=part_data['who_has_part']
+        
+        engineer=None
+        if eng_name and str(eng_name).strip().lower() not in INVALID_VALUES:
+            
+            eng_email = None
+
+            for data in engineers_data:
+                if data['engineer_name']==eng_name:
+                    eng_email=data['engineer_email']
+                    break
+            try:
+                    engineer=Engineer.objects.get(company=request.user.company,email=eng_email)
+            except:
+                engineer=Engineer(name=eng_name,email=eng_email,phone=0,synced_from_sheet=True,company=request.user.company)
+                engineer.save(request=request)
         try:
-            print(request.POST)
             job=Job.objects.filter(company=request.user.company,job_id=part_data['job_id'])
-            print("Ordereding ", part_data['ordered_status'])
+            
             try:
                                     
                 exist_cat = Category.objects.get(Q(company=request.user.company), Q(category__icontains=part_data['category']))
             except:
             
                 exist_cat=Category.objects.get(Q(company=request.user.company), Q(category="Others"))
-                    
             job=Job.objects.get(company=request.user.company,job_id=part_data['job_id'])
             item=JobItem(
                 company=request.user.company,
                 job=job,
                 name=part_data['name'],
                 price=part_data['price'],
+                who_has_part=engineer,
 
                 part_number=part_data['part_number'],
 
@@ -2301,7 +2333,6 @@ def create_batch_paused_parts(request):
             )
             item.save(request=request)
         except:
-
         #     # parts_with_no_job = request.session.get("parts_with_no_job", [])
         #     # parts_with_no_job.append(int(part_data['job_id']))
         #     # request.session["parts_with_no_job"] = parts_with_no_job
@@ -2309,7 +2340,7 @@ def create_batch_paused_parts(request):
             return redirect('jobs_batch_entry')
 
             pass
-       
+        remove_item_from_session(request=request,session_id=part_session_id,session_name='batch_paused_jobs')
         messages.success(request,f'part #{part_data['name']} added to job {job}')
         # Remove this item from session
         # items = request.session.get('batch_jobs', [])
@@ -2335,7 +2366,7 @@ def get_job_data(request):
     print(part_exists,part_exists_count)
     if not part_exists:
             
-            return JsonResponse({'no_part': 'Part not found' }, status=404)
+            return JsonResponse({'no_part': 'Part not found','part_exists_count': 'unknown' }, status=404)
 
     items = list(items.values(
         'name',
@@ -2358,9 +2389,6 @@ def get_job_data(request):
     return JsonResponse(data)
     
     
-
-
-
 @login_required(login_url='login', redirect_field_name='inventory')
 
 def create_all_batch_jobs(request):
@@ -2448,14 +2476,15 @@ def create_all_batch_jobs(request):
                 imported_from_sheet=True
             )
             comment.save()
-        
-       
+        job_session_id=batch_job["id"]
+        remove_item_from_session(request=request,session_id=job_session_id,session_name='batch_jobs')
+
         # Remove this item from session
-        items = request.session.get('batch_jobs', [])
+        # items = request.session.get('batch_jobs', [])
         
 
-        items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
-        request.session['batch_jobs'] = items
+        # items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
+        # request.session['batch_jobs'] = items
         count=count+1
     messages.success(request,f"{count} Jobs added")
     return redirect('jobs_batch_entry')

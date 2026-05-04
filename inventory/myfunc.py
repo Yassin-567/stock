@@ -787,3 +787,13 @@ def i_donot_work_on_this(request,group_id):
             j.scheduler=None    
             j.save(request=request,update_fields=["scheduler"])
                 
+def remove_item_from_session(request, session_id, session_name):
+    data = request.session.get(session_name, [])
+
+    updated_data = [
+        row for row in data
+        if int(row['id']) != int(session_id)
+    ]
+
+    request.session[session_name] = updated_data
+    request.session.modified = True

@@ -26,6 +26,7 @@
       <form method="POST" action="{% url 'create_batch_jobs' %}">
         {% csrf_token %}
         <input type="hidden" name="job_id" value="{{ item.job_id }}" />
+        <input type="hidden" name="job_session_id" value="{{ item.id }}" />
         <input type="hidden" name="date" value="{{ item.date }}" />
         <input type="hidden" name="from_time" value="{{ item.from_time }}" />
         <input type="hidden" name="parent_account" value="{{ item.parent_account }}" />
@@ -152,7 +153,7 @@
 
       <!-- 🚫 Disabled button -->
       <button type="button" disabled style="background: gray; cursor: not-allowed;">
-        Invalid Job
+        Job error
       </button>
 
     </form>
@@ -169,6 +170,7 @@
       <form method="POST" action="{% url 'create_batch_paused_parts' %}" id="mainForm" >
         {% csrf_token %}
         <input type="hidden" name="job_id" value="{{ item.job_id }}" id="job_id"/>
+        <input type="hidden" name="part_session_id" value="{{ item.id }}" />
         <input type="hidden" name="part_number" value="{{ item.part_number }}" />
         <input type="hidden" name="name" value="{{ item.name }}" />
         <input type="hidden" name="supplier" value="{{ item.supplier }}" />
@@ -180,9 +182,15 @@
         <input type="hidden" name="ordered_date" value="{{ item.ordered_date }}" />
         <input type="hidden" name="arrived_date" value="{{ item.arrived_date }}" />
         <input type="hidden" name="category" value="{{ item.category }}" />
+        <input type="hidden" name="who_has_part" value="{{ item.who_has_part }}" />
+
 
         <p>
-          <strong>Job#':</strong> {{ item.job_id }}
+          {% if item.job_id  in available_jobs %} 
+      <strong>Job#:</strong> <a href="{% url 'update_job' item.job_id %}">{{ item.job_id }}</a>
+{% else %}<strong>Job#:</strong> {{ item.job_id }} 
+{% endif %}
+          
         </p>
 
         <p>
@@ -215,18 +223,20 @@
         <p>
           <strong>category:</strong> {{ item.category }}
         </p>
-    
+     <p>
+          <strong>Who has the part:</strong> {% if item.who_has_part %}{{ item.who_has_part }}{% else %}Warehouse{% endif %}
+        </p>
 
   
    
 <button type="submit" onclick="openModal(event, this)"
-{% if item.job_id not in parts_with_no_job %} 
+{% if item.job_id not in available_jobs %} 
     style="background-color: red;" disabled
     alt="Cannot add part without associated job"
     title="Cannot add part without associated job"
    
 {% endif %}>
-    Add job
+    Add part
 </button>  
 
 
@@ -239,7 +249,7 @@
   {% endif %}
 
 
-   <div id="confirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+   {% comment %} <div id="confirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
   <div style="background:white; padding:20px; width:300px; margin:15% auto; border-radius:8px; text-align:center;">
     <div><p id="confirmText">Are you sure you want to save?</p>
 
@@ -249,7 +259,70 @@
 <button id="no" onclick="closeModal()">No</button></div>
   </div>
 </div>
+<style>
 
+  #confirmModal p {
+      max-height: 80vh;   /* keep modal within screen */
+    overflow-y: auto; 
+  }
+</style> {% endcomment %}
+
+
+<div id="confirmModal" class="modal-overlay">
+  
+  <div class="modal-box">
+    
+    <p id="confirmText">Are you sure you want to save?</p>
+    <div id="warnContainer"></div>
+
+    <div id="itemsContainer"></div>
+
+    <div class="modal-actions">
+      <button id="yes" onclick="submitConfirmed()">Yes</button>
+      <button id="no" onclick="closeModal()">No</button>
+    </div>
+
+  </div>
+
+</div>
+
+<style>.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+}
+
+.modal-box {
+  background: white;
+  width: 300px;
+  max-height: 80vh;        /* ✅ limit total height */
+  margin: 10vh auto;       /* better vertical centering */
+  padding: 20px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;  /* stack elements */
+}
+
+/* 🔥 THIS is the important part */
+#itemsContainer {
+  overflow-y: auto;        /* scroll only here */
+  max-height: 40vh;        /* adjust as needed */
+  margin-top: 10px;
+  text-align: left;
+}
+
+.modal-actions {
+  margin-top: 10px;
+  text-align: center;
+}</style>
+
+<script>
+    const jobUrlTemplate = "{% url 'update_job' 0 %}";
+</script>
 <script>
 let currentForm = null;
 
@@ -273,6 +346,8 @@ function openModal(e, btn) {
 
             const confirmText = document.getElementById('confirmText');
             const container = document.getElementById('itemsContainer');
+            const warnContainer = document.getElementById('warnContainer');
+
             const yesBtn = document.getElementById('yes');
             const noBtn = document.getElementById('no');
 
@@ -288,16 +363,15 @@ function openModal(e, btn) {
                 noBtn.innerHTML = 'Close';
               } else {
                   // ✅ Job info + total from backend
-                  confirmText.innerText =
-                      `Save part for Job ${data.job_id}\nAddress: ${data.address}`;
                   
-                  // ✅ Items (no calculations)
-                  data.items.forEach(item => {
-                      const p = document.createElement('p');
-                      p.innerText = `Part: ${item.name}, Arrived: ${item.arrived_quantity}, Required: ${item.job_quantity}`;
-                      container.appendChild(p);
-                  });
-                  const part_exists_count = data.part_exists_count || 'unknown';
+                      const jobUrl = jobUrlTemplate.replace(0, jobId);
+
+confirmText.innerHTML = `
+    Save part for <strong>Job#:</strong>
+    <a href="${jobUrl}">${jobId}</a><br>
+    Address: ${data.address}
+`;
+const part_exists_count = data.part_exists_count || 'unknown';
 
                     const part_number = currentitem;
 
@@ -306,7 +380,16 @@ function openModal(e, btn) {
                       p.style.fontWeight = 'bold';
                       p.style.color = 'red';
 
+                      warnContainer.appendChild(p);
+
+
+                  // ✅ Items (no calculations)
+                  data.items.forEach(item => {
+                      const p = document.createElement('p');
+                      p.innerText = `Part: ${item.name}, Arrived: ${item.arrived_quantity}, Required: ${item.job_quantity}`;
                       container.appendChild(p);
+                  });
+                  
               }
 
             document.getElementById('confirmModal').style.display = 'block';

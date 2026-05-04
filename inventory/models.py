@@ -164,6 +164,7 @@ class Engineer(models.Model):
     phone=models.CharField(max_length=15)
     company=models.ForeignKey(Company,on_delete=models.CASCADE,related_name="engineers_company",blank=False,null=False)
     sf_id=models.CharField(max_length=40,blank=True,null=True)
+    synced_from_sheet=models.BooleanField(default=False)
     def save(self,request=None,*args,affected_by_sync=False, **kwargs):
         self.request=request
         self.affected_by_sync=affected_by_sync
@@ -174,7 +175,7 @@ class Engineer(models.Model):
 
         
     def __str__(self):
-        return str( self.name)+"🔄" if self.sf_id else str( self.name)
+        return str( self.name)+"🔄" if self.sf_id else  str(self.name) + "📊" if self.synced_from_sheet else str( self.name)
 from django.contrib.contenttypes.fields import GenericRelation
 class Job(models.Model):
     status_chouces=[
@@ -323,7 +324,7 @@ class JobItem(models.Model):
     supplier=models.CharField(max_length=70)
     added_date=models.DateTimeField(auto_now_add=True)
     added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, )
-
+    who_has_part=models.ForeignKey(Engineer, on_delete=models.DO_NOTHING, null=True, blank=True,default=None )
     ###
     company=models.ForeignKey(Company,on_delete=models.CASCADE,)
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="items")
@@ -385,6 +386,8 @@ class WarehouseItem(models.Model):
     company=models.ForeignKey(Company,on_delete=models.CASCADE,)
     added_date=models.DateTimeField(auto_now_add=True)
     added_by=models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, )
+    who_has_part=models.ForeignKey(Engineer, on_delete=models.DO_NOTHING, null=True, blank=True,default=None )
+
     ###
     company=models.ForeignKey(Company,on_delete=models.CASCADE,)
     warehouse_quantity = models.PositiveSmallIntegerField(default=0)  
