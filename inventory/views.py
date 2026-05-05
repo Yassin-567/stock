@@ -13,16 +13,17 @@ from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from .myfunc import remove_item_from_session, generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func,haversine,get_coords,get_drive_time_ors,optimize_group_order,optimize_group_order2,_greedy_fallback,move,refresh_sf_token , remove_job_from_group,i_donot_work_on_this,i_work_on_this
 from django.contrib.auth.hashers import make_password
-
+import time
 from django.conf import settings
-from datetime import date, datetime, timedelta
+from datetime import datetime
 from django.utils.crypto import get_random_string
 import random
 from urllib.parse import urlencode
 import requests
 from django.utils.dateparse import parse_date, parse_time
 from django.forms.models import model_to_dict
-import time
+from datetime import datetime, time
+
 
 def create_guest_request(request):
     form=GuestEmail()
@@ -1480,13 +1481,13 @@ def register_company(request):
 
             request.session['company_data'] = company_form.cleaned_data
             request.session['user_data'] = user_form.cleaned_data
-            # try:
-            send_otp_email(email, email_otp)
-            send_otp_email(company_email, company_otp)
-            messages.success(request,'''Check your email & company's email for OTPs''')
-            return redirect('otp')
-            # except:
-            #     messages.error(request,'Failed to send OTP')
+            try:
+                send_otp_email(email, email_otp)
+                send_otp_email(company_email, company_otp)
+                messages.success(request,'''Check your email & company's email for OTPs''')
+                return redirect('otp')
+            except:
+                messages.error(request,'Failed to send OTP')
     return render(request, 'auths/register_company.html', {'company_form': company_form, 'user_form': user_form})
 
 #############
@@ -1598,7 +1599,7 @@ def verify_otp(request) :
                 ):
             
             with transaction.atomic():
-                try:
+                # try:
                     company_data = request.session.get('company_data')
                     user_data = request.session.get('user_data').copy()  # Make a copy so we can modify safely
                     user_data.pop('password2', None)  # Remove password2 if it exists
@@ -1627,8 +1628,8 @@ def verify_otp(request) :
 
                     messages.success(request,'Company created successfully')
                     return redirect('login')
-                except:
-                    messages.error(request,'Failed creating company. Try again')
+                # except:
+                #     messages.error(request,'Failed creating company. Try again')
         else:
             messages.error(request,"Wrong OTP. Try again")
     left_time = otp_expiry_seconds - (time.time() - otp_generated_at) 
@@ -1979,7 +1980,7 @@ def import_jobs(request):
                 df['from_time'] = df['from_time'].apply(
                     lambda x: (
                         x.strftime('%H:%M')
-                        if isinstance(x, datetime.time)
+                        if isinstance(x, time)
                         else None
                     )
                 )
@@ -1989,7 +1990,7 @@ def import_jobs(request):
         
 
         def normalize(v):
-            if isinstance(v, datetime.time):
+            if isinstance(v, time):
                 return v.strftime('%H:%M')
             if isinstance(v, (datetime, pd.Timestamp)):
                 return v.strftime('%Y-%m-%d %H:%M:%S')
@@ -2097,7 +2098,7 @@ def import_jobs(request):
                     )
                 )
         def normalize(v):
-            if isinstance(v, datetime.time):
+            if isinstance(v, time):
                 return v.strftime('%H:%M')
             if isinstance(v, (datetime, pd.Timestamp)):
                 return v.strftime('%Y-%m-%d %H:%M:%S')
@@ -2989,6 +2990,7 @@ def scheduler(request):
 
 # views.py
 from calendar import monthrange, Calendar
+from datetime import date, datetime, timedelta
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 from django.http import JsonResponse, HttpResponseBadRequest
