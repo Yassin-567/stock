@@ -22,7 +22,7 @@ from urllib.parse import urlencode
 import requests
 from django.utils.dateparse import parse_date, parse_time
 from django.forms.models import model_to_dict
-from datetime import datetime, time
+from datetime import datetime
 
 
 def create_guest_request(request):
