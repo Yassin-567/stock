@@ -15,7 +15,7 @@ from .myfunc import remove_item_from_session, generate_otp,send_otp_email,send_m
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta,time
 from django.utils.crypto import get_random_string
 import random
 from urllib.parse import urlencode
