@@ -1979,7 +1979,7 @@ def import_jobs(request):
                 df['from_time'] = df['from_time'].apply(
                     lambda x: (
                         x.strftime('%H:%M')
-                        if isinstance(x, time)
+                        if isinstance(x, datetime.time)
                         else None
                     )
                 )
@@ -1989,7 +1989,7 @@ def import_jobs(request):
         
 
         def normalize(v):
-            if isinstance(v, time):
+            if isinstance(v, datetime.time):
                 return v.strftime('%H:%M')
             if isinstance(v, (datetime, pd.Timestamp)):
                 return v.strftime('%Y-%m-%d %H:%M:%S')
@@ -2097,7 +2097,7 @@ def import_jobs(request):
                     )
                 )
         def normalize(v):
-            if isinstance(v, time):
+            if isinstance(v, datetime.time):
                 return v.strftime('%H:%M')
             if isinstance(v, (datetime, pd.Timestamp)):
                 return v.strftime('%Y-%m-%d %H:%M:%S')
