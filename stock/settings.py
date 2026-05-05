@@ -107,6 +107,7 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # if config('DEBUG', default='False') == "True":
 #     DEBUG = True
+DEBUG = True
 import dj_database_url
 
 DATABASES = {
