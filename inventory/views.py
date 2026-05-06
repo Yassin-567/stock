@@ -15,14 +15,13 @@ from .myfunc import remove_item_from_session, generate_otp,send_otp_email,send_m
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
-from datetime import datetime
 from django.utils.crypto import get_random_string
 import random
 from urllib.parse import urlencode
 import requests
 from django.utils.dateparse import parse_date, parse_time
 from django.forms.models import model_to_dict
-from datetime import datetime
+from datetime import datetime, time as dt_time
 
 
 def create_guest_request(request):
@@ -1980,7 +1979,7 @@ def import_jobs(request):
                 df['from_time'] = df['from_time'].apply(
                     lambda x: (
                         x.strftime('%H:%M')
-                        if isinstance(x, time)
+                        if isinstance(x, dt_time)
                         else None
                     )
                 )
@@ -1990,7 +1989,7 @@ def import_jobs(request):
         
 
         def normalize(v):
-            if isinstance(v, time):
+            if isinstance(v, dt_time):
                 return v.strftime('%H:%M')
             if isinstance(v, (datetime, pd.Timestamp)):
                 return v.strftime('%Y-%m-%d %H:%M:%S')
@@ -2098,7 +2097,7 @@ def import_jobs(request):
                     )
                 )
         def normalize(v):
-            if isinstance(v, time):
+            if isinstance(v, dt_time):
                 return v.strftime('%H:%M')
             if isinstance(v, (datetime, pd.Timestamp)):
                 return v.strftime('%Y-%m-%d %H:%M:%S')
