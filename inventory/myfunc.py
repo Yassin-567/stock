@@ -792,7 +792,7 @@ def remove_item_from_session(request, session_id, session_name):
 
     updated_data = [
         row for row in data
-        if int(row['id']) != int(session_id)
+        if int(row['part_session_id']) != int(session_id)
     ]
 
     request.session[session_name] = updated_data

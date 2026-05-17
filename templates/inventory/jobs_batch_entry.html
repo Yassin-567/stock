@@ -13,15 +13,16 @@
     <input type="file" name="jobs_sheet" /> <!-- 👈 this name must match -->
     <button type="submit" name="upload_unscheduled">Upload unscheduled jobs</button>
     <button type="submit" name="upload_paused">Upload paused jobs</button>
-  </form>
-  
-  {% if data %}
-   
-    <h2>Review & Submit Jobs</h2> <a href="{% url 'create_all_batch_jobs' %}">Add all jobs</a>
-    <form method="POST" action="{% url 'clear_batch_jobs' %}">
+     <form method="POST" action="{% url 'clear_batch_jobs' %}">
       {% csrf_token %}
       <button type="submit">Clear All</button>
     </form>
+  {% if data %}
+   
+    <h2>Review & Submit Jobs</h2>
+    </form>
+  <a href="{% url 'create_all_batch_jobs' %}">Add all jobs</a>
+ 
     {% for item in data %}
       <form method="POST" action="{% url 'create_batch_jobs' %}">
         {% csrf_token %}
@@ -74,10 +75,7 @@
     {% endfor %}
   {% endif %}
 {% if invalid_jobs %}
- <form method="POST" action="{% url 'clear_batch_jobs' %}">
-      {% csrf_token %}
-      <button type="submit">Clear All</button>
-    </form>
+
   <h3 style="color: red;">Invalid Jobs</h3>
 
   
@@ -160,17 +158,20 @@
     <hr />
   {% endfor %}
 {% endif %}
-  {% if paused_data %}
-    <h2>Review & Submit Jobs</h2> <a href="{% url 'create_all_batch_jobs' %}">Add all jobs</a>
-    <form method="POST" action="{% url 'clear_batch_jobs' %}">
-      {% csrf_token %}
-      <button type="submit">Clear All</button>
+  {% if valid_batch_paused_jobs_auto %}
+    <h2>Can be automatically added</h2>
     </form>
-    {% for item in paused_data %}
+  <a href="{% url 'create_all_batch_paused_parts' %}">Add all parts</a>
+    
+    <hr>
+    {% for item in valid_batch_paused_jobs_auto %}
       <form method="POST" action="{% url 'create_batch_paused_parts' %}" id="mainForm" >
         {% csrf_token %}
+        {% if item.job_id  in available_jobs %} 
+          <input type="hidden" name="method" value="auto"/>
+  
         <input type="hidden" name="job_id" value="{{ item.job_id }}" id="job_id"/>
-        <input type="hidden" name="part_session_id" value="{{ item.id }}" />
+        <input type="hidden" name="part_session_id" value="{{ item.part_session_id }}" />
         <input type="hidden" name="part_number" value="{{ item.part_number }}" />
         <input type="hidden" name="name" value="{{ item.name }}" />
         <input type="hidden" name="supplier" value="{{ item.supplier }}" />
@@ -183,6 +184,7 @@
         <input type="hidden" name="arrived_date" value="{{ item.arrived_date }}" />
         <input type="hidden" name="category" value="{{ item.category }}" />
         <input type="hidden" name="who_has_part" value="{{ item.who_has_part }}" />
+{% endif %}
 
 
         <p>
@@ -212,7 +214,9 @@
           <strong>arrived_quantity:</strong> {{ item.arrived_quantity }}
         </p>
         <p>
-          <strong>Status:</strong> {{ item.ordered }}
+          
+          <strong>Status: </strong> {% if item.ordered %} Ordered {% else %}Not ordered{% endif %}
+
         </p>
         <p>
           <strong>ordered_date:</strong> {{ item.ordered_date }}
@@ -231,7 +235,7 @@
    
 <button type="submit" onclick="openModal(event, this)"
 {% if item.job_id not in available_jobs %} 
-    style="background-color: red;" disabled
+    style="background-color: red; color: white; cursor: no-drop;" disabled
     alt="Cannot add part without associated job"
     title="Cannot add part without associated job"
    
@@ -249,6 +253,277 @@
   {% endif %}
 
 
+
+
+
+
+
+  {% if valid_batch_paused_jobs_manual %}
+    <h2>Can only be manually added</h2> 
+    <hr>
+    {% for item in valid_batch_paused_jobs_manual %}
+      <form method="POST" action="{% url 'create_batch_paused_parts' %}" id="mainForm" >
+        {% csrf_token %}
+        {% if item.job_id  in available_jobs %} 
+          <input type="hidden" name="method" value="manual"/>
+
+        <input type="hidden" name="job_id" value="{{ item.job_id }}" id="job_id"/>
+        <input type="hidden" name="part_session_id" value="{{ item.part_session_id }}" />
+        <input type="hidden" name="part_number" value="{{ item.part_number }}" />
+        <input type="hidden" name="name" value="{{ item.name }}" />
+        <input type="hidden" name="supplier" value="{{ item.supplier }}" />
+        <input type="hidden" name="job_quantity" value="{{ item.job_quantity }}" />
+        <input type="hidden" name="price" value="{{ item.price }}" />
+
+        <input type="hidden" name="arrived_quantity" value="{{ item.arrived_quantity }}" />
+        <input type="hidden" name="ordered" value="{{ item.ordered }}" />
+        <input type="hidden" name="ordered_date" value="{{ item.ordered_date }}" />
+        <input type="hidden" name="arrived_date" value="{{ item.arrived_date }}" />
+        <input type="hidden" name="category" value="{{ item.category }}" />
+        <input type="hidden" name="who_has_part" value="{{ item.who_has_part }}" />
+{% endif %}
+
+
+        <p>
+          {% if item.job_id  in available_jobs %} 
+      <strong>Job#:</strong> <a href="{% url 'update_job' item.job_id %}">{{ item.job_id }}</a>
+{% else %}<strong>Job#:</strong> {{ item.job_id }} 
+{% endif %}
+          
+        </p>
+
+        <p>
+          <strong>Part Name:</strong> {{ item.name }}
+        </p>
+        <p>
+          <strong>part_number:</strong> {{ item.part_number }}
+        </p>
+        <p>
+          <strong>supplier:</strong> {{ item.supplier }}
+        </p>
+        <p>
+          <strong>Price:</strong> {{ item.price }}
+        </p>
+        <p>
+          <strong>job_qunatity:</strong> {{ item.job_quantity }}
+        </p>
+        <p>
+          <strong>arrived_quantity:</strong> {{ item.arrived_quantity }}
+        </p>
+        <p>{{item.ordered}}
+          <strong>Status: </strong> {% if item..ordered %} Ordered {% else %}Not ordered{% endif %}
+
+        </p>
+        <p>
+          <strong>ordered_date:</strong> {{ item.ordered_date }}
+        </p>
+        <p>
+          <strong>arrived_date:</strong> {{ item.arrived_date }}
+        </p>
+        <p>
+          <strong>category:</strong> {{ item.category }}
+        </p>
+     <p>
+          <strong>Who has the part:</strong> {% if item.who_has_part %}{{ item.who_has_part }}{% else %}Warehouse{% endif %}
+        </p>
+
+  
+   
+<button type="submit" onclick="openModal(event, this)"
+{% if item.job_id not in available_jobs %} 
+    style="background-color: red; color: white; cursor: no-drop;" disabled
+    alt="Cannot add part without associated job"
+    title="Cannot add part without associated job"
+   
+{% endif %}>
+    Add part
+</button>  
+
+
+</form>
+      <hr />
+
+
+   
+    {% endfor %}
+  {% endif %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  {% if invalid_batch_paused_jobs %}
+
+    <h3 style="color: red;text-align: center ; background-color: black; font-family: fantasy;">Invalid Entries </h3>
+    <hr>
+ 
+  
+    {% for item in invalid_batch_paused_jobs %}
+    {% for field, errors in item.errors.items %}
+    
+    {% if field == '__all__' %}
+        
+        {% for error in errors %}
+            <span  class="field-error">
+                {{ error }}
+            </span>
+        {% endfor %}
+
+    {% endif %}
+
+{% endfor %}
+       <p>
+    {% if item.data.job_id in available_jobs %}
+        <strong>Job#:</strong>
+        <a href="{% url 'update_job' item.data.job_id %}">
+            {{ item.data.job_id }}
+        </a>
+    {% else %}
+        <strong>Job#:</strong> {{ item.data.job_id }}
+    {% endif %}
+
+    {% if item.errors.job_id %}
+        <span class="field-error">
+            {{ item.errors.job_id.0 }}
+        </span>
+    {% endif %}
+</p>
+
+<p>
+    <strong>Part Name:</strong> {{ item.data.name }}
+
+    {% if item.errors.name %}
+        <span class="field-error">
+            {{ item.errors.name.0 }}
+        </span>
+    {% endif %}
+</p>
+
+<p>
+    <strong>part_number:</strong> {{ item.data.part_number }}
+
+    {% if item.errors.part_number %}
+        <span class="field-error">
+            {{ item.errors.part_number.0 }}
+        </span>
+    {% endif %}
+</p>
+
+<p>
+    <strong>supplier:</strong> {{ item.data.supplier }}
+
+    {% if item.errors.supplier %}
+        <span class="field-error">
+            {{ item.errors.supplier.0 }}
+        </span>
+    {% endif %}
+</p>
+
+<p>
+    <strong>Price:</strong> {{ item.data.price }}
+
+    {% if item.errors.price %}
+        <span class="field-error">
+            {{ item.errors.price.0 }}
+        </span>
+    {% endif %}
+</p>
+
+<p>
+    <strong>job_quantity:</strong> {{ item.data.job_quantity }}
+
+    {% if item.errors.job_quantity %}
+        <span class="field-error">
+            {{ item.errors.job_quantity.0 }}
+        </span>
+    {% endif %}
+</p>
+
+<p>
+    <strong>arrived_quantity:</strong> {{ item.data.arrived_quantity }}
+
+    {% if item.errors.arrived_quantity %}
+        <span class="field-error">
+            {{ item.errors.arrived_quantity.0 }}
+        </span>
+    {% endif %}
+</p>
+
+<p>
+    <strong>Status:</strong> {% if item.data.ordered %}Ordered {% else %}Not ordered{% endif %}
+
+    {% if item.errors.ordered %}
+        <span class="field-error">
+            {{ item.errors.ordered.0 }}
+        </span>
+    {% endif %}
+</p>
+
+<p>
+    <strong>ordered_date:</strong> {{ item.data.ordered_date }}
+
+    {% if item.errors.ordered_date %}
+        <span class="field-error">
+            {{ item.errors.ordered_date.0 }}
+        </span>
+    {% endif %}
+</p>
+
+<p>
+    <strong>arrived_date:</strong> {{ item.data.arrived_date }}
+
+    {% if item.errors.arrived_date %}
+        <span class="field-error">
+            {{ item.errors.arrived_date.0 }}
+        </span>
+    {% endif %}
+</p>
+
+<p>
+    <strong>category:</strong> {{ item.data.category }}
+
+    {% if item.errors.category %}
+        <span class="field-error">
+            {{ item.errors.category.0 }}
+        </span>
+    {% endif %}
+</p>
+
+<p>
+    <strong>Who has the part:</strong>
+
+    {% if item.data.who_has_part %}
+        {{ item.data.who_has_part }}
+    {% else %}
+        Warehouse
+    {% endif %}
+
+    {% if item.errors.who_has_part %}
+        <span class="field-error">
+            {{ item.errors.who_has_part.0 }}
+        </span>
+    {% endif %}
+</p>
+  
+   
+
+
+
+      <hr />
+
+
+   
+    {% endfor %}
+  {% endif %}
    {% comment %} <div id="confirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
   <div style="background:white; padding:20px; width:300px; margin:15% auto; border-radius:8px; text-align:center;">
     <div><p id="confirmText">Are you sure you want to save?</p>
@@ -313,6 +588,9 @@
   max-height: 40vh;        /* adjust as needed */
   margin-top: 10px;
   text-align: left;
+}
+.field-error{
+  color: red;
 }
 
 .modal-actions {

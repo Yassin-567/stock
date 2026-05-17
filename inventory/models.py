@@ -168,6 +168,7 @@ class Engineer(models.Model):
     def save(self,request=None,*args,affected_by_sync=False, **kwargs):
         self.request=request
         self.affected_by_sync=affected_by_sync
+        self.email=self.email.lower()
         super().save(*args, **kwargs)
         
     class Meta:
@@ -339,7 +340,7 @@ class JobItem(models.Model):
     added_by_batch_entry=models.BooleanField(default=False)
     was_it_used=models.BooleanField(default=False)
     was_for_job=models.ForeignKey(Job, on_delete=models.CASCADE,null=True,blank=True, related_name="moveditems")
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="jobitem_category", null=True, )
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="jobitem_category",null=True, )
     def delete(self, request=None):
         self.request = request  
         return super().delete()
@@ -368,7 +369,7 @@ class JobItem(models.Model):
                 cat.save(request=self.request)
                 self.category=Category.objects.get(category='Others')
             # self.category, _ = Category.objects.get_or_create(company=self.job.company,request=self.request, category='Others')
-        
+        self.part_number.strip()
         super().save(*args, **kwargs)
         if not dont_move_used and not no_recursion:
             

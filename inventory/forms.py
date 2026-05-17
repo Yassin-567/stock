@@ -403,15 +403,13 @@ class JobItemForm(forms.ModelForm):
         job_quantity = cleaned_data.get('job_quantity')
         arrived_quantity = cleaned_data.get('arrived_quantity')
         ordered = cleaned_data.get('ordered')
-
         job=cleaned_data.get('job')
         # if job and not ordered and job_quantity == arrived_quantity :
         #     raise forms.ValidationError("Items can't arrive without ordering")
         # elif job  and job_quantity < arrived_quantity:
         #     raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
-        
         if not ordered :
-            if (job_quantity == arrived_quantity   and not self.instance.from_warehouse) or (0 < arrived_quantity):
+            if (job_quantity == arrived_quantity   and not self.instance.from_warehouse and job_quantity!=0 ) or (0 < arrived_quantity):
                 raise forms.ValidationError("Items can't arrive without ordering")
         elif not  self.instance.from_warehouse and job_quantity<arrived_quantity  :
             raise forms.ValidationError("Arrived quantity can't be more than the required quantity")
@@ -423,33 +421,59 @@ class JobItemForm(forms.ModelForm):
 class WarehouseitemForm(forms.ModelForm):
     class Meta:
         model = WarehouseItem
-        fields = '__all__' 
+        fields = '__all__'
         exclude = ['added_by','company','is_used','item','is_moved_from_job','was_for_job','added_by_batch_entry']
         labels = {
             'name': 'Part Name',
         }
         widgets = {
-            #'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-            # 'status': forms.Select(attrs={'class': 'form-select','id':'status'}),
             'price': forms.NumberInput(attrs={'class': 'form-control'}),
-            # 'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
-            #'arrived_quantity': forms.NumberInput(attrs={'class': 'form-control','id':'arrived_quantity'}),
-            'part_number':forms.TextInput(attrs={  # Override widget for job_id
-                'type': 'text',  # Set input type to text
-                'inputmode': 'numeric',  # Allow numeric input
-                #'pattern': '[0-9]*',  # Numeric pattern
+            'part_number': forms.TextInput(attrs={
+                'type': 'text',
+                'inputmode': 'numeric',
                 'placeholder': 'Enter part number',
-                'class': 'form-control',}),
-            'reference':forms.Textarea(attrs={'rows':1})
+                'class': 'form-control',
+            }),
+            'reference': forms.Textarea(attrs={'rows': 1})
         }
-    
-    # def __init__(self, *args,warehouse_item, **kwargs):
-    #     super().__init__(*args, **kwargs)
-    #     # self.fields['arrived_quantity'] = forms.IntegerField(
-    #     #         initial=warehouse_item.warehouse_quantity if warehouse_item else None,
-    #     #         label="Stock Quantity",
-    #     #         widget=forms.NumberInput(attrs={'class': 'form-control'}))
-       
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name', '').strip()
+        if not name:
+            raise ValidationError("Part name is required.")
+        return name
+
+    def clean_part_number(self):
+        part_number = self.cleaned_data.get('part_number', '').strip()
+        if not part_number:
+            raise ValidationError("Part number is required.")
+        return part_number
+
+    def clean_price(self):
+        price = self.cleaned_data.get('price')
+        if price is None:
+            raise ValidationError("Price is required.")
+        if price < 0:
+            raise ValidationError("Price cannot be negative.")
+        return price
+
+    def clean_supplier(self):
+        supplier = self.cleaned_data.get('supplier', '').strip()
+        if not supplier:
+            raise ValidationError("Supplier is required.")
+        return supplier
+
+    def clean_warehouse_quantity(self):
+        quantity = self.cleaned_data.get('warehouse_quantity')
+        if quantity is None:
+            raise ValidationError("Warehouse quantity is required.")
+        if quantity < 0:
+            raise ValidationError("Warehouse quantity cannot be negative.")
+        return quantity
+
+    def clean(self):
+        cleaned_data = super().clean()
+        return cleaned_data
 
 class CompanySettingsForm(forms.ModelForm):
     class Meta:

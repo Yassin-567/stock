@@ -88,34 +88,26 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 #Database
 #https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-# if config('DJANGO_DEVELOPMENT', default='False') == "True":
+if config('DJANGO_DEVELOPMENT', default='False') == "True":
 
     
-#     DEBUG = True
-#     DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.sqlite3',
-#             'NAME': BASE_DIR / 'db.sqlite3',
-#         }
-#     }
-# else:
-#     DEBUG = False  # change to True only if testing production locally
-#     import dj_database_url
-#     DATABASES = {
-#         'default': dj_database_url.parse(config('DATABASE_URL'))
-#     }
-
-# if config('DEBUG', default='False') == "True":
-#     DEBUG = True
-DEBUG = True
-import dj_database_url
-
-DATABASES = {
+    DEBUG = True
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:
+    DEBUG = False  # change to True only if testing production locally
+    import dj_database_url
+    DATABASES = {
         'default': dj_database_url.parse(config('DATABASE_URL'))
     }
 
+if config('DEBUG', default='False') == "True":
+    DEBUG = True
 
-#d
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',

@@ -44,6 +44,7 @@ urlpatterns=[
 
     path('clear_batch',views.clear_batch,name='clear_batch'),
     path('clear_batch_jobs',views.clear_batch_jobs,name='clear_batch_jobs'),
+    path('create_all_batch_paused_parts',views.create_all_batch_paused_parts,name='create_all_batch_paused_parts'),
 
     path('create_batch_items/', views.create_batch_items, name='create_batch_items'),
     path('create_batch_jobs/', views.create_batch_jobs, name='create_batch_jobs'),
