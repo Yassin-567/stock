@@ -465,7 +465,7 @@ class WarehouseitemForm(forms.ModelForm):
 
     def clean_warehouse_quantity(self):
         quantity = self.cleaned_data.get('warehouse_quantity')
-        if quantity is None:
+        if quantity is None or quantity==0:
             raise ValidationError("Warehouse quantity is required.")
         if quantity < 0:
             raise ValidationError("Warehouse quantity cannot be negative.")

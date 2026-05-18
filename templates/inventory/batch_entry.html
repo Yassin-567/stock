@@ -14,10 +14,13 @@
     <button type="submit">Upload</button>
   </form>
 
-  {% if data %}
+  {% if valid_batch_warehouse_items %}
     <h2>Review & Submit Parts</h2>
-
-    {% for item in data %}
+    <form method="POST" action="{% url 'create_all_batch_items' %}">
+      {% csrf_token %}
+      <button type="submit">Add all</button>
+    </form>
+    {% for item in valid_batch_warehouse_items %}
       <form method="POST" action="{% url 'create_batch_items' %}">
         {% csrf_token %}
         <input type="hidden" name="name" value="{{ item.name }}" />
@@ -25,8 +28,9 @@
         <input type="hidden" name="reference" value="{{ item.reference }}" />
         <input type="hidden" name="price" value="{{ item.price }}" />
         <input type="hidden" name="supplier" value="{{ item.supplier }}" />
-        <input type="hidden" name="warehouse_quantity" value="{{ item.arrived_quantity }}" />
+        <input type="hidden" name="warehouse_quantity" value="{{ item.warehouse_quantity }}" />
         <input type="hidden" name="category" value="{{ item.category }}" />
+        <input type="hidden" name="part_session_id" value="{{ item.part_session_id }}" />
         <p>
           <strong>Name:</strong> {{ item.name }}
         </p>
@@ -43,21 +47,73 @@
           <strong>Supplier:</strong> {{ item.supplier }}
         </p>
         <p>
-          <strong>Arrived Quantity:</strong> {{ item.arrived_quantity }}
+          <strong>Arrived Quantity:</strong> {{ item.warehouse_quantity }}
         </p>
         <p>
-          <strong>Category:</strong> {{ item.category }}
+          <strong>Category:</strong> {{ item.category }} {% if item.errors.category %}
+            <span style="color:yellow;background-color: black;">This part will be added to category "Others" as the selcted category is unavailable</span>
+          {% endif %}
         </p>
         <button type="submit">Add to the warehouse</button>
       </form>
       <hr />
     {% endfor %}
-    <form method="POST" action="{% url 'clear_batch' %}">
-      {% csrf_token %}
-      <button type="submit">Clear All Items</button>
-    </form>
   {% endif %}
 
+  {% if invalid_batch_warehouse_items %}
+    <h3 style="color: red;">Invalid parts</h3>
+
+    {% for item in invalid_batch_warehouse_items %}
+      <p>
+        <strong>Name:</strong> {{ item.name }}
+        {% if item.errors.name %}
+          <span style="color:red;">{{ item.errors.name.0 }}</span>
+        {% endif %}
+      </p>
+      <p>
+        <strong>Part Number:</strong> {{ item.part_number }}
+        {% if item.errors.part_number %}
+          <span style="color:red;">{{ item.errors.part_number.0 }}</span>
+        {% endif %}
+      </p>
+      <p>
+        <strong>Reference:</strong> {{ item.reference }}
+        {% if item.errors.reference %}
+          <span style="color:red;">{{ item.errors.reference.0 }}</span>
+        {% endif %}
+      </p>
+      <p>
+        <strong>Price:</strong> ${{ item.price }}
+        {% if item.errors.price %}
+          <span style="color:red;">{{ item.errors.price.0 }}</span>
+        {% endif %}
+      </p>
+      <p>
+        <strong>Supplier:</strong> {{ item.supplier }}
+        {% if item.errors.supplier %}
+          <span style="color:red;">{{ item.errors.supplier.0 }}</span>
+        {% endif %}
+      </p>
+      <p>
+        <strong>Arrived Quantity:</strong> {{ item.arrived_quantity }}
+        {% if item.errors.warehouse_quantity %}
+          <span style="color:red;">{{ item.errors.warehouse_quantity.0 }}</span>
+        {% endif %}
+      </p>
+      <p>
+        <strong>Category:</strong> {{ item.category }}
+        {% if item.errors.category %}
+          <span style="color:red;">{{ item.errors.category.0 }}</span>
+        {% endif %}
+      </p>
+
+      <hr />
+    {% endfor %}
+  {% endif %}
+  <form method="POST" action="{% url 'clear_batch' %}">
+    {% csrf_token %}
+    <button type="submit">Clear All Items</button>
+  </form>
   <link rel="stylesheet" href="{% static 'css/style.css' %}" />
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />

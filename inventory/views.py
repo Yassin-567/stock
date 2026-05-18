@@ -1845,52 +1845,114 @@ def update_engineer(request,pk):
 def search_view(request):
     form=SearchForm()
     return render(request,'inventory/inventory.html',{'form':form})
+def create_all_batch_items(request):
+    valid_batch_warehouse_items = request.session.get('valid_batch_warehouse_items', [])
+    if valid_batch_warehouse_items:
+        success_count=0
+        fail_count=0
+        for part in valid_batch_warehouse_items:
+            try:
+                with transaction.atomic():
+                    
+                    cat_val = part['category']
+                    if cat_val:
+                        try:
+                            cat_obj=Category.objects.get(company=request.user.company,category__icontains=cat_val)
+                        except Category.DoesNotExist:
+                            try:
+                                cat_obj=Category.objects.get(company=request.user.company,category='Others')
+                            except Category.DoesNotExist:
+                                cat_obj=Category(company=request.user.company,category='Others')
+                                cat_obj.save(request=request)
+                    else:
+                        try:
+                            cat_obj=Category.objects.get(company=request.user.company,category='Others')
+                        except Category.DoesNotExist:
+                            cat_obj=Category(company=request.user.company,category='Others')
+                            cat_obj.save(request=request)
+                    item_data = {
+                        'name': part['name'],
+                        'part_number': part['part_number'],
+                        'reference': part['reference'],
+                        'price': float(part['price']) ,
+                        'supplier': part['supplier'],
+                        'warehouse_quantity': int(part['warehouse_quantity']),
+                        'company':     request.user.company,
+                            'category': cat_obj,
+                    }
+                    wi=WarehouseItem(name=item_data['name'],
+                                    part_number=item_data['part_number'],
+                                    reference=item_data['reference'],
+                                    price=item_data['price'],
+                                    supplier=item_data['supplier'],
+                                    warehouse_quantity=item_data['warehouse_quantity'],
+                                    company=item_data['company'],
+                                    category=item_data['category'],
+                                    added_by_batch_entry=True,
+                                    )
+                    wi.save(request=request)
+                    # Remove this item from session
+                    part_session_id=part['part_session_id']
+                    
+                    remove_item_from_session(request=request,session_id=part_session_id,session_name='valid_batch_warehouse_items')
+                    success_count=success_count+1
+
+            except:
+                fail_count=fail_count+1
+        messages.success(request,f'{success_count} parts added successfully')
+        if fail_count>0:
+            messages.error(request,f'Error adding {fail_count} parts to the warehouse')
+    return redirect('batch_entry')
 def create_batch_items(request):
     
     if request.method == 'POST':
-        cat_val = request.POST.get('category')
-        if cat_val:
-            try:
-                cat_obj=Category.objects.get(category__icontains=cat_val)
-            except Category.DoesNotExist:
-                try:
-                    cat_obj=Category.objects.get(category='Others')
-                except Category.DoesNotExist:
-                    cat_obj=Category(company=request.user.company,category='Others')
-                    cat_obj.save(request=request)
-        else:
-            try:
-                cat_obj=Category.objects.get(category='Others')
-            except Category.DoesNotExist:
-                cat_obj=Category(company=request.user.company,category='Others')
-                cat_obj.save(request=request)
-        item_data = {
-            'name': request.POST['name'],
-            'part_number': request.POST['part_number'],
-            'reference': request.POST['reference'],
-            'price': float(request.POST['price']) ,
-            'supplier': request.POST['supplier'],
-            'warehouse_quantity': int(request.POST['warehouse_quantity']),
-            'company':request.user.company,
-            'category': cat_obj,
-        }
-        wi=WarehouseItem(name=item_data['name'],
-                         part_number=item_data['part_number'],
-                         reference=item_data['reference'],
-                         price=item_data['price'],
-                         supplier=item_data['supplier'],
-                         warehouse_quantity=item_data['warehouse_quantity'],
-                         company=item_data['company'],
-                         category=item_data['category'],
-                         added_by_batch_entry=True,
-                         )
-        wi.save(request=request)
-        
-        messages.success(request,f'{item_data['warehouse_quantity']} of {wi.name} added to the warehouse')
-        # Remove this item from session
-        items = request.session.get('batch_items', [])
-        items = [item for item in items if item['part_number'] != item_data['part_number']]
-        request.session['batch_items'] = items
+        try:
+            with transaction.atomic():
+                
+                cat_val = request.POST.get('category')
+                if cat_val:
+                    try:
+                        cat_obj=Category.objects.get(company=request.user.company,category__icontains=cat_val)
+                    except Category.DoesNotExist:
+                        try:
+                            cat_obj=Category.objects.get(company=request.user.company,category='Others')
+                        except Category.DoesNotExist:
+                            cat_obj=Category(company=request.user.company,category='Others')
+                            cat_obj.save(request=request)
+                else:
+                    try:
+                        cat_obj=Category.objects.get(company=request.user.company,category='Others')
+                    except Category.DoesNotExist:
+                        cat_obj=Category(company=request.user.company,category='Others')
+                        cat_obj.save(request=request)
+                item_data = {
+                    'name': request.POST['name'],
+                    'part_number': request.POST['part_number'],
+                    'reference': request.POST['reference'],
+                    'price': float(request.POST['price']) ,
+                    'supplier': request.POST['supplier'],
+                    'warehouse_quantity': int(request.POST['warehouse_quantity']),
+                    'company':request.user.company,
+                    'category': cat_obj,
+                }
+                wi=WarehouseItem(name=item_data['name'],
+                                part_number=item_data['part_number'],
+                                reference=item_data['reference'],
+                                price=item_data['price'],
+                                supplier=item_data['supplier'],
+                                warehouse_quantity=item_data['warehouse_quantity'],
+                                company=item_data['company'],
+                                category=item_data['category'],
+                                added_by_batch_entry=True,
+                                )
+                wi.save(request=request)
+                
+                messages.success(request,f'{item_data['warehouse_quantity']} of {wi.name} added to the warehouse')
+                # Remove this item from session
+                part_session_id=request.POST.get('part_session_id')
+                remove_item_from_session(request=request,session_id=part_session_id,session_name='valid_batch_warehouse_items')
+        except:
+            messages.error(request,f'Error adding part to the warehouse')
         return redirect('batch_entry')
 
 import pandas as pd
@@ -1915,28 +1977,51 @@ def batch_entry(request):
         
         
         data = df.to_dict(orient='records')
+        valid_batch_warehouse_items=[]
+        invalid_batch_warehouse_items=[]
         for index, row in enumerate(data, start=1):
-            print(index)
-            print(row)
-            form = WarehouseitemForm(data=row)
-
+            default_cat=Category.objects.filter(company=request.user.company,category__icontains= row.get('category')).first()
+            if row['part_number'] in INVALID_VALUES :
+                continue
+            if row['warehouse_quantity']:
+                row['warehouse_quantity'] = int(row['warehouse_quantity']) if pd.notna(row['warehouse_quantity']) else 0
+            row['part_session_id'] = index
+            warehouse_item_date={
+                'name': row.get('name'),
+            'part_number': row.get('part_number'),
+            'reference': row.get('reference'),
+            'price': row.get('price'),
+            'supplier':row.get('supplier'),
+            'warehouse_quantity': row.get('warehouse_quantity'),
+            'category': default_cat,
+            }
+            form = WarehouseitemForm(data=warehouse_item_date)
             if form.is_valid():
-                print('VALID')
+                valid_batch_warehouse_items.append(row)
             else:
-                print("Not valid")
-                print(form.errors)
+                
+                row['errors']=form.errors
+                allowed_errors = {'category', 'supplier','price','reference'}
+                if set(row['errors'].keys()).issubset(allowed_errors):
+                    valid_batch_warehouse_items.append(row)
+                else:
+                    invalid_batch_warehouse_items.append(row)
+                    
         # Save all items in session
-        request.session['batch_items'] = data
-        
+        request.session['valid_batch_warehouse_items'] = valid_batch_warehouse_items
+        request.session['invalid_batch_warehouse_items'] = invalid_batch_warehouse_items
+        request.session.set_expiry(30* 60) 
         return redirect('batch_entry')  # refresh the page
 
     # Load current items from session
-    data = request.session.get('batch_items', [])
-    return render(request, 'inventory/batch_entry.html', {'data': data})
+    valid_batch_warehouse_items = request.session.get('valid_batch_warehouse_items', [])
+    invalid_batch_warehouse_items = request.session.get('invalid_batch_warehouse_items', [])
+    return render(request, 'inventory/batch_entry.html', {'valid_batch_warehouse_items': valid_batch_warehouse_items,'invalid_batch_warehouse_items':invalid_batch_warehouse_items})
 # @login_required(login_url='login', redirect_field_name='inventory')
 
 def clear_batch(request):
-    request.session['batch_items'] =[]
+    request.session['invalid_batch_warehouse_items'] =[]
+    request.session['valid_batch_warehouse_items'] =[]
     request.session['batch_paused_jobs'] = []
     request.session['invalid_jobs'] = []
     request.session['invalid_batch_paused_jobs'] = []
