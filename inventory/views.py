@@ -929,6 +929,7 @@ def add_warehouseitem(request):
 
 @login_required
 def update_item(request, pk):
+    print(request.POST)
     # import random
     # import string
     item = JobItem.objects.get(Q(id=pk) & Q(job__company=request.user.company))
@@ -1032,20 +1033,22 @@ def update_item(request, pk):
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,'completed':completed}
             return render(request, 'inventory/update_item.html', context)
         if "delete" in request.POST:
-            return render(request,'inventory/confirm.html',{'item':item,'job_item':True})
-        if 'yes_delete' in request.POST:
             try:
                 with transaction.atomic():
+                    job=item.job
                     item.delete(request=request)
                     messages.success(request,f'{item} deleted succssefully')
+                    return redirect('update_job', pk=job.job_id)
+
             except:
                 messages.error(request,f'{item} deleting failed')
                 return redirect(f'update_item',pk=pk)
-            return redirect('inventory')
+            # return render(request,'inventory/confirm.html',{'item':item,'job_item':True})
+        
         elif 'no_return_back' in request.POST:
             return redirect(f'update_item',pk=pk)
         form = JobItemForm(request.POST, request.FILES, instance=item,)
-        if 'move_item' in request.POST :
+        if 'move' in request.POST :
             try:
                 job_item = item
                 job=job_item.job
@@ -2799,13 +2802,15 @@ def fetch_jobs(request,job_id=None):
                 
                     }
             if job_id:
-                if int(data["id"]):
+                if int(data["id"])==job_id:
                     engineer=Engineer.objects.get(Q(company=request.user.company) & Q(sf_id=data["visits"][0]["techs_assigned"][0]["id"]))
                     
                     ex_job=Job.objects.get(Q(company=request.user.company) & Q(job_id=job_id))
                     update_if_changed(ex_job, data, field_map,request=request, affected_by_sync=True, )
                     messages.success(request,f"Job with id {data['number']} synced successfully")
                     return redirect('update_job',job_id)
+                return redirect('update_job',job_id)
+                
             else:      
                 updated_count=0
                 new_count=0  
