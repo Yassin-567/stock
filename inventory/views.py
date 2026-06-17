@@ -11,7 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from .myfunc import remove_item_from_session, generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func,haversine,get_coords,get_drive_time_ors,optimize_group_order,optimize_group_order2,_greedy_fallback,move,refresh_sf_token , remove_job_from_group,i_donot_work_on_this,i_work_on_this
+from .myfunc import remove_item_from_session, generate_otp,send_otp_email,send_multiple_emails, send_guest_email,update_if_changed,sync_engineers_func,haversine,get_coords,get_drive_time_ors,optimize_group_order,optimize_group_order2,_greedy_fallback,move,refresh_sf_token , remove_job_from_group,i_donot_work_on_this,i_work_on_this,move_jobitem_to_warehouse
 from django.contrib.auth.hashers import make_password
 import time
 from django.conf import settings
@@ -22,6 +22,9 @@ import requests
 from django.utils.dateparse import parse_date, parse_time
 from django.forms.models import model_to_dict
 from datetime import datetime, time as dt_time
+from django.core.exceptions import ValidationError
+
+import json
 
 
 def create_guest_request(request):
@@ -561,29 +564,29 @@ def update_job(request, pk, cancel=0):
     items_count=job.items.all().count()
     form = JobForm(instance=job,updating=True,initial={'from_time':str(job.from_time),'to_time':str(job.to_time)})
     
-    # comments_form=CommentForm(initial={
-    #     'content_type': ContentType.objects.get_for_model(Job),
-    #     'object_id': job.pk,
-    #     'company': request.user.company,
-    #     })
+    comments_form=CommentForm(initial={
+        'content_type': ContentType.objects.get_for_model(Job),
+        'object_id': job.pk,
+        'company': request.user.company,
+        })
     
     comments = Comment.objects.filter(content_type=ContentType.objects.get_for_model(Job), object_id=job.pk,company=request.user.company)
     job_status=job.status
 
-    if cancel==1 :
+    # if cancel==1 :
             
-            li=[]
-            li=[item for item in job.items.all() if (item.ordered or item.from_warehouse) and  item.arrived_quantity>0 and item.is_used==False ]
+    #         li=[]
+    #         li=[item for item in job.items.all() if (item.ordered or item.from_warehouse) and  item.arrived_quantity>0 and item.is_used==False ]
          
-            if len(li)>0:
-                request.session['job_post_data'] = request.POST
-                return render(request,'inventory/confirm.html',{'items':li,'cancel_request':True,'job':job})
-            job.status='cancelled'
+    #         if len(li)>0:
+    #             request.session['job_post_data'] = request.POST
+    #             return render(request,'inventory/confirm.html',{'items':li,'cancel_request':True,'job':job})
+    #         job.status='cancelled'
             
-            job.save(update_fields=['status'],request=request)
-            # save_history(request,form)
-            messages.success(request,'Now this job is cancelled')
-            return redirect('update_job',pk=pk)
+    #         job.save(update_fields=['status'],request=request)
+    #         # save_history(request,form)
+    #         messages.success(request,'Now this job is cancelled')
+    #         return redirect('update_job',pk=pk)
     if request.method=="POST":
         if 'hold' in request.POST:
             if 'on_hold' in request.POST:
@@ -621,15 +624,11 @@ def update_job(request, pk, cancel=0):
                     return redirect('update_job',pk=pk)
                 job.parts_need_attention = False
             # if 'parts_dont_need_attention' in request.POST:
-            #     print(22222)
             #     job.parts_need_attention = False
             #     job.save(update_fields=['parts_need_attention','status'],request=request)
-            #     print("DONNNT")
             # else:
-            #     print(3333)
 
             #     job.parts_need_attention = True
-            #     print("NEEEEED")
             #     job.save(update_fields=['parts_need_attention','status'],request=request)
 
         if  job.quoted :
@@ -658,24 +657,29 @@ def update_job(request, pk, cancel=0):
                     job.save(update_fields=['quote_declined','quote_accepted','quoted','status'],request=request)
 
                 return redirect('update_job',pk=pk)
-        if 'yes_complete' in request.POST:
-            post_data = request.session.pop('job_post_data', None)
-            
-            if post_data:
-                form = JobForm(post_data, instance=job, updating=True)
-                if form.is_valid():
-                    obj=form.save(commit=False)
-                    
-                    obj.save(request=request)
-                    for item in job.items.all():
-                        item.is_used=True
-                        item.save(update_fields=['is_used'],dont_move_used=True)
-                    
-                    messages.success(request, "Job completed.")
-                return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
-        post_data = request.session.pop('job_post_data', None) #in case of no retunr back
-        if post_data and request.method == 'POST' and 'no_return_back' in request.POST :#---
-            return redirect(f'update_job',pk=pk)
+        # if 'yes_complete' in request.POST:
+            # post_data = request.session.pop('job_post_data', None)
+            # try:
+            #     if post_data:
+            #         form = JobForm(post_data, instance=job, updating=True)
+            #         if form.is_valid():
+            #             obj=form.save(commit=False)
+                        
+            #             obj.save(request=request)
+            #             for item in job.items.all():
+            #                 item.is_used=True
+            #                 item.save(request=request,update_fields=['is_used'],dont_move_used=True)
+                        
+            #             messages.success(request, "Job completed.")
+            #         return redirect('update_job',pk=pk)
+
+            #         # return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
+            # except ValidationError as E:
+            #     messages.error(request,E.message)
+            #     return redirect('update_job',pk=pk)
+        # post_data = request.session.pop('job_post_data', None) #in case of no retunr back
+        # if post_data and request.method == 'POST' and 'no_return_back' in request.POST :#---
+        #     return redirect(f'update_job',pk=pk)
         if 'save' in request.POST:
             quotation = request.POST.get('quotation')
             if quotation:
@@ -702,18 +706,135 @@ def update_job(request, pk, cancel=0):
             if form.is_valid() :
             
                 if form.cleaned_data['status']=='completed':
-                    li=[]
-                    li=[item for item in job.items.all() if item.job_quantity != item.arrived_quantity]
-                    if len(li)>0:
-                        request.session['job_post_data'] = request.POST  # Save the POST data
-                        return render(request,'inventory/confirm.html',{'items':li,'complete_request':True,'job':job})
-                elif form.cleaned_data['status']=='cancelled'  :
-                    
-                    li=[]
-                    li=[item for item in job.items.all() if (item.ordered or item.from_warehouse ) and  item.arrived_quantity>0 and not item.is_used ]
-                    if len(li)>0:
-                        request.session['job_post_data'] = request.POST
-                        return render(request,'inventory/confirm.html',{'items':li,'cancel_request':True,'job':job})
+                    try:
+                        if True:
+                            form = JobForm(request.POST, instance=job, updating=True)
+                            if form.is_valid():
+                                job=form.save(commit=False)
+                                
+                                job.save(request=request)
+                                for item in job.items.all():
+                                    item.is_used=True
+                                    item.save(request=request,update_fields=['is_used'],dont_move_used=True)
+                                
+                                messages.success(request, "Job completed.")
+                            return redirect('update_job',pk=pk)
+
+                            # return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
+                    except ValidationError as E:
+                        messages.error(request,E.message)
+                        return redirect('update_job',pk=pk)
+
+
+
+
+
+
+
+                    # li=[]
+                    # li=[item for item in job.items.all() if item.job_quantity != item.arrived_quantity]
+                    # if len(li)>0:
+                    #     request.session['job_post_data'] = request.POST  # Save the POST data
+                    #     return render(request,'inventory/confirm.html',{'items':li,'complete_request':True,'job':job})
+                elif form.cleaned_data['status']=='cancelled'  :#
+                    actions=request.POST.get('actions',[])
+                    data_dict = json.loads(actions)
+
+                    if actions: 
+                            success_messages = []
+
+                            errors=0
+                            with transaction.atomic():
+                                for id, action in data_dict.items():
+                                    part=JobItem.objects.get(id=id,company=request.user.company)
+
+                                    if action=="move":
+                                        job=part.was_for_job if part.was_for_job else job
+                                        if part.from_warehouse:
+                                            if not part.is_used and part.arrived_quantity>0:
+                                                move_jobitem_to_warehouse(request=request,job_item=part,job=job)
+                                                success_messages.append( f"Moved {part.arrived_quantity} of {part} #{part.part_number} to warehouse")
+                                            else:
+                                                errors=errors+1
+                                                form.changed_data=None #to prevent saving below
+                                                messages.error(request, f"Failed to move {part} #{part.part_number}")
+
+                                        else:
+                                            if part.is_used:
+                                                errors=errors+1
+                                                form.changed_data=None #to prevent saving below
+                                                messages.error(request, f"Failed to move {part} #{part.part_number} as the part is already used")
+                                            else:
+                                                if not part.ordered:
+                                                    errors=errors+1
+                                                    form.changed_data=None #to prevent saving below
+                                                    messages.error(request, f"Failed to move {part}#{part.part_number} as it is not ordered")
+                                                else:
+                                                    if part.arrived_quantity<1:
+                                                        errors=errors+1
+                                                        form.changed_data=None #to prevent saving below
+                                                        messages.error(request, f"Failed to move {part} #{part.part_number} as it has not arrived")
+                                                    else:
+                                                        if  part.arrived_quantity==part.job_quantity:
+                                                            move_jobitem_to_warehouse(request=request,job_item=part,job=job)
+                                                            success_messages.append( f"Moved {part.arrived_quantity} of {part} #{part.part_number} to warehouse")
+                                                        else:
+                                                            errors=errors+1
+                                                            form.changed_data=None #to prevent saving below
+                                                            messages.error(request, f"Failed to move {part} #{part.part_number} Not all quantity arrived!")
+                                                        
+                                                    
+                                        
+                                    elif action=="used":
+                                        if not part.from_warehouse:
+                                            if not part.ordered:
+                                                form.changed_data=None
+                                                errors=errors+1
+                                                messages.error(request, f"Cant mark {part} #{part.part_number} as used as it has not been ordered yet, delete instead!")
+                                            else:
+                                                if part.arrived_quantity==0:
+                                                    form.changed_data=None
+                                                    errors=errors+1
+                                                    messages.error(request, f"Cant mar {part} #{part.part_number} as used as it has not arrived yet!") 
+                                                if part.job_quantity != part.arrived_quantity and part.arrived_quantity !=0 :
+                                                    form.changed_data=None
+                                                    errors=errors+1
+                                                    messages.error(request, f"Cant mark {part} #{part.part_number} as used as not all quantity arrived, cancel the order of the quantity that will not be used!") 
+                                                else:
+
+                                                    part.is_used=True
+                                                    part.save(request=request)
+                                                    success_messages.append(f"{part.arrived_quantity} of {part} #{part.part_number} is/are now marked as used")
+                                    elif action=="delete":
+                                        if not part.from_warehouse:    
+                                            if part.ordered and not part.is_used:
+                                                if part.arrived_quantity>0:
+                                                    form.changed_data=None #to prevent saving below
+                                                    errors=errors+1
+                                                    messages.error(request, f"Part {part} #{part.part_number} has quantity of {part.arrived_quantity}! Move to warehouse or mark as used")
+                                                elif part.arrived_quantity<1:
+                                                    form.changed_data=None #to prevent saving below
+
+                                                    messages.error(request, f"{part.arrived_quantity} of Part {part} #{part.part_number} are ordered! You should cancel order before deleting")
+                                            else:   
+                                                part.delete()
+                                                success_messages.append(f"{part.arrived_quantity} of {part} #{part.part_number} is/are now deleted")
+                                        else:
+                                            if not part.is_used:
+                                                form.changed_data=None #to prevent saving below
+                                                messages.error(request, f"Part {part} #{part.part_number} has quantity of {part.arrived_quantity} is/are warehouse item/s! Move to warehouse or mark as used")
+                                if errors :
+                                 
+                                    transaction.set_rollback(True)
+                                    form.changed_data=None
+                                else:
+                                    for msg in success_messages:
+                                        messages.success(request, msg)
+                    # li=[]
+                    # li=[item for item in job.items.all() if (item.ordered or item.from_warehouse ) and  item.arrived_quantity>0 and not item.is_used ]
+                    # if len(li)>0:
+                    #     request.session['job_post_data'] = request.POST
+                    #     return render(request,'inventory/confirm.html',{'items':li,'cancel_request':True,'job':job})
                 try:
                     job.quotation=float(quotation) if float(quotation)>0 else None
                     job.quoted=True
@@ -929,7 +1050,6 @@ def add_warehouseitem(request):
 
 @login_required
 def update_item(request, pk):
-    print(request.POST)
     # import random
     # import string
     item = JobItem.objects.get(Q(id=pk) & Q(job__company=request.user.company))
@@ -965,6 +1085,7 @@ def update_item(request, pk):
             next_url = request.POST.get('next')
             
             try:
+
                 job_item = item
                 # Optional: Check if already used or empty
                 if job_item.is_used or job_item.arrived_quantity == 0:
@@ -1032,19 +1153,22 @@ def update_item(request, pk):
                 })
             context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,'completed':completed}
             return render(request, 'inventory/update_item.html', context)
-        if "delete" in request.POST:
+        if "delete" in request.POST :
             try:
                 with transaction.atomic():
                     job=item.job
-                    item.delete(request=request)
+                    item.delete()
                     messages.success(request,f'{item} deleted succssefully')
                     return redirect('update_job', pk=job.job_id)
 
-            except:
-                messages.error(request,f'{item} deleting failed')
+            except Exception as e:
+                messages.error(request,f'{item} - #{item.part_number} deleting failed {e}')
                 return redirect(f'update_item',pk=pk)
             # return render(request,'inventory/confirm.html',{'item':item,'job_item':True})
-        
+        # elif "faded_delete" in request.POST:
+        #     messages.error(request,"Cant delete warehouse items, or items that haven't fully arrived.")
+        #     return redirect(f'update_item',pk=pk)
+
         elif 'no_return_back' in request.POST:
             return redirect(f'update_item',pk=pk)
         form = JobItemForm(request.POST, request.FILES, instance=item,)
@@ -1070,24 +1194,37 @@ def update_item(request, pk):
                 # except:
                 #     create_new=True
                 # if not job_item.from_warehouse or create_new :
-                job=job_item.was_for_job if job_item.was_for_job else job_item.job
-                # Create WarehouseItem
-                x=WarehouseItem(
-                    name=job_item.name,
-                    part_number=job_item.part_number,
-                    price=job_item.price,
-                    supplier=job_item.supplier,
-                    company=request.user.company,   
-                    added_by_batch_entry=job_item.added_by_batch_entry,
-                    added_by=request.user,
-                    warehouse_quantity=job_item.arrived_quantity,
-                    reference=job_item.reference,
-                    who_has_part=item.who_has_part,
-                    category=job_item.category,
-                    #is_used=job_item.is_used,
-                    is_moved_from_job=job if job_item.was_for_job else None  ,   
-                )
-                x.save(request=request)
+                qty_to_move=request.POST.get("move",0)
+                qty_to_move=int(qty_to_move)
+                if qty_to_move >0:
+                    job=job_item.was_for_job if job_item.was_for_job else job_item.job
+                    # Create WarehouseItem
+                    x=WarehouseItem(
+                        name=job_item.name,
+                        part_number=job_item.part_number,
+                        price=job_item.price,
+                        supplier=job_item.supplier,
+                        company=request.user.company,   
+                        added_by_batch_entry=job_item.added_by_batch_entry,
+                        added_by=request.user,
+                        warehouse_quantity=qty_to_move,
+                        reference=job_item.reference,
+                        who_has_part=item.who_has_part,
+                        category=job_item.category,
+                        #is_used=job_item.is_used,
+                        is_moved_from_job=job if job_item.was_for_job else None  ,   
+                    )
+                    x.save(request=request)
+                    job_item.job_quantity=job_item.job_quantity-qty_to_move
+                    job_item.arrived_quantity=job_item.arrived_quantity-qty_to_move
+                    if job_item.job_quantity == 0:
+                        job_item.ordered=False
+                        job_item.from_warehouse=False
+                        job_item.delete()
+                        redirect_to_job=True
+                    else:
+                        job_item.save(request=request)
+
                     
                 # else:
                 
@@ -1099,11 +1236,15 @@ def update_item(request, pk):
                 #     wi.warehouse_quantity+=job_item.job_quantity
                 #     wi.save(update_fields=['warehouse_quantity'],request=request)
                 # Delete JobItem after successful move
-                job_item.delete() 
                 messages.success(request,"Item moved to warehouse")
             except JobItem.DoesNotExist:
                 messages.error(request,"Moving failed")
-            return redirect('inventory') 
+            if not redirect_to_job:
+                return redirect(f'update_item',pk=pk)
+
+            else:
+                return redirect('update_job',pk=job.job_id)
+
         form = JobItemForm(request.POST, request.FILES, instance=item,)
         comments_form=CommentForm(request.POST)
         prevq=item.job_quantity
@@ -1239,7 +1380,7 @@ def update_item(request, pk):
                 "comments": comments,
                 "completed": completed})
                 
-   
+        
     # form = JobItemForm(instance=item,)#,updating=True,completed=completed
     comments_form=CommentForm(initial={
         'content_type': ContentType.objects.get_for_model(JobItem),
@@ -1322,8 +1463,8 @@ def update_warehouse_item(request, pk):
             })
             context = {'form': form,'warehouse_item': warehouse_item,'comments_form':comments_form,"comments":comments}
             return render(request, 'inventory/update_warehouse_item.html', context)
-        if "delete" in request.POST:
-            return render(request,'inventory/confirm.html',{'warehouse_item':warehouse_item,'warehouse_item':True})
+        # if "delete" in request.POST:
+        #     return render(request,'inventory/confirm.html',{'warehouse_item':warehouse_item,'warehouse_item':True})
         
         if 'yes_delete' in request.POST:
             try:
@@ -2055,7 +2196,6 @@ def clear_batch_jobs(request):
 def import_jobs(request):
     # request.session['batch_paused_jobs'] = []
     # request.session['batch_jobs'] = []
-    print('1')
     if request.method == 'POST' and request.FILES.get('jobs_sheet') and "upload_unscheduled" in request.POST:
         excel_file = request.FILES['jobs_sheet']
 
@@ -2269,11 +2409,9 @@ def import_jobs(request):
 
                 if not part_exists:
                     valid_batch_paused_jobs_auto.append(row)
-                    print(row)
                 else:
                     valid_batch_paused_jobs_manual.append(row)
             else:
-                print('PP')
                 invalid_batch_paused_jobs.append({
                     "data": row,
                     "errors": form.errors,
@@ -2545,7 +2683,6 @@ def create_all_batch_paused_parts(request):
         counter=0
         fail_counter=0
         for part in parts:
-            print(part)
             ordered_raw = part['ordered']
             ordered_status = str(ordered_raw).lower() in ['true', '1',"1.0", 'yes']
 
@@ -2614,28 +2751,35 @@ from django.http import JsonResponse
 def get_job_data(request):
     job_id = request.GET.get('job_id')
     part_number=request.GET.get('part_number')
-    print(part_number)
+    job_cacnelling=bool( request.GET.get('job_cacnelling'))
     try:
         job = Job.objects.get(company=request.user.company, job_id=job_id)
     except Job.DoesNotExist:
         return JsonResponse({'error': 'Job not found'}, status=404)
-    items=job.items.all()
-    part_exists = items.filter(part_number__iexact=part_number.strip()).exists()    
+    if job_cacnelling:
+        items = job.items.all().filter(is_used=False)
+    else:
+        items=job.items.all()
+    part_exists=None
+    if not job_cacnelling:
+
+        part_exists = items.filter(part_number__iexact=part_number.strip()).exists()    
     part_exists_count = items.aggregate(total=Sum('job_quantity'))['total'] or 0
-    print(part_exists,part_exists_count)
-    if not part_exists:
+    if not part_exists and not job_cacnelling:
             
             return JsonResponse({'no_part': 'Part not found','part_exists_count': 'unknown' }, status=404)
-
+    
     items = list(items.values(
         'name',
         'supplier',
         'part_number',
-        
+        'id',
         'price',
         'job_quantity',
         'arrived_quantity',
     ))
+    if job_cacnelling and items.count==0:
+        return JsonResponse({'no_part': 'Part not found','part_exists_count': 'unknown' }, status=404)
     
     data = {
         'part_exists_count':part_exists_count,
@@ -2724,7 +2868,6 @@ def create_all_batch_jobs(request):
         job.status = job_status.get(job_data['status'], 'ready')
         if job.status=='paused':
             job.parts_need_attention=True
-        print(job.job_id)
         job.save(request=request)
         if job_data['notes']  not in INVALID_VALUES:
             comment=Comment(
@@ -3109,7 +3252,6 @@ def scheduler(request):
         messages.success(request,"Groups regenerated")
         return redirect('scheduler')
     elif "optimize" in request.POST:
-        print("ooo2",request.POST)
         # 🔄 Optimize every SchedulerGroup
         for group in ex_sg:
             if group.optimized_at:
@@ -3158,12 +3300,10 @@ def scheduler(request):
     new_group_id=request.POST.get("new_group")
 
     if any(k in request.POST for k in ["change_from_date", "change_from_time", "change_to_time",]) and not ("move_up" in request.POST or "move_down" in request.POST or group_id!=new_group_id ) :
-            print(request.POST)
             job_id=request.POST.get("job_id")
             job=Job.objects.filter(company=request.user.company,id=job_id).first()
             date_str = request.POST.get("change_from_date",None)
 
-            print(date_str)
             from_time_str = request.POST.get("change_from_time",None)  # corrected name
             to_time_str = request.POST.get("change_to_time",None)
             date_value = parse_date(date_str) if date_str else job.date
@@ -3188,7 +3328,6 @@ def scheduler(request):
                     messages.info(request,f"job {job.address} moved to {job.date} ")
                 return redirect('scheduler') 
     elif request.method == "POST" and ("move_up" in request.POST or "move_down" in request.POST or "new_group" in request.POST ):
-            print("ooo3",request.POST)
             try:
                     
                 move(request,ex_sg)
@@ -3268,7 +3407,6 @@ def monthly_calendar(request, year=None, month=None):
     STATUS=request.user.settings.calendar_status_filter
     ENGINEER=request.user.settings.calendar_engineer_filter
     PARTS=request.user.settings.calendar_parts_filter
-    print(STATUS,ENGINEER,PARTS)
 
     today = timezone.localdate()
     if year and month:
@@ -3348,21 +3486,17 @@ def monthly_calendar(request, year=None, month=None):
 
 
     if request.method=='POST':
-        print(request.POST)
         if "filter" in request.POST:
             status=request.POST.get("status") 
             parts=request.POST.get("parts")            
             engineer=request.POST.get("engineer_filter") 
-            print(request.POST)
             if status!=STATUS:
                 request.user.settings.calendar_status_filter=status          
             if parts!=PARTS:
                 request.user.settings.calendar_parts_filter=parts    
             if engineer!=ENGINEER:
                 request.user.settings.calendar_engineer_filter=engineer   
-            print(request.user.settings.calendar_parts_filter) 
-            print(request.user.settings.calendar_status_filter) 
-            print(request.user.settings.calendar_engineer_filter) 
+          
             request.user.settings.save(update_fields=["calendar_status_filter","calendar_parts_filter","calendar_engineer_filter"])
             return redirect(request.path) 
             

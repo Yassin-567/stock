@@ -70,8 +70,11 @@ def item_arrived(self):
         return True
     if self.ordered:
             if self.arrived_quantity >= self.job_quantity:
+                print(self,'arrived')
                 self.arrived = True
             else:
+                print(self,'not arrived')
+
                 self.arrived=False
             
     else:
@@ -80,14 +83,25 @@ def item_arrived(self):
 def item_not_used(self):
     return self.is_used
 def job_completed(self,):
-    if self.status=='completed':
-        for item in self.items.all():
-            item.is_used=True
-            item.save(update_fields=['is_used'],no_recursion=True,request=None)
-        
-        return True
-    return False
+    if self.pk:
+        if self.status=='completed':
+            for item in self.items.all():
+                if  item.ordered and  item_arrived(item) :
 
+                    item.is_used=True
+                    item.save(update_fields=['is_used'],no_recursion=True,request=None)
+                
+            return True
+        return False
+def cant_complete (self):
+    if self.pk:
+        for item in self.items.all():
+            print(item)
+            if not item.is_used:
+                if not item.ordered or not item_arrived(item) :
+                    print("OOOOOOOG")
+                    return True
+        return False
 
 def generate_otp():
     import random
@@ -797,3 +811,34 @@ def remove_item_from_session(request, session_id, session_name):
 
     request.session[session_name] = updated_data
     request.session.modified = True
+
+
+def move_jobitem_to_warehouse(request,job_item,job):
+    print(job_item.id)
+    from .models import  WarehouseItem
+
+    if job_item.is_used or job_item.arrived_quantity == 0:
+        return None
+    else:
+        
+        x=WarehouseItem(
+                    
+                    name=job_item.name,
+                    part_number=job_item.part_number,
+                    price=job_item.price,
+                    supplier=job_item.supplier,
+                    added_date=job_item.added_date,
+                    added_by=job_item.added_by,
+                    warehouse_quantity=job_item.arrived_quantity,
+                    company=request.user.company,
+                    
+                    reference=job_item.reference,
+                    category=job_item.category,
+                    #is_used=job_item.is_used,
+                    is_moved_from_job=job if job_item.was_for_job else None  ,   
+                    
+                )
+        x.save(request=request)   
+        job_item.delete()
+                
+        

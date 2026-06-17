@@ -207,9 +207,9 @@
   
   <section class="form-section">
     
-    <form action="" method="POST" enctype="multipart/form-data" class="form-container">
+    <form action="" name="job_form" method="POST" enctype="multipart/form-data" class="form-container">
       {% csrf_token %}
-
+      <div id="part-actions"></div>
       <div id="id_quotation">
         <label for="quotation" style="color: rgb(0, 124, 206);">Add price quotation</label>
         <input type="floatformat" step="0.01" name="quotation" style="background-color: rgb(56, 167, 12);" />
@@ -222,7 +222,7 @@
       <div class="form-group">{{ form.as_p }}</div>
 
       <div class="form-group">
-        <button type="submit" name="save" class="btn-submit">Save</button>
+        <button  type="submit" name="save" class="btn-submit" onclick="openModal(event, this)">Save</button>
         {% if job_status == 'ready' %}
           <button type="submit" name="send_email" class="btn-submit">Send email</button><span><h6>Send a list with the required parts for the engineer</h6></span>
         {% endif %}
@@ -315,6 +315,236 @@ box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       {% endfor %}
     </div>
   </section>
+  
+  <div id="confirmModal" class="modal-overlay">
+    <div class="modal-box">
+      <H2 id="confirmText" style="align-self: center; color: red;"> Are you sure you want to save?</H2>
+      <div id="warnContainer"></div>
+
+      <div id="itemsContainer"></div>
+
+      <div class="modal-actions">
+        <button id="yes" onclick="submitConfirmed()">Yes</button>
+        <button id="no" onclick="closeModal()">No</button>
+      </div>
+    </div>
+  </div>
+<script>
+let currentForm = null;
+
+function openModal(e, btn) {
+    e.preventDefault();
+
+    currentForm = btn.closest("form");
+    const jobId = currentForm.querySelector('[name="job_id"]').value;
+    const status=currentForm.querySelector('[name="status"]').value
+    
+    fetch(`/get-job-data/?job_id=${jobId}&job_cacnelling=${true}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.no_part || status.toLowerCase() != 'cancelled') {
+                closeModal();
+                submitConfirmed();
+                
+                return;
+            }
+
+            const confirmText = document.getElementById('confirmText');
+            const container = document.getElementById('itemsContainer');
+            const warnContainer = document.getElementById('warnContainer');
+
+            const yesBtn = document.getElementById('yes');
+            const noBtn = document.getElementById('no');
+
+            // Reset UI
+            container.innerHTML = "";
+            yesBtn.style.display = 'inline-block';
+            noBtn.innerHTML = 'No';
+            
+
+            if (data.error) {
+                confirmText.innerText = 'Job not found!';
+                yesBtn.style.display = 'none';
+                noBtn.innerHTML = 'Close';
+              } else {
+                  // ✅ Job info + total from backend
+                  
+
+confirmText.innerHTML = `
+    Before cancelling this job, please review relarted parts.
+`;
+
+                  // ✅ Items (no calculations)
+     container.innerHTML = `
+<table class="table table-bordered table-sm">
+    <thead>
+        <tr>
+            <th>Part</th>
+            <th>Part Num</th>
+
+            <th>Required QTY</th>
+            <th>Arrived QTY</th>
+            
+            <th>Move to Warehouse</th>
+              <th>Mark as used</th>
+            <th>Delete part</th>
+          
+        </tr>
+    </thead>
+    <tbody id="partsTableBody"></tbody>
+</table>
+`;
+
+const tbody = document.getElementById('partsTableBody');
+
+data.items.forEach(item => {
+
+    const row = document.createElement('tr');
+
+    row.innerHTML = `
+        <td>${item.name}</td>
+        <td><a href="/item/${item.id}">${item.part_number}</a></td>
+
+        <td>${item.job_quantity}</td>
+        <td>${item.arrived_quantity}</td>
+        
+
+        <td class="text-center">
+            <input type="radio"
+                   value="move"
+                   name="${item.id}"
+
+                   data-item-id="${item.id}"
+                   >
+                   
+        </td>  <td class="text-center">
+            <input type="radio"
+                   value="used"
+                   name="${item.id}"
+
+                   data-item-id="${item.id}" >
+                   
+        </td>
+
+        <td class="text-center">
+            <input type="radio"
+                   value="delete"
+                   name="${item.id}"
+                   data-item-id="${item.id}">
+                   
+        </td>
+
+      
+    `;
+
+    tbody.appendChild(row);
+});
+                  
+              }
+
+            document.getElementById('confirmModal').style.display = 'block';
+        })
+        .catch(() => {
+            document.getElementById('confirmText').innerText = 'Error fetching job';
+            document.getElementById('confirmModal').style.display = 'block';
+        });
+}
+
+function closeModal() {
+    document.getElementById('confirmModal').style.display = 'none';
+}
+
+function submitConfirmed() {
+
+    if (currentForm) {
+        const saveBtn = currentForm.querySelector('[name="save"]');
+        const status = currentForm.querySelector('[name="status"]').value;
+
+
+        if(status.toLowerCase() == 'cancelled')
+        
+        {
+            const totalParts = document.querySelectorAll('#partsTableBody tr').length;
+
+    const selectedParts = new Set();
+
+    document
+        .querySelectorAll('#partsTableBody input[type="radio"]:checked')
+        .forEach(input => {
+            selectedParts.add(input.dataset.itemId);
+        });
+
+    if (selectedParts.size !== totalParts) {
+        alert('Please select an action for every part.');
+        return;
+    }
+          const hidden_container = document.getElementById('part-actions');
+            const partActions = {};
+            document.querySelectorAll('input[type="radio"]:checked').forEach(input => {
+                const itemId = input.getAttribute('data-item-id');
+
+                const action = input.value;
+                partActions[itemId] = action;
+            });
+ 
+            // Create hidden input with JSON string
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'actions';
+            hidden.value = JSON.stringify(partActions);
+            hidden_container.appendChild(hidden);
+
+        }
+    closeModal();
+
+        currentForm.requestSubmit(saveBtn);
+    }
+
+
+
+
+}
+</script>
+
+  <style>
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    
+    .modal-box {
+      background: white;
+      width: 100%;
+      max-height: 80vh; /* ✅ limit total height */
+      margin: 10vh auto; /* better vertical centering */
+      padding: 20px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column; /* stack elements */
+    }
+    
+    /* 🔥 THIS is the important part */
+    #itemsContainer {
+      overflow-y: auto; /* scroll only here */
+      max-height: 40vh; /* adjust as needed */
+      margin-top: 10px;
+      text-align: left;
+    }
+    .field-error {
+      color: red;
+    }
+    
+    .modal-actions {
+      margin-top: 10px;
+      text-align: center;
+    }
+  </style>          
+
   <style>
 
     .from-sf {

@@ -1,10 +1,18 @@
+{% comment %}
+
 {% load static %}
+
 {% load custom_tags %}
 {% if messages %}
   {% for message in messages %}
     <div class="alert alert-{{ message.tags }}">{{ message }}</div>
   {% endfor %}
 {% endif %}
+
+{% endcomment %}
+
+{% comment %}
+
 {% if warehouse_item %}
   Are you sure you want to delete: {{ item }}
   Quantity:{{ item.warehouse_quantity }}
@@ -22,6 +30,11 @@
     <button name="no_return_back" type="submit" class="btn btn-submit">NO, Return back</button>
   </form>
 {% endif %}
+
+{% endcomment %}
+
+{% comment %}
+
 {% if complete_request %}
   {% for item in items %}
     {{ item.job_quantity }} of {{ item }} is required, only {{ item.arrived_quantity }} arrived
@@ -31,6 +44,11 @@
     <button name="no_return_back" type="submit" class="btn btn-submit">NO, Return back</button>
   </form>
 {% endif %}
+
+{% endcomment %}
+
+{% comment %}
+
 {% if cancel_request %}
   <h3>Before cancelling this job!</h3>
   <h4>Do you want to move it to the warehouse?<small>Items that won't be moved, will stay linked to this job</small></h4>
@@ -43,3 +61,5 @@
     </form>
   {% endfor %}
 {% endif %}
+
+{% endcomment %}

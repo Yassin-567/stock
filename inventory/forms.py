@@ -362,7 +362,7 @@ class JobItemForm(forms.ModelForm):
     class Meta:
         model=JobItem
         fields='__all__'
-        exclude=['job','from_warehouse','is_used','status','was_for_job','added_by','was_it_used','arrived','company','added_by_batch_entry','ordered_date','arrived_date']
+        exclude=['job','from_warehouse','status','was_for_job','added_by','was_it_used','arrived','company','added_by_batch_entry','ordered_date','arrived_date']
         widgets = {
                     #'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
                     'status': forms.Select(attrs={'class': 'form-select','id':'status'}),

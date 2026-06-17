@@ -138,9 +138,14 @@
           <input type="hidden" name="name" value="{{ item.name }}" />
           <input type="hidden" name="part_number" value="{{ item.part_number }}" />
           <input type="hidden" name="job_id" value="{{ item.job_id }}" />
-          <input type="hidden" id="action" name="action" />
+          <input type="hidden" name="job_quantity" value="{{ item.job_quantity }}" />
+          <input type="hidden" id="arrived_quantity" name="arrived_quantity" value="{{ item.arrived_quantity }}" />
+          <input type="hidden" name="action" id="action__" />
+
           {% if not item.from_warehouse and not item.is_used and not item.job.status == 'completed' and not item.job.status == 'cancelled' %}
-            <button name="delete" type="submit" class="btn btn-danger" onclick="openModal(event, this)">Delete</button>
+            <button name="delete" type="submit" class="btn btn-danger" onclick="openModal(event, this)">Delete1</button>
+          {% else %}
+            <button id="faded_delete" name="delete" type="submit" class="btn btn-danger" title="Cant delete warehouse items, or items that haven't fully arrived.">Delete</button>
           {% endif %}
 
           {% comment %}
@@ -193,8 +198,13 @@
 
   <div id="confirmModal" class="modal-overlay">
     <div class="modal-box">
-      <p id="confirmText">Are you sure you want to save?</p>
+      <p id="confirmText">Error</p>
+      <div style="margin:15px 0;">
+        <label for="moveQty" id="moveQtylabel">How many parts you want to move?</label>
+        <input type="number" id="moveQty" onchange="movqtychanged()" min="0" value="0" class="form-control" />
+      </div>
       <div id="warnContainer"></div>
+      <div style="color: green;" id="warnContainer2"></div>
 
       <div id="itemsContainer"></div>
 
@@ -205,44 +215,160 @@
     </div>
   </div>
 
-  {% comment %} <script>
-    const jobUrlTemplate = "{% url 'update_item' 0 %}"
-  </script> {% endcomment %}
-
   <script>
     let currentForm = null
+    let actionname = null
+    function movqtychanged() {
+      const required_quantity = currentForm.querySelector('[name="job_quantity"]').value
+      const arrived_quantity = currentForm.querySelector('[name="arrived_quantity"]').value
+      const moveQtyInput = document.getElementById('moveQty').value
+      if (moveQtyInput > arrived_quantity) {
+        const warnContainer = document.getElementById('warnContainer2')
+        const warnContainer1 = document.getElementById('warnContainer')
     
+        P = document.createElement('p')
+        P.classList.add('field-error')
+        warnContainer.innerHTML = ''
+        warnContainer1.innerHTML = ''
+    
+        P.innerText = `Quantity to move cannot be greater than arrived quantity, maximum is ${arrived_quantity}.`
+    
+        warnContainer.appendChild(P)
+      } else if (moveQtyInput == 0) {
+        const warnContainer = document.getElementById('warnContainer2')
+        const warnContainer1 = document.getElementById('warnContainer')
+    
+        P = document.createElement('p')
+        P.classList.add('field-error')
+        warnContainer.innerHTML = ''
+        warnContainer1.innerHTML = ''
+    
+        P.innerText = `Quantity to move cannot be zero.`
+    
+        warnContainer.appendChild(P)
+      } else if (moveQtyInput < 0) {
+        const warnContainer = document.getElementById('warnContainer2')
+        const warnContainer1 = document.getElementById('warnContainer')
+    
+        P = document.createElement('p')
+        P.classList.add('field-error')
+        warnContainer.innerHTML = ''
+        warnContainer1.innerHTML = ''
+    
+        P.innerText = `Quantity to move cannot be negative.`
+    
+        warnContainer.appendChild(P)
+      } else {
+        const warnContainer = document.getElementById('warnContainer2')
+        const warnContainer1 = document.getElementById('warnContainer')
+        warnContainer1.innerHTML = ''
+        if (moveQtyInput == required_quantity) {
+          warnContainer.innerHTML = `${moveQtyInput} parts will be moved to warehouse. And this part will be removed from this job`
+        } else {
+          warnContainer.innerHTML = `${moveQtyInput} parts will be moved to warehouse. Required quantity will be updated to ${required_quantity - moveQtyInput} and arrived quantity will be updated to ${arrived_quantity - moveQtyInput}.`
+        }
+      }
+    }
     function openModal(e, btn) {
       e.preventDefault()
+    
       document.getElementById('confirmModal').style.display = 'block'
-      currentForm = btn.closest('form')
       currentForm = document.getElementById('delmove')
       const partnumber = currentForm.querySelector('[name="part_number"]').value
       const jobId = currentForm.querySelector('[name="job_id"]').value
       const name = currentForm.querySelector('[name="name"]').value
       const confirmText = document.getElementById('confirmText')
-      const actionname = btn.name
-      const action = document.getElementById('action')
+      actionname = btn.name
     
+      const action = document.getElementById('action__')
       action.name = actionname
+      const required_quantity = currentForm.querySelector('[name="job_quantity"]').value
+      const arrived_quantity = currentForm.querySelector('[name="arrived_quantity"]').value
+      const moveQtyInput = document.getElementById('moveQty')
+      const moveQtylabel = document.getElementById('moveQtylabel')
+      const warnContainer2 = document.getElementById('warnContainer2')
     
-      confirmText.innerHTML = `
-                                                                                                           Are you sure you want to ${actionname} ${partnumber} of ${name} (part number: ${partnumber})?
-                                                                                                        `
-    }
+      if (actionname == 'delete') {
+        moveQtyInput.style.display = 'none'
+        moveQtylabel.style.display = 'none'
     
-    function closeModal() {
-      document.getElementById('confirmModal').style.display = 'none'
+        confirmText.innerHTML = `
+                                                                                                                                                                                                                            Are you sure you want to  delete ${name} - ${partnumber} ? \n
+                                                                                                                                                                                                                        Job ID: ${jobId} \n
+                                                                                                                                                                                                                        Required quantity: ${required_quantity} \n  
+                                                                                                                                                                                                                        Arrived quantity: ${arrived_quantity} \n
+                                                                                                                                                                                            
+                                                                                                                                                                                                                                                                       `
+      } else if (actionname == 'move') {
+        confirmText.innerHTML = `
+                                                                                                                                                                                                                            Are you sure you want to ${actionname} move  ${name} - ${partnumber} to warehouse? \n
+                                                                                                                                                                                                                            Job ID: ${jobId} \n
+                                                                                                                                                                                                                            Required quantity: ${required_quantity} \n  
+                                                                                                                                                                                                                            Arrived quantity: ${arrived_quantity} \n
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                `
+      }
     }
     
     function submitConfirmed() {
+      console.log('confirmed')
       if (currentForm) {
-        currentForm.submit()
+        console.log(document.getElementById('moveQty').value)
+        if (actionname == 'move') {
+          if (document.getElementById('moveQty').value > document.getElementById('arrived_quantity').value && document.getElementById('moveQty').value > 0) {
+            const warnContainer = document.getElementById('warnContainer')
+            warnContainer.innerHTML = ''
+            warnContainer2.innerHTML = ''
+    
+            P = document.createElement('p')
+            P.classList.add('field-error')
+            P.innerText = `Quantity to move cannot be greater than arrived quantity, maximum is ${document.getElementById('arrived_quantity').value}.`
+    
+            warnContainer.appendChild(P)
+            document.getElementById('moveQty').value = 0
+          } else if (document.getElementById('moveQty').value == 0) {
+            const warnContainer = document.getElementById('warnContainer')
+            warnContainer.innerHTML = ''
+            warnContainer2.innerHTML = ''
+    
+            P = document.createElement('p')
+            P.classList.add('field-error')
+            P.innerText = `Quantity to move cannot be zero.`
+    
+            warnContainer.appendChild(P)
+          } else if (document.getElementById('moveQty').value < 0) {
+            console.log('negative')
+            const warnContainer = document.getElementById('warnContainer')
+            warnContainer.innerHTML = ''
+            warnContainer2.innerHTML = ''
+    
+            P = document.createElement('p')
+            P.classList.add('field-error')
+            P.innerText = `Quantity to move cannot be negative.`
+    
+            warnContainer.appendChild(P)
+            document.getElementById('moveQty').value = 0
+          } else {
+            document.getElementById('action__').value = document.getElementById('moveQty').value
+            currentForm.submit()
+          }
+        } else if (actionname == 'delete') {
+          currentForm.submit()
+        }
       }
+    }
+    function closeModal() {
+      document.getElementById('confirmModal').style.display = 'none'
     }
   </script>
 
   <style>
+    #moveQty {
+      width: 100px;
+      margin-left: 10px;
+    }
+    #confirmText {
+      white-space: pre-line;
+    }
     .modal-overlay {
       display: none;
       position: fixed;
@@ -255,7 +381,7 @@
     
     .modal-box {
       background: white;
-      width: 300px;
+      width: 600px;
       max-height: 80vh; /* ✅ limit total height */
       margin: 10vh auto; /* better vertical centering */
       padding: 20px;
