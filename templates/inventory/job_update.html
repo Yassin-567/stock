@@ -30,7 +30,6 @@
           <span class="quote-status declined">Quote declined</span>
         {% endif %}
         {% if job.status != 'completed' and job.status != 'cancelled' %}
-        
 <form action="" method="post" class="quote-actions">
         {% csrf_token %}
         {% comment %} <label for="quote_status"  class="form-label mb-0 me-1">Quotation status:</label> {% endcomment %}

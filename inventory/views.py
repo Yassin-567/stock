@@ -538,7 +538,7 @@ def job_create(request):
             pass
         if form.is_valid():
             try:
-                Job.objects.get(job_id=form.cleaned_data['job_id'])
+                Job.objects.get(job_id=form.cleaned_data['job_id'],company=request.user.company)
                 jobi=True
             except Job.DoesNotExist:
                 jobi=False
@@ -556,7 +556,7 @@ def job_create(request):
         form = JobForm(initial={'company':request.user.company})
     return render(request, 'inventory/job_create.html', {'form': form})
 @login_required
-def update_job(request, pk, cancel=0):
+def update_job(request, pk):
     
     job = Job.objects.get(job_id=pk, company=request.user.company)
     
@@ -608,8 +608,6 @@ def update_job(request, pk, cancel=0):
                     return redirect('update_job',pk=pk)
                 job.parts_need_attention = True
                 # context={'form': form,'job':job,'comments':comments,'items':items,'items_count':items_count,'job_status':job_status}
-
-    
                 # return render(request, 'inventory/job_update.html', context)
                 
             else:   
@@ -625,12 +623,17 @@ def update_job(request, pk, cancel=0):
                 job.parts_need_attention = False
             # if 'parts_dont_need_attention' in request.POST:
             #     job.parts_need_attention = False
+            #     messages.success(request,'Parts does not need attention')
             #     job.save(update_fields=['parts_need_attention','status'],request=request)
+            #     return redirect('update_job',pk=pk)
+
             # else:
-
             #     job.parts_need_attention = True
-            #     job.save(update_fields=['parts_need_attention','status'],request=request)
+            #     messages.success(request,'Parts need attention')
 
+            #     job.save(update_fields=['parts_need_attention','status'],request=request)
+            #     return redirect('update_job',pk=pk)
+            
         if  job.quoted :
             try:
                 quote_status=request.POST.get('quote_status')
@@ -681,8 +684,11 @@ def update_job(request, pk, cancel=0):
         # if post_data and request.method == 'POST' and 'no_return_back' in request.POST :#---
         #     return redirect(f'update_job',pk=pk)
         if 'save' in request.POST:
+            print("POPOP")
+
             quotation = request.POST.get('quotation')
             if quotation:
+                print("***")
                 try:
                     # Try to convert to float (or int if you want only integers)
                     quotation = float(quotation)
@@ -691,6 +697,7 @@ def update_job(request, pk, cancel=0):
                 except (TypeError, ValueError):
                     messages.error(request, "Quotation must be a valid positive number.")
                     # Optionally: re-render the form with errors and return
+                    print("PPPPPP@@@")
                     return render(request, 'inventory/job_update.html', {
                         'form': form,
                         'job': job,
@@ -702,23 +709,25 @@ def update_job(request, pk, cancel=0):
             else:
                 quotation=job.quotation
             form = JobForm(request.POST, instance=job)
+            print("111115MMMMMM")
             
             if form.is_valid() :
-            
+
+                print("555MMMMMM")
+
                 if form.cleaned_data['status']=='completed':
                     try:
-                        if True:
-                            form = JobForm(request.POST, instance=job, updating=True)
-                            if form.is_valid():
-                                job=form.save(commit=False)
-                                
-                                job.save(request=request)
-                                for item in job.items.all():
-                                    item.is_used=True
-                                    item.save(request=request,update_fields=['is_used'],dont_move_used=True)
-                                
-                                messages.success(request, "Job completed.")
-                            return redirect('update_job',pk=pk)
+                        form = JobForm(request.POST, instance=job, updating=True)
+                        if form.is_valid():
+                            job=form.save(commit=False)
+                            
+                            job.save(request=request)
+                            for item in job.items.all():
+                                item.is_used=True
+                                item.save(request=request,update_fields=['is_used'],dont_move_used=True)
+                            
+                            messages.success(request, "Job completed.")
+                        return redirect('update_job',pk=pk)
 
                             # return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
                     except ValidationError as E:
@@ -853,7 +862,12 @@ def update_job(request, pk, cancel=0):
                 else:
                     messages.error(request, 'No change')
                     return redirect('update_job',job.job_id)
+            else:
                 
+                messages.error(request," ".join( e["message"] for errors in form.errors.get_json_data().values() for e in errors),)
+               
+                return redirect('update_job',job.job_id)
+
             
         comments_form=CommentForm(request.POST)
         if comments_form.is_valid() and 'add_comment' in request.POST: 
@@ -1173,77 +1187,92 @@ def update_item(request, pk):
             return redirect(f'update_item',pk=pk)
         form = JobItemForm(request.POST, request.FILES, instance=item,)
         if 'move' in request.POST :
-            try:
-                job_item = item
-                job=job_item.job
-                # Optional: Check if already used or empty
-                if job_item.is_used or job_item.arrived_quantity == 0:
-                    
-                    messages.error(request, "Nothing to move or already used.")
-                    form = JobItemForm(instance=item,)
-                    comments_form=CommentForm(initial={
-                    'content_type': ContentType.objects.get_for_model(JobItem),
-                    'object_id': item.id,
-                    'company': request.user.company,
-                    })
-                    context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,'completed':completed}
-                    return render(request, 'inventory/update_item.html', context)
-                # try:
-                #     WarehouseItem.objects.get(Q(company=request.user.company) & Q(item=item.item))
-                #     create_new=False
-                # except:
-                #     create_new=True
-                # if not job_item.from_warehouse or create_new :
-                qty_to_move=request.POST.get("move",0)
-                qty_to_move=int(qty_to_move)
-                if qty_to_move >0:
-                    job=job_item.was_for_job if job_item.was_for_job else job_item.job
-                    # Create WarehouseItem
-                    x=WarehouseItem(
-                        name=job_item.name,
-                        part_number=job_item.part_number,
-                        price=job_item.price,
-                        supplier=job_item.supplier,
-                        company=request.user.company,   
-                        added_by_batch_entry=job_item.added_by_batch_entry,
-                        added_by=request.user,
-                        warehouse_quantity=qty_to_move,
-                        reference=job_item.reference,
-                        who_has_part=item.who_has_part,
-                        category=job_item.category,
-                        #is_used=job_item.is_used,
-                        is_moved_from_job=job if job_item.was_for_job else None  ,   
-                    )
-                    x.save(request=request)
-                    job_item.job_quantity=job_item.job_quantity-qty_to_move
-                    job_item.arrived_quantity=job_item.arrived_quantity-qty_to_move
-                    if job_item.job_quantity == 0:
-                        job_item.ordered=False
-                        job_item.from_warehouse=False
-                        job_item.delete()
-                        redirect_to_job=True
-                    else:
-                        job_item.save(request=request)
 
-                    
-                # else:
-                
-                #     try:
-                #         wi=WarehouseItem.objects.get(Q(item=job_item.item) & Q(is_moved_from_job=True))
-                #     except:
+            
+            with transaction.atomic():
+                try:
+                    with transaction.atomic():
+                        return_to_job=False
+                        job_item = item
+                        job=job_item.job
+                        # Optional: Check if already used or empty
+                        if job_item.is_used or job_item.arrived_quantity == 0:
+                            
+                            messages.error(request, "Nothing to move or already used.")
+                            form = JobItemForm(instance=item,)
+                            comments_form=CommentForm(initial={
+                            'content_type': ContentType.objects.get_for_model(JobItem),
+                            'object_id': item.id,
+                            'company': request.user.company,
+                            })
+                            context = {'form': form,'item': item,'comments_form':comments_form,"comments":comments,'completed':completed}
+                            return render(request, 'inventory/update_item.html', context)
+                        # try:
+                        #     WarehouseItem.objects.get(Q(company=request.user.company) & Q(item=item.item))
+                        #     create_new=False
+                        # except:
+                        #     create_new=True
+                        # if not job_item.from_warehouse or create_new :
+                        qty_to_move=request.POST.get("move",0)
+                        qty_to_move=int(qty_to_move)
+                        if qty_to_move >0:
+                            job=job_item.was_for_job if job_item.was_for_job else job_item.job
+                            # Create WarehouseItem
+                            x=WarehouseItem(
+                                name=job_item.name,
+                                part_number=job_item.part_number,
+                                price=job_item.price,
+                                supplier=job_item.supplier,
+                                company=request.user.company,   
+                                added_by_batch_entry=job_item.added_by_batch_entry,
+                                added_by=request.user,
+                                warehouse_quantity=qty_to_move,
+                                reference=job_item.reference,
+                                who_has_part=item.who_has_part,
+                                category=job_item.category,
+                                #is_used=job_item.is_used,
+                                is_moved_from_job=job if job_item.was_for_job else None  ,   
+                            )
+                            x.save(request=request)
+                            job_item.job_quantity=job_item.job_quantity-qty_to_move
+                            job_item.arrived_quantity=job_item.arrived_quantity-qty_to_move
+                            if job_item.job_quantity == 0:
+                                job_item.arrived_quantity=0
+                                job_item.ordered=False
+                                job_item.from_warehouse=False
+                                job_item.delete()
+                                # redirect_to_job=True
+                                return_to_job=True
+                            else:
+                                job_item.save(request=request)
+
+                            
+                        # else:
                         
-                #         wi=WarehouseItem.objects.get(item=job_item.item)
-                #     wi.warehouse_quantity+=job_item.job_quantity
-                #     wi.save(update_fields=['warehouse_quantity'],request=request)
-                # Delete JobItem after successful move
-                messages.success(request,"Item moved to warehouse")
-            except JobItem.DoesNotExist:
-                messages.error(request,"Moving failed")
-            if not redirect_to_job:
-                return redirect(f'update_item',pk=pk)
+                        #     try:
+                        #         wi=WarehouseItem.objects.get(Q(item=job_item.item) & Q(is_moved_from_job=True))
+                        #     except:
+                                
+                        #         wi=WarehouseItem.objects.get(item=job_item.item)
+                        #     wi.warehouse_quantity+=job_item.job_quantity
+                        #     wi.save(update_fields=['warehouse_quantity'],request=request)
+                        # Delete JobItem after successful move
+                        if return_to_job:
+                            messages.success(request,"Item moved to warehouse and removed from this job")
 
-            else:
-                return redirect('update_job',pk=job.job_id)
+                            return redirect('update_job',pk=job.job_id)
+                        else:
+                            messages.success(request,f'{qty_to_move} of {job_item.name} - {job_item.part_number} were moved to warehouse')
+                        
+                            return redirect(f'update_item',pk=pk)
+                except :
+                    messages.error(request,"Moving failed")
+                    try:
+                        return redirect(f'update_item',pk=pk)
+                    except:
+                        return redirect('update_job',pk=job.job_id)
+    
+                 
 
         form = JobItemForm(request.POST, request.FILES, instance=item,)
         comments_form=CommentForm(request.POST)
@@ -1336,12 +1365,17 @@ def update_item(request, pk):
 
                     item.job_quantity = job_quantity
                     item.save(update_fields=['job_quantity',], request=request)
-
+                    print(item.job_quantity)
                     if item.job_quantity < 1:
-                        jobid = item.job.job_id
-                        item.delete(request=request)
-                        messages.success(request, f"Moved {diff} of {item} to warehouse successfully")
-                        return redirect('update_job', jobid)
+                        print("KKKKK")
+                        try:
+                            with transaction.atomic():
+                                jobid = item.job.job_id
+                                item.delete(request=request)
+                                messages.success(request, f"Moved {diff} of {item} to warehouse successfully")
+                        except Exception as e:
+                            messages.success(request, f"SEE {e}")
+                            return redirect('update_job', jobid)
 
                     messages.success(request, f"Moved {diff} of {item} to warehouse successfully")
                     return render(request, 'inventory/update_item.html',
@@ -2036,7 +2070,7 @@ def create_all_batch_items(request):
                                     )
                     wi.save(request=request)
                     # Remove this item from session
-                    part_session_id=part['part_session_id']
+                    part_session_id=part['session_id']
                     
                     remove_item_from_session(request=request,session_id=part_session_id,session_name='valid_batch_warehouse_items')
                     success_count=success_count+1
@@ -2129,7 +2163,7 @@ def batch_entry(request):
                 continue
             if row['warehouse_quantity']:
                 row['warehouse_quantity'] = int(row['warehouse_quantity']) if pd.notna(row['warehouse_quantity']) else 0
-            row['part_session_id'] = index
+            row['session_id'] = index
             warehouse_item_date={
                 'name': row.get('name'),
             'part_number': row.get('part_number'),
@@ -2164,6 +2198,7 @@ def batch_entry(request):
 # @login_required(login_url='login', redirect_field_name='inventory')
 
 def clear_batch(request):
+    
     request.session['invalid_batch_warehouse_items'] =[]
     request.session['valid_batch_warehouse_items'] =[]
     request.session['batch_paused_jobs'] = []
@@ -2176,6 +2211,7 @@ def clear_batch(request):
 @login_required(login_url='login', redirect_field_name='inventory')
 
 def clear_batch_jobs(request):
+    
     request.session['batch_jobs'] =[]
     request.session['batch_paused_jobs'] = []
     request.session['invalid_jobs'] = []
@@ -2187,7 +2223,7 @@ def clear_batch_jobs(request):
 
 
 
-
+    
     return redirect('jobs_batch_entry')
     
 
@@ -2308,7 +2344,7 @@ def import_jobs(request):
                     
                 })
         for i, row in enumerate(valid_jobs, start=1):
-            row['id'] = i
+            row['session_id'] = i
            
         
         request.session['batch_jobs'] = valid_jobs
@@ -2364,6 +2400,8 @@ def import_jobs(request):
         
         df = df.map(normalize)
         df = df.where(pd.notnull(df), None)
+        df['job_id'] = df['job_id'].apply(lambda x: str(int(x)) if pd.notna(x) else None)
+
         data = df.to_dict(orient='records')
         available_jobs = set(
         Job.objects.filter(company=request.user.company)
@@ -2375,8 +2413,10 @@ def import_jobs(request):
         default_cat_id=Category.objects.filter(company=request.user.company).first().id
         for row in data:
             if row['job_id'] in INVALID_VALUES :
+                row['reason_for_manual']="Wrong job_id"
                 continue
             if row['job_id'] not in available_jobs:
+                row['reason_for_manual']="job doesn't exist"
                 valid_batch_paused_jobs_manual.append(row)
                 continue
             ordered_raw = row.get('ordered', '')
@@ -2397,7 +2437,6 @@ def import_jobs(request):
             'who_has_part': None # row.get('who_has_part'),
 
             }
-            
             form=JobItemForm(data=item_form_data)
             
             if form.is_valid():
@@ -2418,9 +2457,9 @@ def import_jobs(request):
                     
                 })
         for i, row in enumerate(valid_batch_paused_jobs_manual, start=1):
-            row['part_session_id'] = i
+            row['session_id'] = i
         for i, row in enumerate(valid_batch_paused_jobs_auto, start=1):
-                row['part_session_id'] = i
+            row['session_id'] = i
         
 
         request.session['engineers_data'] = engineers_data
@@ -2686,7 +2725,7 @@ def create_all_batch_paused_parts(request):
             ordered_raw = part['ordered']
             ordered_status = str(ordered_raw).lower() in ['true', '1',"1.0", 'yes']
 
-            part_session_id= part['part_session_id']
+            part_session_id= part['session_id']
             eng_name=part['who_has_part']
             engineer=None
             if eng_name and str(eng_name).strip().lower() not in INVALID_VALUES:
@@ -2815,6 +2854,7 @@ def create_all_batch_jobs(request):
             'birthday': batch_job['birthday'],
 
             'company': request.user.company,
+            'session_id':batch_job['session_id'],
         }
 
     
@@ -2833,9 +2873,9 @@ def create_all_batch_jobs(request):
             x=Job.objects.get(company=request.user.company,job_id=job_data['job_id'])
             items = request.session.get('batch_jobs', [])
         
-
-            items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
-            request.session['batch_jobs'] = items
+            remove_item_from_session(request=request,session_id=job_data['session_id'],session_name='batch_jobs')
+            # items = [item for item in items if int(item['job_id']) != int(job_data['job_id'])]
+            # request.session['batch_jobs'] = items
             messages.error(request,f"Job {x.job_id} already exists")
 
             continue
@@ -2878,7 +2918,7 @@ def create_all_batch_jobs(request):
                 imported_from_sheet=True
             )
             comment.save()
-        job_session_id=batch_job["id"]
+        job_session_id=batch_job["session_id"]
         remove_item_from_session(request=request,session_id=job_session_id,session_name='batch_jobs')
 
         # Remove this item from session

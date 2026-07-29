@@ -229,9 +229,12 @@ class Job(models.Model):
 
             self.retirement_date=self.birthday+timedelta(days=7)
         old = Job.objects.filter(pk=self.pk).first()
-        if old and old.post_code != self.post_code:
-            self.latitude,self.longitude=get_coords(self.post_code.strip().upper().replace(" ", ""))
-
+        try:
+            if old and old.post_code != self.post_code:
+                self.latitude,self.longitude=get_coords(self.post_code.strip().upper().replace(" ", ""))
+        except:
+            
+            self.post_code="None"
         self.request=request
         self.dont_save_history=dont_save_history
         self.affected_by_sync=affected_by_sync
@@ -239,26 +242,29 @@ class Job(models.Model):
         job_reopened(self,)
         if not self.parts_need_attention:
             self.parts_need_attention = self.items.filter(ordered=False,from_warehouse=False).exists()
-     
-        if not job_completed(self,) and  cant_complete(self) and  self.status!='cancelled':
-            print("m99")
-            self.status = 'ready' if items_arrived(self) and items_not_used(self) and quote_accepted(self) and not self.on_hold and not self.parts_need_attention else 'paused'
+        
+        if not job_completed(self,)  and  self.status!='cancelled':#and  cant_complete(self)
+            self.status = 'ready' if items_arrived(self) and items_not_used(self) and (not self.quoted or quote_accepted(self)) and not self.on_hold and not self.parts_need_attention else 'paused'
             self.items_arrived=items_arrived(self) and items_not_used(self) 
-        if self.quoted:
-            if not self.quote_accepted:
-                self.status="paused"
-        elif self.status=='cancelled' and self.quoted and not self.quote_accepted and not self.quote_declined :
-            self.quote_declined=True
-        elif self.status=="completed":
+       
+            
+        if self.status=="completed":
             if cant_complete(self):
-                print("kkk")
                 raise ValidationError("Cant completed while there is non_ordered or unarrived parts")
+            self.parts_need_attention=False
+        
+        # elif self.status=='cancelled' and self.quoted and not self.quote_accepted and not self.quote_declined :
+        #     self.quote_declined=True
+        # elif self.status=="completed":
+        #     if cant_complete(self):
+        #         raise ValidationError("Cant completed while there is non_ordered or unarrived parts")
+        
         super().save(*args, **kwargs)
 
         
     def quote_status(self):
         if self.quoted:
-            if quote_accepted:
+            if quote_accepted(self):
                 return "Quote Accepted"
             return "Quote Declined"
     def return_egnineer(self):
@@ -381,7 +387,7 @@ class JobItem(models.Model):
             self.job.save(update_fields=['status','items_arrived',"parts_need_attention"],request=self.request,dont_save_history=True)
             
     def delete(self, *args, **kwargs):
-        if self.from_warehouse :
+        if self.from_warehouse and self.arrived_quantity>0:
             raise ValidationError(
                 "Cannot delete warehouse items, move instead"
             )

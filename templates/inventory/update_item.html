@@ -219,9 +219,9 @@
     let currentForm = null
     let actionname = null
     function movqtychanged() {
-      const required_quantity = currentForm.querySelector('[name="job_quantity"]').value
-      const arrived_quantity = currentForm.querySelector('[name="arrived_quantity"]').value
-      const moveQtyInput = document.getElementById('moveQty').value
+      const required_quantity = Number(currentForm.querySelector('[name="job_quantity"]').value)
+      const arrived_quantity = Number(currentForm.querySelector('[name="arrived_quantity"]').value)
+      const moveQtyInput = Number(document.getElementById('moveQty').value)
       if (moveQtyInput > arrived_quantity) {
         const warnContainer = document.getElementById('warnContainer2')
         const warnContainer1 = document.getElementById('warnContainer')
@@ -293,19 +293,18 @@
         moveQtylabel.style.display = 'none'
     
         confirmText.innerHTML = `
-                                                                                                                                                                                                                            Are you sure you want to  delete ${name} - ${partnumber} ? \n
-                                                                                                                                                                                                                        Job ID: ${jobId} \n
-                                                                                                                                                                                                                        Required quantity: ${required_quantity} \n  
-                                                                                                                                                                                                                        Arrived quantity: ${arrived_quantity} \n
-                                                                                                                                                                                            
-                                                                                                                                                                                                                                                                       `
+                                      Are you sure you want to  delete ${name} - ${partnumber} ? \n
+                                  Job ID: ${jobId} \n
+                                  Required quantity: ${required_quantity} \n  
+                                  Arrived quantity: ${arrived_quantity} \n
+      
+                                                                                  `
       } else if (actionname == 'move') {
-        confirmText.innerHTML = `
-                                                                                                                                                                                                                            Are you sure you want to ${actionname} move  ${name} - ${partnumber} to warehouse? \n
-                                                                                                                                                                                                                            Job ID: ${jobId} \n
-                                                                                                                                                                                                                            Required quantity: ${required_quantity} \n  
-                                                                                                                                                                                                                            Arrived quantity: ${arrived_quantity} \n
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                `
+        confirmText.innerHTML = `Are you sure you want to ${actionname} move  ${name} - ${partnumber} to warehouse? \n
+                                    Job ID: ${jobId} \n
+                                    Required quantity: ${required_quantity} \n  
+                                    Arrived quantity: ${arrived_quantity} \n
+                                                                                                                                                                                                                                                                        `
       }
     }
     
@@ -314,7 +313,11 @@
       if (currentForm) {
         console.log(document.getElementById('moveQty').value)
         if (actionname == 'move') {
-          if (document.getElementById('moveQty').value > document.getElementById('arrived_quantity').value && document.getElementById('moveQty').value > 0) {
+          const moveQty = Number(document.getElementById('moveQty').value)
+          const arrivedQty = Number(document.getElementById('arrived_quantity').value)
+          console.log('moveQty:', moveQty, typeof moveQty)
+          console.log('arrivedQty:', arrivedQty, typeof arrivedQty)
+          if (moveQty > arrivedQty && moveQty > 0) {
             const warnContainer = document.getElementById('warnContainer')
             warnContainer.innerHTML = ''
             warnContainer2.innerHTML = ''
@@ -325,7 +328,7 @@
     
             warnContainer.appendChild(P)
             document.getElementById('moveQty').value = 0
-          } else if (document.getElementById('moveQty').value == 0) {
+          } else if (moveQty == 0) {
             const warnContainer = document.getElementById('warnContainer')
             warnContainer.innerHTML = ''
             warnContainer2.innerHTML = ''
@@ -335,7 +338,7 @@
             P.innerText = `Quantity to move cannot be zero.`
     
             warnContainer.appendChild(P)
-          } else if (document.getElementById('moveQty').value < 0) {
+          } else if (moveQty < 0) {
             console.log('negative')
             const warnContainer = document.getElementById('warnContainer')
             warnContainer.innerHTML = ''

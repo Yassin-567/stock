@@ -62,7 +62,7 @@ def quote_accepted(self,):
             if self.quote_accepted:
                 return True
             return False
-        return True
+        
     return False
 def item_arrived(self):
     if self.from_warehouse:
@@ -96,10 +96,8 @@ def job_completed(self,):
 def cant_complete (self):
     if self.pk:
         for item in self.items.all():
-            print(item)
             if not item.is_used:
                 if not item.ordered or not item_arrived(item) :
-                    print("OOOOOOOG")
                     return True
         return False
 
@@ -803,10 +801,11 @@ def i_donot_work_on_this(request,group_id):
                 
 def remove_item_from_session(request, session_id, session_name):
     data = request.session.get(session_name, [])
-
+    print("session_id:", repr(session_id))
     updated_data = [
         row for row in data
-        if int(row['part_session_id']) != int(session_id)
+            
+        if int(row['session_id']) != int(session_id)
     ]
 
     request.session[session_name] = updated_data

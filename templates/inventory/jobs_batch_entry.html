@@ -13,10 +13,11 @@
     <input type="file" name="jobs_sheet" /> <!-- 👈 this name must match -->
     <button type="submit" name="upload_unscheduled">Upload unscheduled jobs</button>
     <button type="submit" name="upload_paused">Upload paused jobs</button>
-     <form method="POST" action="{% url 'clear_batch_jobs' %}">
+     {% comment %} <form method="POST" action="{% url 'clear_batch_jobs' %}">
       {% csrf_token %}
-      <button type="submit">Clear All</button>
-    </form>
+      <button type="submit">Clear All3</button>
+    </form> {% endcomment %}
+    <a href="{% url "clear_batch_jobs" %}">Clear All3</a>
   {% if data %}
    
     <h2>Review & Submit Jobs</h2>
@@ -27,7 +28,7 @@
       <form method="POST" action="{% url 'create_batch_jobs' %}">
         {% csrf_token %}
         <input type="hidden" name="job_id" value="{{ item.job_id }}" />
-        <input type="hidden" name="job_session_id" value="{{ item.id }}" />
+        <input type="hidden" name="job_session_id" value="{{ item.session_id   }}" />
         <input type="hidden" name="date" value="{{ item.date }}" />
         <input type="hidden" name="from_time" value="{{ item.from_time }}" />
         <input type="hidden" name="parent_account" value="{{ item.parent_account }}" />
@@ -287,10 +288,11 @@
         <p>
           {% if item.job_id  in available_jobs %} 
       <strong>Job#:</strong> <a href="{% url 'update_job' item.job_id %}">{{ item.job_id }}</a>
-{% else %}<strong>Job#:</strong> {{ item.job_id }} 
+{% else %}<strong>Job#:</strong> {{ item.job_id }} | <small style="color: red;"> {{item.reason_for_manual}}</small>
 {% endif %}
           
         </p>
+        
 
         <p>
           <strong>Part Name:</strong> {{ item.name }}
@@ -310,7 +312,7 @@
         <p>
           <strong>arrived_quantity:</strong> {{ item.arrived_quantity }}
         </p>
-        <p>{{item.ordered}}
+        <p>
           <strong>Status: </strong> {% if item..ordered %} Ordered {% else %}Not ordered{% endif %}
 
         </p>
