@@ -195,7 +195,7 @@ class JobForm(forms.ModelForm):
     class Meta:
         model = Job
         fields = '__all__'
-        exclude = ['user','quotation','quote_declined','quote_accepted','on_hold','retirement_date','added_by_sync','emailed','sf_id','imported_from_sheet','longitude','latitude','scheduler']
+        exclude = ['user','quotation','quote_declined','quote_accepted','on_hold','retirement_date','added_by_sync','emailed','sf_id','imported_from_sheet','scheduler']
         labels = {
             'name': 'Part Name',
         }
@@ -278,17 +278,16 @@ class JobForm(forms.ModelForm):
                 raise forms.ValidationError("Can't pause, you can put on hold instead")
             if new_status=="ready" and job.quote_declined:
                 raise forms.ValidationError("Can't mark as ready while the quotation is declined.")
-            if job.on_hold and old_status=='ready' :
-                raise forms.ValidationError("Can't mark as ready, you can uncheck on hold instead")
-            if old_parts_need_attention and old_status!="ready" and new_status=="ready" :
-                print(new_status)
-                print(old_status)
-                raise forms.ValidationError("Can't mark as ready, you can uncheck parts need attention instead")
+            if job.on_hold and (new_status=='ready' or new_status=='completed') :
+                raise forms.ValidationError(    f"Can't mark this job as {new_status}. Uncheck 'On Hold' first.")
+            if old_parts_need_attention and (new_status=="ready" or new_status=="completed") :
+                print( (new_status!="ready" or new_status=="completed") )
+                raise forms.ValidationError(f"Can't mark as1 {new_status}, you can uncheck parts need attention instead")
             if new_status=='ready' and  not (items_arrived(job) and items_not_used(job)) and items_count>0 :
                 raise forms.ValidationError("Not all items arrived")
             if new_status=='ready' and job.items.exclude(is_used=False).exists():
                 raise forms.ValidationError("There is a used item")
-          
+            
             return cleaned_data
     def clean_address(self):
         address = self.cleaned_data.get('address')
@@ -408,7 +407,7 @@ class JobItemForm(forms.ModelForm):
             
         #self.fields['status'].choices=[  (value, label) for value, label in self.fields['status'].choices if value != 'arrived']
         if self.instance.from_warehouse :#or (self.instance.was_for_job and self.instance.from_warehouse)
-            self.fields['arrived_quantity'].widget=forms.HiddenInput()
+            # self.fields['arrived_quantity'].widget=forms.HiddenInput()
             self.fields['ordered'].widget=forms.HiddenInput()
             del self.fields['part_number']
            # self.fields['status'].widget=forms.HiddenInput()

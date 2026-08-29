@@ -360,18 +360,31 @@ function openModal(e, btn) {
             yesBtn.style.display = 'inline-block';
             noBtn.innerHTML = 'No';
             
-
-            if (data.error) {
+            console.log('Fetched data:', data.part_exists_count); // Debugging line
+            if (data.error ) {
                 confirmText.innerText = 'Job not found!';
                 yesBtn.style.display = 'none';
                 noBtn.innerHTML = 'Close';
-              } else {
+              }
+              else if (data.part_exists_count === 0) {
+               submitConfirmed();
+                closeModal();
+                return;
+              } 
+            
+              else {
                   // ✅ Job info + total from backend
                   
+         if (status.toLowerCase() == 'cancelled' && data.status.toLowerCase() == 'completed'){
+confirmText.innerHTML = `
+    'Job status is being changed to cancelled, but the current status is completed. Please review parts again.'
+`;
 
+         }
+         else {
 confirmText.innerHTML = `
     Before cancelling this job, please review relarted parts.
-`;
+`;}
 
                   // ✅ Items (no calculations)
      container.innerHTML = `

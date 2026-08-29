@@ -224,17 +224,14 @@ class Job(models.Model):
     def save(self,*args, request=None,dont_save_history=False,affected_by_sync=False,**kwargs):
         if not self.pk or affected_by_sync:
             super().save(*args, **kwargs) 
-            self.latitude,self.longitude=get_coords(self.post_code.strip().upper().replace(" ", ""))
-            
-
             self.retirement_date=self.birthday+timedelta(days=7)
-        old = Job.objects.filter(pk=self.pk).first()
+        
         try:
-            if old and old.post_code != self.post_code:
-                self.latitude,self.longitude=get_coords(self.post_code.strip().upper().replace(" ", ""))
+            self.latitude,self.longitude=get_coords(self.post_code.strip().upper().replace(" ", ""))
         except:
-            
-            self.post_code="None"
+            self.latitude=None
+            self.longitude=None
+            self.post_code=self.post_code or "None"
         self.request=request
         self.dont_save_history=dont_save_history
         self.affected_by_sync=affected_by_sync
@@ -352,9 +349,9 @@ class JobItem(models.Model):
     was_it_used=models.BooleanField(default=False)
     was_for_job=models.ForeignKey(Job, on_delete=models.CASCADE,null=True,blank=True, related_name="moveditems")
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="jobitem_category",null=True, )
-    def delete(self, request=None):
-        self.request = request  
-        return super().delete()
+    # def delete(self, request=None):
+    #     self.request = request  
+    #     return super().delete()
     def save(self,*args, dont_move_used=False,no_recursion=False,request,**kwargs):
         self.request=request
         item_arrived(self)
@@ -386,22 +383,26 @@ class JobItem(models.Model):
             
             self.job.save(update_fields=['status','items_arrived',"parts_need_attention"],request=self.request,dont_save_history=True)
             
-    def delete(self, *args, **kwargs):
-        if self.from_warehouse and self.arrived_quantity>0:
-            raise ValidationError(
-                "Cannot delete warehouse items, move instead"
-            )
-        if self.arrived_quantity>0:
-            raise ValidationError(
-                    "Cannot delete items that have partially/fully arrived."
+    def delete(self, *args, force_delete=False ,**kwargs):
+        if force_delete:
+            print("999m")
+            super().delete(*args, **kwargs)
+        else:
+            if self.from_warehouse and self.arrived_quantity>0:
+                raise ValidationError(
+                    "Cannot delete warehouse items, move instead"
                 )
-        if self.ordered:
+            if self.arrived_quantity>0:
+                raise ValidationError(
+                        "Cannot delete items that have partially/fully arrived."
+                    )
+            if self.ordered:
 
-            raise ValidationError(
-                "Cannot delete ordered items."
-            )
+                raise ValidationError(
+                    "Cannot delete ordered items."
+                )
 
-        super().delete(*args, **kwargs)
+            super().delete(*args, **kwargs)
     def __str__(self):
         return str(self.name)
 

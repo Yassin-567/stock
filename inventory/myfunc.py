@@ -2,6 +2,8 @@ from django.db import models
 import requests
 from django.db.models import Q
 from datetime import timedelta
+from django.core.exceptions import ValidationError
+
 def items_arrived(self):
     from .models import Job, JobItem
     all_arrived=False
@@ -97,9 +99,10 @@ def cant_complete (self):
     if self.pk:
         for item in self.items.all():
             if not item.is_used:
-                if not item.ordered or not item_arrived(item) :
+                if (not item.ordered and not item.from_warehouse ) or not item_arrived(item) :
                     return True
         return False
+    
 
 def generate_otp():
     import random
@@ -813,12 +816,31 @@ def remove_item_from_session(request, session_id, session_name):
 
 
 def move_jobitem_to_warehouse(request,job_item,job):
-    print(job_item.id)
     from .models import  WarehouseItem
 
-    if job_item.is_used or job_item.arrived_quantity == 0:
-        return None
+    if job_item.from_warehouse:
+        if job_item.job_quantity <1 :
+            raise ValidationError(f"Failed to move {job_item}, quantity should be more than Zero")
+        if job_item.is_used:
+            raise ValidationError(f"Failed to move {job_item}, it is already used")
     else:
+        if not job_item.ordered:
+            raise ValidationError(f"Failed to move {job_item}, it has not been ordered, yoo can delete instead")
+        if job_item.arrived_quantity <1:
+                    raise ValidationError(f"Failed to move {job_item}, arrived quantity should be more than Zero")
+        
+        
+        if job_item.arrived_quantity < job_item.job_quantity:
+            raise ValidationError(f"Failed to move {job_item}, not all ordered quantity arrived")
+        
+            
+    
+    qty=0
+    if job_item.from_warehouse:
+        qty=job_item.job_quantity
+    else:
+        qty=job_item.arrived_quantity    
+    if qty:
         
         x=WarehouseItem(
                     
@@ -828,7 +850,7 @@ def move_jobitem_to_warehouse(request,job_item,job):
                     supplier=job_item.supplier,
                     added_date=job_item.added_date,
                     added_by=job_item.added_by,
-                    warehouse_quantity=job_item.arrived_quantity,
+                    warehouse_quantity=qty,
                     company=request.user.company,
                     
                     reference=job_item.reference,
@@ -838,6 +860,7 @@ def move_jobitem_to_warehouse(request,job_item,job):
                     
                 )
         x.save(request=request)   
-        job_item.delete()
+        
+        job_item.delete(force_delete=True)
                 
         

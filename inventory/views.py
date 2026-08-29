@@ -727,7 +727,9 @@ def update_job(request, pk):
                                 item.save(request=request,update_fields=['is_used'],dont_move_used=True)
                             
                             messages.success(request, "Job completed.")
-                        return redirect('update_job',pk=pk)
+                        else:
+                            messages.error(request," ".join( e["message"] for errors in form.errors.get_json_data().values() for e in errors),)
+                            return redirect('update_job',pk=pk)
 
                             # return render(request, 'inventory/job_update.html', {'form': form,'job':job,'comments_form':comments_form,'comments':comments,'items':items,'items_count':items_count})       
                     except ValidationError as E:
@@ -748,97 +750,115 @@ def update_job(request, pk):
                 elif form.cleaned_data['status']=='cancelled'  :#
                     actions=request.POST.get('actions',[])
                     data_dict = json.loads(actions)
-
+                    
                     if actions: 
                             success_messages = []
 
                             errors=0
-                            with transaction.atomic():
-                                for id, action in data_dict.items():
-                                    part=JobItem.objects.get(id=id,company=request.user.company)
+                            try:
+                                with transaction.atomic():
+                                    for id, action in data_dict.items():
+                                        part=JobItem.objects.get(id=id,company=request.user.company)
 
-                                    if action=="move":
-                                        job=part.was_for_job if part.was_for_job else job
-                                        if part.from_warehouse:
-                                            if not part.is_used and part.arrived_quantity>0:
-                                                move_jobitem_to_warehouse(request=request,job_item=part,job=job)
-                                                success_messages.append( f"Moved {part.arrived_quantity} of {part} #{part.part_number} to warehouse")
-                                            else:
-                                                errors=errors+1
-                                                form.changed_data=None #to prevent saving below
-                                                messages.error(request, f"Failed to move {part} #{part.part_number}")
+                                        if action=="move":
+                                            job=part.was_for_job if part.was_for_job else job
+                                            move_jobitem_to_warehouse(request=request,job_item=part,job=job)
+                                            success_messages.append( f"Moved {part.job_quantity} of {part} #{part.part_number} to warehouse")
 
-                                        else:
-                                            if part.is_used:
-                                                errors=errors+1
-                                                form.changed_data=None #to prevent saving below
-                                                messages.error(request, f"Failed to move {part} #{part.part_number} as the part is already used")
-                                            else:
-                                                if not part.ordered:
-                                                    errors=errors+1
-                                                    form.changed_data=None #to prevent saving below
-                                                    messages.error(request, f"Failed to move {part}#{part.part_number} as it is not ordered")
-                                                else:
-                                                    if part.arrived_quantity<1:
-                                                        errors=errors+1
-                                                        form.changed_data=None #to prevent saving below
-                                                        messages.error(request, f"Failed to move {part} #{part.part_number} as it has not arrived")
-                                                    else:
-                                                        if  part.arrived_quantity==part.job_quantity:
-                                                            move_jobitem_to_warehouse(request=request,job_item=part,job=job)
-                                                            success_messages.append( f"Moved {part.arrived_quantity} of {part} #{part.part_number} to warehouse")
-                                                        else:
-                                                            errors=errors+1
-                                                            form.changed_data=None #to prevent saving below
-                                                            messages.error(request, f"Failed to move {part} #{part.part_number} Not all quantity arrived!")
+                                            # if part.from_warehouse:
+                                            #     if not part.is_used :
+                                            #         move_jobitem_to_warehouse(request=request,job_item=part,job=job)
+                                            #         success_messages.append( f"Moved {part.job_quantity} of {part} #{part.part_number} to warehouse")
+                                            #     else:
+                                            #         errors=errors+1
+                                            #         form.changed_data=None #to prevent saving below
+                                            #         messages.error(request, f"Failed to move {part} #{part.part_number}")
+
+                                            # else:
+                                            #     if part.is_used:
+                                            #         errors=errors+1
+                                            #         form.changed_data=None #to prevent saving below
+                                            #         messages.error(request, f"Failed to move {part} #{part.part_number} as the part is already used")
+                                            #     else:
+                                            #         if not part.ordered:
+                                            #             errors=errors+1
+                                            #             form.changed_data=None #to prevent saving below
+                                            #             messages.error(request, f"Failed to move {part}#{part.part_number} as it is not ordered")
+                                            #         else:
+                                            #             if part.arrived_quantity<1:
+                                            #                 errors=errors+1
+                                            #                 form.changed_data=None #to prevent saving below
+                                            #                 messages.error(request, f"Failed to move {part} #{part.part_number} as it has not arrived")
+                                            #             else:
+                                            #                 if  part.arrived_quantity==part.job_quantity:
+                                            #                     move_jobitem_to_warehouse(request=request,job_item=part,job=job)
+                                            #                     success_messages.append( f"Moved {part.arrived_quantity} of {part} #{part.part_number} to warehouse")
+                                            #                 else:
+                                            #                     errors=errors+1
+                                            #                     form.changed_data=None #to prevent saving below
+                                            #                     messages.error(request, f"Failed to move {part} #{part.part_number} Not all quantity arrived!")
+                                                            
                                                         
-                                                    
-                                        
-                                    elif action=="used":
-                                        if not part.from_warehouse:
-                                            if not part.ordered:
-                                                form.changed_data=None
-                                                errors=errors+1
-                                                messages.error(request, f"Cant mark {part} #{part.part_number} as used as it has not been ordered yet, delete instead!")
-                                            else:
-                                                if part.arrived_quantity==0:
+                                            
+                                        elif action=="used":
+                                            print("OOOOOOOOOOOOOOOOOOO")
+                                            if not part.from_warehouse:
+                                                if not part.ordered:
                                                     form.changed_data=None
                                                     errors=errors+1
-                                                    messages.error(request, f"Cant mar {part} #{part.part_number} as used as it has not arrived yet!") 
-                                                if part.job_quantity != part.arrived_quantity and part.arrived_quantity !=0 :
-                                                    form.changed_data=None
-                                                    errors=errors+1
-                                                    messages.error(request, f"Cant mark {part} #{part.part_number} as used as not all quantity arrived, cancel the order of the quantity that will not be used!") 
+                                                    messages.error(request, f"Cant mark {part} #{part.part_number} as used as it has not been ordered yet, delete instead!")
                                                 else:
+                                                    if part.arrived_quantity==0:
+                                                        form.changed_data=None
+                                                        errors=errors+1
+                                                        messages.error(request, f"Cant mark {part} #{part.part_number} as used as it has not arrived yet!") 
+                                                    if part.job_quantity != part.arrived_quantity and part.arrived_quantity !=0 :
+                                                        form.changed_data=None
+                                                        errors=errors+1
+                                                        messages.error(request, f"Cant mark {part} #{part.part_number} as used as not all quantity arrived, cancel the order of the quantity that will not be used!") 
+                                                    else:
 
+                                                        part.is_used=True
+                                                        part.save(request=request)
+                                                        success_messages.append(f"{part.arrived_quantity} of {part} #{part.part_number} is/are now marked as used")
+                                            else:
+                                                if part.job_quantity<=0:    
+                                                    form.changed_data=None
+                                                    errors=errors+1
+                                                    messages.error(request, f"Cant mark {part} #{part.part_number} as used as it has 0 quantity") 
+                                                else:
                                                     part.is_used=True
                                                     part.save(request=request)
                                                     success_messages.append(f"{part.arrived_quantity} of {part} #{part.part_number} is/are now marked as used")
-                                    elif action=="delete":
-                                        if not part.from_warehouse:    
-                                            if part.ordered and not part.is_used:
-                                                if part.arrived_quantity>0:
-                                                    form.changed_data=None #to prevent saving below
-                                                    errors=errors+1
-                                                    messages.error(request, f"Part {part} #{part.part_number} has quantity of {part.arrived_quantity}! Move to warehouse or mark as used")
-                                                elif part.arrived_quantity<1:
-                                                    form.changed_data=None #to prevent saving below
+                                        elif action=="delete":
+                                            if not part.from_warehouse:    
+                                                if part.ordered and not part.is_used:
+                                                    if part.arrived_quantity>0:
+                                                        form.changed_data=None #to prevent saving below
+                                                        errors=errors+1
+                                                        messages.error(request, f"Part {part} #{part.part_number} has quantity of {part.arrived_quantity}! Move to warehouse or mark as used")
+                                                    elif part.arrived_quantity<1:
+                                                        form.changed_data=None #to prevent saving below
 
-                                                    messages.error(request, f"{part.arrived_quantity} of Part {part} #{part.part_number} are ordered! You should cancel order before deleting")
-                                            else:   
-                                                part.delete()
-                                                success_messages.append(f"{part.arrived_quantity} of {part} #{part.part_number} is/are now deleted")
-                                        else:
-                                            if not part.is_used:
-                                                form.changed_data=None #to prevent saving below
-                                                messages.error(request, f"Part {part} #{part.part_number} has quantity of {part.arrived_quantity} is/are warehouse item/s! Move to warehouse or mark as used")
-                                if errors :
-                                 
-                                    transaction.set_rollback(True)
-                                    form.changed_data=None
-                                else:
-                                    for msg in success_messages:
-                                        messages.success(request, msg)
+                                                        messages.error(request, f"{part.arrived_quantity} of Part {part} #{part.part_number} are ordered! You should cancel order before deleting")
+                                                else:   
+                                                    part.delete()
+                                                    success_messages.append(f"{part.arrived_quantity} of {part} #{part.part_number} is/are now deleted")
+                                            else:
+                                                if not part.is_used:
+                                                    form.changed_data=None #to prevent saving below
+                                                    messages.error(request, f"Part {part} #{part.part_number} has quantity of {part.job_quantity} is/are warehouse item/s! Move to warehouse or mark as used")
+                                    if errors :
+                                    
+                                        transaction.set_rollback(True)
+                                        form.changed_data=None
+                                    else:
+                                        for msg in success_messages:
+                                            messages.success(request, msg)
+                            except Exception as e:
+                                messages.error(request,e)
+                                return redirect('update_job',job.job_id)
+                                
                     # li=[]
                     # li=[item for item in job.items.all() if (item.ordered or item.from_warehouse ) and  item.arrived_quantity>0 and not item.is_used ]
                     # if len(li)>0:
@@ -985,7 +1005,7 @@ def item_add(request,pk=None,):
                             arrived=True,
                             who_has_part=item.who_has_part,
                             job_quantity=+required_quantity,
-                            arrived_quantity=+required_quantity,
+                            arrived_quantity=0,#no need to add arrived quantity so it should be zero
                             category=item.category,
                             was_for_job=item.is_moved_from_job if item.is_moved_from_job else None
                             )
@@ -1371,13 +1391,16 @@ def update_item(request, pk):
                         try:
                             with transaction.atomic():
                                 jobid = item.job.job_id
-                                item.delete(request=request)
-                                messages.success(request, f"Moved {diff} of {item} to warehouse successfully")
-                        except Exception as e:
-                            messages.success(request, f"SEE {e}")
-                            return redirect('update_job', jobid)
+                                item.delete(force_delete=True)
+                                messages.success(request, f"Moved {diff} of {item} to warehouse successfully and removed from this job")
+                                return redirect('update_job', jobid)
 
+                        except Exception as e:
+                            messages.success(request, f"{e}")
+                            return redirect('update_job', jobid)
+                
                     messages.success(request, f"Moved {diff} of {item} to warehouse successfully")
+                    return redirect('update_item',pk)
                     return render(request, 'inventory/update_item.html',
                                 {'form': JobItemForm(instance=item),
                                 'item': item,
@@ -2796,7 +2819,7 @@ def get_job_data(request):
     except Job.DoesNotExist:
         return JsonResponse({'error': 'Job not found'}, status=404)
     if job_cacnelling:
-        items = job.items.all().filter(is_used=False)
+        items = job.items.all()#.filter(is_used=False)
     else:
         items=job.items.all()
     part_exists=None
@@ -2811,6 +2834,7 @@ def get_job_data(request):
     items = list(items.values(
         'name',
         'supplier',
+        
         'part_number',
         'id',
         'price',
@@ -2825,6 +2849,7 @@ def get_job_data(request):
         'items':items,
         'job_id': job.job_id,
         'address': job.address,
+        'status':job.status,
         # add anything you want
     }
     
@@ -2956,12 +2981,12 @@ def fetch_jobs(request,job_id=None):
             sync_engineers_func(request)
             headers = {"Authorization": f"Bearer {request.user.company.settings.sf_access_token }"}
             if job_id:
-                # response = requests.get(f"https://api.servicefusion.com/v1/jobs/{job_id}", headers=headers) #for production
-                response = requests.get(f"https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs/{job_id}", headers=headers) #for testing
+                response = requests.get(f"https://api.servicefusion.com/v1/jobs/{job_id}", headers=headers) #for production
+                # response = requests.get(f"https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs/{job_id}", headers=headers) #for testing
                 
             else:
-                # response = requests.get("https://api.servicefusion.com/v1/jobs", headers=headers) #for production
-                response = requests.get("https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs", headers=headers) #for testing
+                response = requests.get("https://api.servicefusion.com/v1/jobs", headers=headers) #for production
+                # response = requests.get("https://0350b95b-a46f-4716-94c8-b6677b1f904f.mock.pstmn.io/jobs", headers=headers) #for testing
 
             # If token expired, refresh and retry
             if response.status_code == 401:
