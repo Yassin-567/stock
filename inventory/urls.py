@@ -27,7 +27,7 @@ urlpatterns=[
     path('adpanel/<int:pk>/',views.update_user,name='update_user'),
     path('forgotpassword/',views.forgot_password,name='forgot_password'),
     path('companysettings/',views.company_settings,name='company_settings'),
-    path('adpanelc//',views.update_company,name='update_company'),
+    path('adpanelc/',views.update_company,name='update_company'),
     path('adpaneleng/',views.engineer,name='add_eng'),
     path('updateeng/<int:pk>',views.update_engineer,name='update_engineer'),
 

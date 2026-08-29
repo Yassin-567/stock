@@ -63,7 +63,7 @@ MIDDLEWARE = [
     "inventory.middleware.GuestCleanupMiddleware",
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-MIDDLEWARE.remove("django.middleware.csrf.CsrfViewMiddleware")
+# MIDDLEWARE.remove("django.middleware.csrf.CsrfViewMiddleware")
 ROOT_URLCONF = 'stock.urls'
 
 TEMPLATES = [
